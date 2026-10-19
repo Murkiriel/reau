@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Lite edition's own texts: they replace the ones of src/main of the same name. It has no accessibility service. -->
+<resources>
+    <string name="permissions_ask_all_note">Asks at once for the permissions Android prompts for; battery has its own button on its row. If Android doesn’t show the request (you declined before), use \"Open REau’s permissions in Android\".</string>
+    <string name="aa_server_left_on">The Android Auto server was left on (the phone was locked). Turn it off from its notification, if you like.</string>
+    <string name="aa_no_video_warning">Android Auto is connected but isn’t sending a picture, and the dash stays black. Force stop it (Settings › Apps › Android Auto › Force stop), then turn REau off and on again. With Android Auto 17.4 or newer, also check that its head unit server is on.</string>
+    <!-- The server card: only the manual step. Android Auto closes the server when the session ends, so it is turned on again every time. -->
+    <string name="server_warning">Android Auto isn’t accepting the connection. Turn its head unit server on by hand: in Android Auto’s settings, tap \"Version\" about ten times to unlock developer settings, then, in the ⋮ menu, tap \"Start head unit server\". REau connects by itself as soon as it is on. The server turns off when the session ends (when you tap Turn off, for example), and after you restart the phone: turn it on again every time.</string>
+
+    <!-- Texts of the accessibility service, which this edition does not have: nothing shows them, and they are left empty so
+         that no text about it ships in the Lite (the shared code still names them). A test checks that they stay empty. -->
+    <string name="aa_server_auto"></string>
+    <string name="aa_server_accessibility_connected"></string>
+    <string name="aa_server_accessibility_enabled"></string>
+    <string name="aa_server_accessibility_off"></string>
+    <string name="aa_server_service_off"></string>
+    <string name="action_open_accessibility"></string>
+    <string name="accessibility_ask_title"></string>
+    <string name="accessibility_ask_text"></string>
+    <string name="accessibility_ask_confirm"></string>
+    <string name="perm_accessibility_title"></string>
+    <string name="perm_accessibility_why"></string>
+    <string name="permission_special_restricted"></string>
+    <string name="action_allow_restricted"></string>
+    <string name="menu_fit_own"></string>
+</resources>

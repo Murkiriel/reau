@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="group_language">Language</string>
+    <string name="language_title">App language</string>
+    <string name="language_sub">The phone\'s language, or one of the two the app has</string>
+    <string name="language_auto">Automatic</string>
+    <string name="language_pt" translatable="false">Português</string>
+    <string name="language_en" translatable="false">English</string>
+</resources>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The accessibility service's texts: only the full edition has the service. -->
+<resources>
+    <string name="aa_server_accessibility_label">REau: servidor do Android Auto</string>
+    <string name="aa_server_accessibility_description">O REau usa a acessibilidade para abrir os ajustes do Android Auto e tocar em ⋮ → \"Iniciar servidor da unidade principal\" quando você liga a projeção e o servidor está desligado, e em \"Parar\" quando a projeção acaba (pelo botão da notificação do servidor, ou pelo mesmo menu). Ouve o Android Auto e, com a chave \"Atender ligação pelo joystick\", as notificações de chamada do WhatsApp, WhatsApp Business, Telegram e Signal (só o tipo e os botões, nunca quem liga), para o registro; não lê nem toca em outros apps. Funciona só com a chave \"Ligar e desligar o servidor do Android Auto sozinho\" ligada nos ajustes do REau.</string>
+</resources>

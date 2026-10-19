@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: the activity CrashHandlerTest opens to crash a process of the app on purpose. An activity, not a
+     receiver: Android stops delivering broadcasts to a process that crashed twice within a minute, while an activity
+     start counts as the user's and clears that. The :exittest process is the one ExitHistoryTest ends (L2); its
+     activity is exported only to holders of DUMP (adb's shell, never another app), for scripts/emu/forcar_parada.py. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name=".debug.CrashTestActivity"
+            android:exported="false"
+            android:process=":crashtest"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <activity
+            android:name=".debug.ExitTestActivity"
+            android:exported="true"
+            android:permission="android.permission.DUMP"
+            android:process=":exittest"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <receiver
+            android:name=".debug.ExitTestReceiver"
+            android:exported="false"
+            android:process=":exittest" />
+    </application>
+</manifest>

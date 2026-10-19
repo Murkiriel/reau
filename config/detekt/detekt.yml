@@ -1,0 +1,32 @@
+# Only what differs from detekt's defaults (--build-upon-default-config). baseline.xml holds only the accepted debt (long protocol and decoder routines kept as they are on purpose); this file decides
+# which rules run at all, tuned so that a NEW finding is worth reading.
+build:
+  maxIssues: 0
+
+style:
+  # dp/sp/colour/geometry constants are everywhere in Compose and the video code; flagging each one buries real findings
+  MagicNumber:
+    active: false
+  # the code base writes long KDoc/format lines on purpose (100+ chars); 160 catches only the genuinely huge ones
+  MaxLineLength:
+    active: true
+    maxLineLength: 160
+    excludeCommentStatements: true
+  # Early exits at the top of a function ("not enabled", "no directory yet") are how the copied code is written and
+  # read better than a nested body; only returns after the guards count towards the limit.
+  ReturnCount:
+    active: true
+    excludeGuardClauses: true
+
+naming:
+  # @Composable functions are PascalCase by convention
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+
+complexity:
+  # A composable takes what it draws as parameters (title, tag, info, ...): that is how Compose reads, not a missing object.
+  LongParameterList:
+    ignoreAnnotated: ['Composable']
+  # An exhaustive `when` that only maps each entry to a value (a headline to its text) is a table, not branching logic.
+  CyclomaticComplexMethod:
+    ignoreSimpleWhenEntries: true

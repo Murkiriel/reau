@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>REau: Android Auto</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjE0IDEyIDgwIDgwIj48cmVjdCB4PSIxNCIgeT0iMTIiIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgcng9IjE4IiBmaWxsPSIjMTIxMjEyIi8+PHBhdGggZmlsbD0ibm9uZSIgc3Ryb2tlPSIjRTFBRDAxIiBzdHJva2Utd2lkdGg9IjUiIGQ9Ik0zNCw2MSBBMjAsMjAgMCAxLDEgNzQsNjEgQTIwLDIwIDAgMSwxIDM0LDYxIFoiLz48cGF0aCBmaWxsPSIjRTFBRDAxIiBkPSJNMzgsNDYgTDM1LDMxIEw0NS41LDM4LjUgTDU0LDI1LjUgTDYyLjUsMzguNSBMNzMsMzEgTDcwLDQ2IFoiLz48cGF0aCBmaWxsPSIjRTFBRDAxIiBkPSJNMzIuNCwzMC4yIEEyLjYsMi42IDAgMSwxIDM3LjYsMzAuMiBBMi42LDIuNiAwIDEsMSAzMi40LDMwLjIgWiBNNTEuNCwyNC4zIEEyLjYsMi42IDAgMSwxIDU2LjYsMjQuMyBBMi42LDIuNiAwIDEsMSA1MS40LDI0LjMgWiBNNzAuNCwzMC4yIEEyLjYsMi42IDAgMSwxIDc1LjYsMzAuMiBBMi42LDIuNiAwIDEsMSA3MC40LDMwLjIgWiIvPjxwYXRoIGZpbGw9IiNFQ0U3REQiIGQ9Ik01NCw1MC41IEw2Miw3MCBMNTQsNjUuNSBMNDYsNzAgWiIvPjwvc3ZnPgo=">
+<link rel="icon" type="image/png" sizes="64x64" href="data:image/png;base64,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">
+<style>
+  html, body { margin: 0; height: 100%; background: #121212; color: #ece7dd; font-family: system-ui, sans-serif; overflow: hidden; }
+  #v { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #note { position: fixed; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; font-size: 1.1rem; padding: 0.6rem 1rem; pointer-events: none; }
+  #note[hidden], #gate[hidden], #sound[hidden] { display: none; }
+  #sound { position: fixed; left: 0; right: 0; bottom: 1rem; text-align: center; padding: 0.4rem 1rem; pointer-events: none; font-size: 0.95rem; color: #bfb7a4; }
+  #gate { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.9rem; background: #121212; user-select: none; -webkit-user-select: none; }
+  #gate h1 { margin: 0; font-size: 1.2rem; font-weight: 600; }
+  #slots { display: flex; gap: 0.7rem; }
+  #slots span { width: 3.2rem; height: 4rem; display: flex; align-items: center; justify-content: center; font: 600 2.2rem ui-monospace, monospace; border-radius: 12px; border: 2px solid #5b5036; background: #211d16; }
+  #slots span.on { border-color: #e1ad01; }
+  #gate-note { min-height: 1.4rem; margin: 0; color: #e8847c; text-align: center; padding: 0 1rem; }
+  #pad { display: grid; grid-template-columns: repeat(3, 4.6rem); gap: 0.6rem; }
+  #pad button { height: 4rem; font: 600 1.7rem system-ui, sans-serif; border-radius: 14px; border: 0; background: #2c2619; color: #ece7dd; touch-action: manipulation; }
+  #pad button:active { background: #e1ad01; color: #121212; }
+  #pad button.wide { font-size: 1.1rem; background: #211d16; color: #bfb7a4; }
+  #source { position: fixed; left: 0.8rem; bottom: 0.6rem; z-index: 5; font-size: 0.8rem; color: #bfb7a4; opacity: 0.75; }
+  #source:hover, #source:focus { opacity: 1; }
+</style>
+</head>
+<body>
+<video id="v" muted autoplay playsinline></video>
+<div id="note" hidden></div>
+<div id="sound" hidden data-i18n="sound_hint">Tap the screen to turn on the sound</div>
+<a id="source" href="https://github.com/Murkiriel/reau" target="_blank" rel="noopener noreferrer" data-i18n="source_link">Source code (AGPL-3.0)</a>
+<div id="gate" hidden>
+  <h1 data-i18n="gate_title">REau PIN, on the phone’s screen</h1>
+  <div id="slots"><span></span><span></span><span></span><span></span></div>
+  <p id="gate-note"></p>
+  <div id="pad">
+    <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+    <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+    <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+    <button data-k="clear" class="wide" data-i18n="key_clear" data-i18n-aria="key_clear" aria-label="Clear">Clear</button><button data-k="0">0</button><button data-k="back" class="wide" data-i18n="key_delete" data-i18n-aria="key_delete" aria-label="Delete">Delete</button>
+  </div>
+</div>
+<!--JMUXER-->
+<script>
+(function () {
+  "use strict";
+  // The page speaks the browser's language: Portuguese for a browser whose first language is Portuguese, English for any other.
+  // Every visible text is here, in both; the markup holds the English as the fallback and the script puts the chosen one.
+  var T = {
+    en: {
+      title: "REau: Android Auto",
+      sound_hint: "Tap the screen to turn on the sound",
+      source_link: "Source code (AGPL-3.0)",
+      gate_title: "REau PIN, on the phone’s screen",
+      key_clear: "Clear",
+      key_delete: "Delete",
+      sound_off: "No sound on this device: it is the phone itself, and the sound would loop back into Android Auto.",
+      state_off: "Android Auto is off",
+      checking: "Checking the PIN…",
+      too_many: "Too many wrong tries (429). Wait about 5 minutes.",
+      pin_changed: "The PIN changed (403). See the new PIN on the phone’s screen.",
+      pin_wrong: "Wrong PIN (403). See the PIN on the phone’s screen.",
+      bad_status: "The phone answered {n}. Try again.",
+      no_phone: "Couldn’t reach the phone. Check the Wi-Fi.",
+      reconnecting: "Disconnected. Trying again…",
+      no_video: "This browser can’t play the video. Use a recent Chrome, Edge, Firefox or Safari."
+    },
+    pt: {
+      title: "REau: Android Auto",
+      sound_hint: "Toque na tela para ligar o som",
+      source_link: "Código-fonte (AGPL-3.0)",
+      gate_title: "PIN do REau, na tela do celular",
+      key_clear: "Limpar",
+      key_delete: "Apagar",
+      sound_off: "Sem som neste aparelho: ele é o próprio celular, e o som voltaria ao Android Auto.",
+      state_off: "Android Auto desligado",
+      checking: "Conferindo o PIN…",
+      too_many: "Muitas tentativas erradas (429). Espere uns 5 minutos.",
+      pin_changed: "O PIN mudou (403). Veja o PIN novo na tela do celular.",
+      pin_wrong: "PIN errado (403). Veja o PIN na tela do celular.",
+      bad_status: "O celular respondeu {n}. Tente de novo.",
+      no_phone: "Não consegui falar com o celular. Confira a Wi-Fi.",
+      reconnecting: "Desconectado. Tentando de novo…",
+      no_video: "Este navegador não toca o vídeo. Use o Chrome, o Edge, o Firefox ou o Safari recente."
+    }
+  };
+  // A Portuguese tag: "pt", "pt-BR", "pt-PT", "pt_BR" (not "ptx").
+  var PT_TAG = /^pt(?:[-_]|$)/i;
+
+  // The first language the browser lists decides: Portuguese if it is "pt", English otherwise (also when the list is empty).
+  function pickLang(list) {
+    for (var i = 0; list && i < list.length; i++) {
+      var tag = String(list[i] || "").trim();
+      if (tag) return PT_TAG.test(tag) ? "pt" : "en";
+    }
+    return "en";
+  }
+
+  var lang = pickLang(navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]);
+
+  // The text for a key in the chosen language; {n} takes the number given.
+  function t(key, n) {
+    return T[lang][key].replace("{n}", n === undefined ? "" : String(n));
+  }
+
+  function translate() {
+    document.documentElement.lang = lang === "pt" ? "pt-BR" : "en";
+    document.title = t("title");
+    var texts = document.querySelectorAll("[data-i18n]");
+    for (var i = 0; i < texts.length; i++) texts[i].textContent = t(texts[i].getAttribute("data-i18n"));
+    var labels = document.querySelectorAll("[data-i18n-aria]");
+    for (var j = 0; j < labels.length; j++) labels[j].setAttribute("aria-label", t(labels[j].getAttribute("data-i18n-aria")));
+  }
+  translate();
+
+  // The video's own size: the touch is sent in these pixels (the server reads 0..799 by 0..479).
+  var VIDEO_W = 800;
+  var VIDEO_H = 480;
+  var video = document.getElementById("v");
+  var note = document.getElementById("note");
+  var gate = document.getElementById("gate");
+  var gateNote = document.getElementById("gate-note");
+  var slots = document.querySelectorAll("#slots span");
+  var pin = new URLSearchParams(location.search).get("k") || "";
+  var typed = "";
+  var checking = false;
+  var socket = null;
+  var player = null;
+  var retryTimer = null;
+  var retryMs = 500;
+  var touchAllowed = false;
+  // Set once the server took the pin: from then on a network fault is retried, not turned into a request for the pin again.
+  var accepted = false;
+  // Set when the server says this page is on the phone itself and gets no sound.
+  var soundOff = false;
+  var lastFeed = 0;
+  // The sound is let wait this long (seconds) ahead of now, no more: a burst after a stall would else leave it far behind the picture.
+  var MAX_AHEAD = 0.25;
+
+  function say(text) {
+    note.textContent = text;
+    note.hidden = !text;
+  }
+
+  function render() {
+    for (var i = 0; i < slots.length; i++) {
+      slots[i].textContent = typed.charAt(i);
+      slots[i].className = i === typed.length ? "on" : "";
+    }
+  }
+
+  function showGate(message) {
+    say("");
+    typed = "";
+    checking = false;
+    gate.hidden = false;
+    gateNote.style.color = "#e8847c";
+    gateNote.textContent = message || "";
+    render();
+  }
+
+  // A new player for each connection: the stream starts again with its parameters.
+  function newPlayer() {
+    if (player) {
+      try { player.destroy(); } catch (e) { player = null; }
+    }
+    lastFeed = 0;
+    player = new JMuxer({ node: "v", mode: "video", flushingTime: 0, fps: 30, clearBuffer: true, debug: false });
+  }
+
+  function onState(text) {
+    var message;
+    try { message = JSON.parse(text); } catch (e) { return; }
+    // The page is on the phone itself: no sound is sent (it would go round through Android Auto), and the page says so and keeps saying it.
+    if (message.sound === false) {
+      soundOff = true;
+      soundNote.textContent = t("sound_off");
+      soundNote.hidden = false;
+      return;
+    }
+    touchAllowed = message.touch === true;
+    if (message.state === "live") say("");
+    else if (message.state === "off") say(t("state_off"));
+  }
+
+  // The PIN is asked of the server first, so a wrong one is told as such (a WebSocket refused says nothing of why).
+  function start() {
+    if (!/^[0-9]{4}$/.test(pin)) { accepted = false; showGate(""); return; }
+    checking = true;
+    gateNote.style.color = "#bfb7a4";
+    gateNote.textContent = t("checking");
+    fetch("/auth?k=" + encodeURIComponent(pin), { cache: "no-store" }).then(function (answer) {
+      if (answer.status === 204) {
+        accepted = true;
+        gate.hidden = true;
+        checking = false;
+        history.replaceState(null, "", "?k=" + pin);
+        connect();
+      } else if (answer.status === 429) {
+        accepted = false;
+        showGate(t("too_many"));
+      } else if (answer.status === 403) {
+        var was = accepted;
+        accepted = false;
+        showGate(t(was ? "pin_changed" : "pin_wrong"));
+      } else if (accepted) {
+        retry();
+      } else {
+        showGate(t("bad_status", answer.status));
+      }
+    }).catch(function () {
+      if (accepted) retry(); else showGate(t("no_phone"));
+    });
+  }
+
+  function retry() {
+    touchAllowed = false;
+    say(t("reconnecting"));
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(start, retryMs);
+    retryMs = Math.min(retryMs * 2, 10000);
+  }
+
+  // The player is told how long each picture lasted (the time since the one before), not a fixed 1/30 s: a still map sends a few
+  // frames a second, and a player that counts each as 1/30 s runs out of picture and waits. Frames that come together
+  // (the first ones after joining) count 8 ms each; a long silence counts one second at most.
+  function feed(data) {
+    var now = performance.now();
+    var gap = lastFeed === 0 ? 33 : Math.min(Math.max(now - lastFeed, 8), 1000);
+    lastFeed = now;
+    player.feed({ video: data, duration: gap });
+  }
+
+  // The sound: 16 bit little endian PCM, played as it arrives on a small queue of its own for each stream. A browser only lets a page
+  // make sound after a touch or a key, so the context is made and resumed on the first one (the keypad's, or any later one).
+  var audioCtx = null;
+  var nextAt = [0, 0, 0];
+  var soundNote = document.getElementById("sound");
+
+  function showSoundHint(show) {
+    if (!soundOff) soundNote.hidden = !show;
+  }
+
+  function unlockAudio() {
+    if (!audioCtx) {
+      var Context = window.AudioContext || window.webkitAudioContext;
+      if (!Context) return;
+      audioCtx = new Context({ latencyHint: "interactive" });
+      // The context starts running some moments after resume(): the note goes then, not at the next touch.
+      audioCtx.addEventListener("statechange", function () { if (audioCtx.state === "running") showSoundHint(false); });
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    if (audioCtx.state === "running") showSoundHint(false);
+  }
+
+  function playSound(tag, bytes) {
+    if (!audioCtx || audioCtx.state !== "running") {
+      showSoundHint(true);
+      return;
+    }
+    var rate = tag === 1 ? 48000 : 16000;
+    var channels = tag === 1 ? 2 : 1;
+    var frames = Math.floor(bytes.length / (2 * channels));
+    if (frames <= 0) return;
+    var buffer = audioCtx.createBuffer(channels, frames, rate);
+    var view = new DataView(bytes.buffer, bytes.byteOffset, frames * 2 * channels);
+    for (var c = 0; c < channels; c++) {
+      var out = buffer.getChannelData(c);
+      for (var i = 0; i < frames; i++) out[i] = view.getInt16((i * channels + c) * 2, true) / 32768;
+    }
+    var source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioCtx.destination);
+    var now = audioCtx.currentTime;
+    // Short of sound (it ran dry) or too much waiting (a burst): start again a little ahead of now.
+    if (nextAt[tag] < now + 0.02 || nextAt[tag] > now + MAX_AHEAD) nextAt[tag] = now + 0.08;
+    source.start(nextAt[tag]);
+    nextAt[tag] += buffer.duration;
+  }
+
+  function connect() {
+    newPlayer();
+    var scheme = location.protocol === "https:" ? "wss:" : "ws:";
+    socket = new WebSocket(scheme + "//" + location.host + "/ws?k=" + encodeURIComponent(pin));
+    socket.binaryType = "arraybuffer";
+    socket.onopen = function () { retryMs = 500; };
+    socket.onmessage = function (event) {
+      if (typeof event.data === "string") { onState(event.data); return; }
+      // One byte in front says what it is: 0 video, 1 the media sound (48 kHz stereo), 2 the guide's voice (16 kHz mono).
+      var bytes = new Uint8Array(event.data);
+      var tag = bytes[0];
+      if (tag === 0) { if (player) feed(bytes.slice(1)); }
+      else if (tag === 1 || tag === 2) playSound(tag, bytes.subarray(1));
+    };
+    socket.onclose = retry;
+  }
+
+  // The keypad (and a real keyboard's digits): four digits and it goes by itself.
+  function press(key) {
+    unlockAudio();
+    if (gate.hidden || checking) return;
+    if (key === "back") typed = typed.slice(0, -1);
+    else if (key === "clear") typed = "";
+    else if (typed.length < 4) typed += key;
+    gateNote.textContent = "";
+    render();
+    if (typed.length === 4) {
+      pin = typed;
+      start();
+    }
+  }
+  document.getElementById("pad").addEventListener("click", function (event) {
+    var key = event.target && event.target.getAttribute ? event.target.getAttribute("data-k") : null;
+    if (key) press(key);
+  });
+  // A click or a lift counts too: with a mouse the browser does not take the press as the touch that allows sound, the click it does.
+  document.addEventListener("pointerdown", unlockAudio);
+  document.addEventListener("click", unlockAudio);
+  document.addEventListener("keydown", function (event) {
+    unlockAudio();
+    if (event.key >= "0" && event.key <= "9" && event.key.length === 1) press(event.key);
+    else if (event.key === "Backspace") press("back");
+    else if (event.key === "Escape") press("clear");
+  });
+
+  // Live picture. A still map sends only a few frames a second; when the player is waiting for data with a newer frame buffered, or
+  // is more than half a second behind, it is moved to the edge. Never more than one jump in 150 ms: a jump asks the decoder
+  // to start again at the last key frame.
+  var lastJump = 0;
+  setInterval(function () {
+    var ranges = video.buffered;
+    if (ranges.length === 0) return;
+    var edge = ranges.end(ranges.length - 1);
+    var behind = edge - video.currentTime;
+    var waiting = video.readyState < 3 && behind > 0.01;
+    var now = performance.now();
+    if ((behind > 0.5 || waiting) && now - lastJump > 150) {
+      lastJump = now;
+      video.currentTime = Math.max(0, edge - 0.03);
+    }
+    if (video.paused) video.play().catch(function () {});
+  }, 100);
+
+  // The point of the video under the pointer, in the video's pixels; the picture is centred and fits the element (contain).
+  function point(event, clamp) {
+    var box = video.getBoundingClientRect();
+    var scale = Math.min(box.width / VIDEO_W, box.height / VIDEO_H);
+    if (!(scale > 0)) return null;
+    var x = Math.floor((event.clientX - (box.left + (box.width - VIDEO_W * scale) / 2)) / scale);
+    var y = Math.floor((event.clientY - (box.top + (box.height - VIDEO_H * scale) / 2)) / scale);
+    var inside = x >= 0 && y >= 0 && x < VIDEO_W && y < VIDEO_H;
+    if (!inside && !clamp) return null;
+    return { x: Math.min(VIDEO_W - 1, Math.max(0, x)), y: Math.min(VIDEO_H - 1, Math.max(0, y)) };
+  }
+
+  function send(code, p) {
+    if (touchAllowed && p && socket && socket.readyState === 1) socket.send(JSON.stringify({a: code, x: p.x, y: p.y}));
+  }
+
+  var down = false;
+  var lastMove = 0;
+  video.addEventListener("pointerdown", function (event) {
+    if (!touchAllowed || !event.isPrimary) return;
+    var p = point(event, false);
+    if (!p) return;
+    down = true;
+    video.setPointerCapture(event.pointerId);
+    send("d", p);
+    event.preventDefault();
+  });
+  video.addEventListener("pointermove", function (event) {
+    if (!down || !event.isPrimary || event.timeStamp - lastMove < 16) return;
+    lastMove = event.timeStamp;
+    send("m", point(event, true));
+  });
+  video.addEventListener("pointerup", function (event) {
+    if (!down || !event.isPrimary) return;
+    down = false;
+    send("u", point(event, true));
+  });
+  video.addEventListener("pointercancel", function (event) {
+    if (!down || !event.isPrimary) return;
+    down = false;
+    send("c", point(event, true));
+  });
+  video.addEventListener("contextmenu", function (event) { if (touchAllowed) event.preventDefault(); });
+
+  // The picture needs Media Source Extensions (the iPhone has them from iOS 17.1, as the managed kind): without them, say so.
+  if (!window.MediaSource && !window.ManagedMediaSource) say(t("no_video"));
+  else start();
+})();
+</script>
+</body>
+</html>

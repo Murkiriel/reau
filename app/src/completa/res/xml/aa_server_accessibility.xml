@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Events from Android Auto only (its windows,
+  and its notification with the server's "Stop"); the windows are read to find the settings menu, which is a window of
+  its own (flagRetrieveInteractiveWindows). No canPerformGestures: the clicks are actions on the nodes.
+  Also the voice apps (WhatsApp, WhatsApp Business, Telegram, Signal; CallNotice.VOICE_APPS),
+  for their call notifications only; their windows are not read.
+  Google Maps too, whose screen is a display of its own (AaScreenRule.OWN_DISPLAY_APPS): its window changes
+  say when the map is shown.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged|typeWindowContentChanged|typeNotificationStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault|flagIncludeNotImportantViews|flagReportViewIds|flagRetrieveInteractiveWindows"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/aa_server_accessibility_description"
+    android:notificationTimeout="100"
+    android:packageNames="com.google.android.projection.gearhead,com.google.android.apps.maps,com.whatsapp,com.whatsapp.w4b,org.telegram.messenger,org.thoughtcrime.securesms" />

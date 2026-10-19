@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Textos próprios da edição Lite: trocam os de mesmo nome de src/main. Ela não tem serviço de acessibilidade. -->
+<resources>
+    <string name="permissions_ask_all_note">Pede de uma vez as que o Android pergunta; a bateria tem o botão na própria linha. Se o Android não mostrar o pedido (você recusou antes), use \"Abrir as permissões do REau no Android\".</string>
+    <string name="aa_server_left_on">O servidor do Android Auto ficou ligado (o celular estava bloqueado). Desligue pela notificação dele, se quiser.</string>
+    <string name="aa_no_video_warning">O Android Auto está conectado mas não manda imagem, e o painel fica preto. Force a parada dele (Configurações › Apps › Android Auto › Forçar parada), depois desligue e ligue o REau. Com o Android Auto 17.4 ou mais novo, confira também se o servidor da unidade principal dele está ligado.</string>
+    <!-- O cartão do servidor: só o passo manual. O Android Auto fecha o servidor quando a sessão termina, então ele é ligado de novo a cada vez. -->
+    <string name="server_warning">O Android Auto não está aceitando a conexão. Ligue o servidor da unidade principal à mão: nas configurações do Android Auto, toque em \"Versão\" umas dez vezes para liberar as opções de desenvolvedor, depois, no menu ⋮, toque em \"Iniciar servidor da unidade principal\". O REau conecta sozinho assim que ele estiver ligado. O servidor desliga quando a sessão termina (ao tocar em Desligar, por exemplo) e depois de reiniciar o celular: é preciso ligar de novo a cada vez.</string>
+
+    <!-- Textos do serviço de acessibilidade, que esta edição não tem: nada os mostra, e ficam vazios para que nenhum texto sobre
+         ele vá na Lite (o código compartilhado ainda os nomeia). Um teste confere que continuam vazios. -->
+    <string name="aa_server_auto"></string>
+    <string name="aa_server_accessibility_connected"></string>
+    <string name="aa_server_accessibility_enabled"></string>
+    <string name="aa_server_accessibility_off"></string>
+    <string name="aa_server_service_off"></string>
+    <string name="action_open_accessibility"></string>
+    <string name="accessibility_ask_title"></string>
+    <string name="accessibility_ask_text"></string>
+    <string name="accessibility_ask_confirm"></string>
+    <string name="perm_accessibility_title"></string>
+    <string name="perm_accessibility_why"></string>
+    <string name="permission_special_restricted"></string>
+    <string name="action_allow_restricted"></string>
+    <string name="menu_fit_own"></string>
+</resources>

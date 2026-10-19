@@ -1,0 +1,9 @@
+# Text files are LF in the repository and in a clone (gradlew has to be, to run on Linux and macOS); Windows scripts stay CRLF.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+# Binaries are left alone.
+*.png binary
+*.jar binary
+*.ttf binary
+*.webp binary

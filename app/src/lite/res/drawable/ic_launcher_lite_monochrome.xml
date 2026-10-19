@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The same for the themed (single colour) icon: the word has a solid outline and its letters are cut out. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_launcher_monochrome"/>
+    <item android:drawable="@drawable/ic_launcher_lite_label_mono"/>
+</layer-list>

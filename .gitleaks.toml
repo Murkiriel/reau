@@ -1,0 +1,14 @@
+# What a secret scan will flag in this repository, and why none of it is a secret of this project.
+title = "REau"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "The public head-unit certificate and key that open Android Auto receivers present in the TLS handshake (see NOTICE)"
+paths = ['''app/src/main/res/raw/aa_privkey''']
+
+[[allowlists]]
+description = "The sample Sec-WebSocket-Key of RFC 6455, used by the web server's tests"
+paths = ['''app/src/test/java/com/reau/app/web/WsTestClient\.kt''', '''app/src/test/java/com/reau/app/web/WebServerTest\.kt''']
+regexes = ['''Sec-WebSocket-Key: [A-Za-z0-9+/=]+''']

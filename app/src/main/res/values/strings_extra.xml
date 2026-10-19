@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The name on the dash's call card when the call has neither a name nor a number (plain letters: the dash's font is unknown). -->
+    <string name="caller_private">Private</string>
+    <!-- Why a start failed: the main screen's line under "Problem". -->
+    <string name="problem_compositor">the video compositor (OpenGL) did not start: no picture for the dash</string>
+    <!-- The notification's line after the Mark button: the number of the mark and the time it was taken. -->
+    <string name="notif_mark_done">Saved at %2$s as mark %1$d</string>
+    <!-- The sample street on the legibility card sent to the dash; the text size is written before it. -->
+    <string name="card_legibility_sample">Street 300 m</string>
+    <!-- The sixteen points of the compass for the wind, from north in steps of 22.5 degrees. -->
+    <string-array name="wind_points">
+        <item>N</item>
+        <item>NNE</item>
+        <item>NE</item>
+        <item>ENE</item>
+        <item>E</item>
+        <item>ESE</item>
+        <item>SE</item>
+        <item>SSE</item>
+        <item>S</item>
+        <item>SSW</item>
+        <item>SW</item>
+        <item>WSW</item>
+        <item>W</item>
+        <item>WNW</item>
+        <item>NW</item>
+        <item>NNW</item>
+    </string-array>
+    <string name="weather_air_pm25">PM2.5 %1$d</string>
+    <!-- Words of the numbers drawn on the dash video (the debug switch): whose numbers, the encoder's default mode, the frame size unit, keyframe. -->
+    <string name="stats_dash">dash</string>
+    <string name="stats_default_mode">default</string>
+    <string name="stats_frame_unit">KB/frame</string>
+    <string name="stats_keyframe">KF</string>
+    <!-- Credits: what each project gave to REau. -->
+    <string name="credit_role_opencfmoto">Android Auto receiver, decoder and picture compositor</string>
+    <string name="credit_role_headunit_revived">Android Auto protocol (through OpenCfMoto)</string>
+    <string name="credit_role_open_headunit">frame reassembly and video recovery</string>
+    <string name="credit_role_headunit">the origin of the whole lineage</string>
+    <string name="credit_role_moto_hub">Android Auto navigation channel</string>
+    <string name="credit_role_northstar">first implementation of the dash protocol (through EstrelaAustral)</string>
+    <string name="credit_role_estrelaaustral">starting point: the dash side, the weather, the tests and the organization</string>
+    <string name="credit_role_better_dash">reference for the K1G protocol; some parts ported from it</string>
+    <string name="credit_role_recon_dash">pausing sends when the network drops, telemetry</string>
+    <string name="credit_role_open_dash">dash output sequence (from a version before the project’s cleanup of September 21, 2026)</string>
+    <string name="credit_role_fraunces">headings</string>
+    <string name="credit_role_androidx">screens and app base</string>
+    <string name="credit_role_conscrypt">encryption of the Android Auto conversation (with BoringSSL)</string>
+    <string name="credit_role_material_symbols">icons</string>
+    <string name="credit_role_protobuf">Android Auto messages</string>
+    <string name="credit_role_hanken">interface text</string>
+    <string name="credit_role_kotlin">the app’s language and the coroutines</string>
+    <string name="credit_role_jetbrains_mono">values, labels and the log</string>
+    <string name="credit_role_open_meteo">weather and air quality data</string>
+    <string name="credit_role_jmuxer">plays the video in the browser (the web server page)</string>
+    <!-- Credits: the holders and names that have a word of the language in them. -->
+    <string name="credit_holder_opencfmoto">© 2026 Alexandru and contributors</string>
+    <string name="credit_holder_headunit_revived">© andreknieriem and the headunit lineage</string>
+    <string name="credit_holder_moto_hub">© 2026 Vincenzo Buonomano and contributors</string>
+    <string name="credit_holder_open_dash">© 2026 Subtle Sayak and contributors</string>
+    <string name="credit_holder_kotlin">© JetBrains and Kotlin contributors</string>
+    <string name="credit_name_androidx">AndroidX and Jetpack Compose</string>
+    <string name="credit_name_kotlin">Kotlin and kotlinx-coroutines</string>
+</resources>

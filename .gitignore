@@ -1,0 +1,42 @@
+*.iml
+.gradle
+.kotlin
+/local.properties
+/.idea
+.DS_Store
+/build
+/app/build
+/captures
+.externalNativeBuild
+.cxx
+
+# APKs are built locally and never versioned.
+*.apk
+
+# Device logs and captures: they may carry the dash Wi-Fi name, positions or account data. NEVER commit.
+*.log
+/logs/
+/captures/
+
+# Signing material: the release key and its secrets are never in the repository.
+signing.properties
+*.jks
+*.keystore
+segredos.env
+reau_chave/
+
+# Python bytecode.
+__pycache__/
+
+# Output of scripts/emu (test runs, screenshots).
+/emu_out/
+
+# APK bundles are never versioned either.
+*.apkm
+*.xapk
+*.aab
+
+# Keys and certificates are never versioned (the project's signing key lives outside the repository).
+*.p12
+*.pem
+*.pfx

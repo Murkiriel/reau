@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only the full edition has the accessibility service; the Lite one has none (its source is in src/completa). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The Lite edition, to tell the rider when it is installed as well (see OtherEdition). -->
+    <queries>
+        <package android:name="com.reau.app.lite" />
+    </queries>
+
+    <application>
+        <!-- Only to switch Android Auto's head unit server on and off: the accessibility service walks Android
+             Auto's settings menu behind a cover, and keeps the "Stop" of the server's notification. It hears Android
+             Auto alone (res/xml/aa_server_accessibility.xml) and works only with the switch "Ligar e desligar o
+             servidor do Android Auto sozinho" on. Its cover is an accessibility overlay: no SYSTEM_ALERT_WINDOW. -->
+        <service
+            android:name=".service.AaServerAccessibilityService"
+            android:exported="false"
+            android:label="@string/aa_server_accessibility_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/aa_server_accessibility" />
+        </service>
+    </application>
+</manifest>

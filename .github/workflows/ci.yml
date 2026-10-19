@@ -1,0 +1,110 @@
+# Integração contínua do REau: roda a cada pull request e a cada push na main.
+# Só verifica: não assina nada, não publica nada e não usa segredo nenhum. Sem emulador e sem testes instrumentados
+# (esses precisam de aparelho e ficam para a máquina do mantenedor).
+#
+# Actions de terceiros: todas FIXADAS PELO COMMIT (SHA completo, com a versão exata no comentário). Uma tag de versão
+# pode ser movida por quem controla o repositório da action; o SHA não. Só há actions oficiais da GitHub (actions/*),
+# e o cache do Gradle vem do próprio actions/setup-java, então nenhuma action de terceiros de verdade entra aqui.
+# Para atualizar, trocar o SHA e o comentário juntos, depois de ler as notas da versão.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Permissão mínima para tudo: só ler o código. Cada job herda isto e nenhum pede mais.
+permissions:
+  contents: read
+
+# Uma execução nova do mesmo PR cancela a anterior que ainda estiver rodando. Na main não cancela: cada commit
+# mantém o seu resultado.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Sem daemon nem barra de progresso: o runner é descartável e o log fica legível.
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.console=plain
+
+jobs:
+  verificacao:
+    name: Testes, lint e detekt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: JDK 21 (Temurin) com cache do Gradle
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      # O SDK do Android já vem instalado no runner do GitHub (ANDROID_HOME) com as licenças aceitas; o Gradle baixa
+      # a plataforma que faltar. Este passo só confere que está lá.
+      - name: Conferir o Android SDK
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME:?o runner deveria trazer o Android SDK}"
+          ls "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools"
+
+      - name: Testes unitários (as duas edições)
+        run: ./gradlew --console=plain --max-workers=2 :app:testDebugUnitTest
+
+      - name: Lint (as duas edições; qualquer aviso falha)
+        run: ./gradlew --console=plain --max-workers=2 :app:lintDebug
+
+      # detekt é a CLI do detekt 1.23.8 (versão em gradle/libs.versions.toml), chamada pela tarefa :app:detekt de
+      # app/build.gradle.kts com config/detekt/detekt.yml e config/detekt/baseline.xml: falha em achado fora da baseline.
+      - name: detekt
+        run: ./gradlew --console=plain --max-workers=2 :app:detekt
+
+      - name: Guardar os relatórios se algo falhou
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: relatorios-verificacao
+          path: |
+            app/build/reports/tests/
+            app/build/reports/lint-results-*.html
+            app/build/reports/detekt/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  auditoria-apk:
+    name: Auditoria dos APKs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: JDK 21 (Temurin) com cache do Gradle
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      # Testes do próprio script de auditoria: só biblioteca padrão do Python, SDK trocado por falsos, sem emulador.
+      - name: Testes do script de auditoria
+        run: python3 -B -m unittest discover -s scripts -p "test_apk_audit.py" -v
+
+      # A linha de base (scripts/apk_audit_baseline.json) é a do APK de produção. O build "release" do projeto sai
+      # assinado com a chave de debug que o próprio Android Gradle Plugin cria no runner (não há keystore nem segredo
+      # no repositório); o APK não é publicado nem guardado, só inspecionado.
+      - name: Montar os APKs release (as duas edições)
+        run: ./gradlew --console=plain --max-workers=2 :app:assembleCompletaRelease :app:assembleLiteRelease
+
+      # Sai com 1 se aparecer permissão, biblioteca, .so ou host que a linha de base não tem.
+      - name: Auditar o APK da edição completa
+        run: python3 -B scripts/apk_audit.py app/build/outputs/apk/completa/release/app-completa-release.apk
+
+      - name: Auditar o APK da edição lite
+        run: python3 -B scripts/apk_audit.py app/build/outputs/apk/lite/release/app-lite-release.apk

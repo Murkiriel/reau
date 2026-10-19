@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The screens are Compose (Material 3 colours set in code); this only removes the platform action bar. -->
+    <style name="Theme.REau" parent="android:Theme.Material.NoActionBar" />
+</resources>

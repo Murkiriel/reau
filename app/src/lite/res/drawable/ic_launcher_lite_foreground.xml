@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Lite's icon: the full edition's art at its own size, with "Lite" written over it at the bottom right. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_launcher_foreground"/>
+    <item android:drawable="@drawable/ic_launcher_lite_label"/>
+</layer-list>

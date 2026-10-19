@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The accessibility service's texts: only the full edition has the service. -->
+<resources>
+    <string name="aa_server_accessibility_label">REau: Android Auto server</string>
+    <string name="aa_server_accessibility_description">REau uses accessibility to open the Android Auto settings and tap ⋮ → \"Start head unit server\" when you turn on the projection and the server is off, and \"Stop head unit server\" when the projection ends (from the server notification button, or from the same menu). It listens to Android Auto and, with the \"Answer calls\" switch on, to call notifications from WhatsApp, WhatsApp Business, Telegram and Signal (only the type and the buttons, never who’s calling), for the log; it doesn’t read or tap anything in other apps. It works only with the \"Turn on the server automatically\" switch on in REau’s Settings.</string>
+</resources>

@@ -1,0 +1,327 @@
+REau
+========
+
+Copyright (C) 2026 the REau author.
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, version 3. See the LICENSE file for the full text.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+--------------------------------------------------------------------------------
+Why AGPL-3.0
+--------------------------------------------------------------------------------
+
+REau's Android Auto receiver is derived from AGPLv3-licensed code (see
+"Incorporated code" below). Under the terms of that license, the combined work
+is distributed under the AGPL-3.0. Anyone who redistributes REau (or runs a
+modified version as a network-accessible service) must make the complete
+corresponding source available under the same license and preserve the
+copyright and attribution notices in this file and in the source files.
+
+--------------------------------------------------------------------------------
+Incorporated code
+--------------------------------------------------------------------------------
+
+Each file copied from a third-party project keeps the origin header it came
+with, or carries one naming the project, the license, the path and the commit it
+was copied from. The code that comes from EstrelaAustral is listed in the single
+notice below instead of a header in each file.
+
+EstrelaAustral (Apache License 2.0)
+  Copyright 2026 Murkiriel, on a base from NorthStar
+  (Copyright 2026 Aditya Dasika, Apache License 2.0).
+  https://github.com/Murkiriel/EstrelaAustral
+  Parts of REau are copied or adapted from EstrelaAustral: the build setup (the
+  Gradle version catalog entries, the detekt tasks and config/detekt/detekt.yml),
+  the ride log (data/RideDiagnostics.kt), the dash link (the
+  packet layer, commands and button events in dash/protocol/, the authentication,
+  sockets, session, telemetry events, Wi-Fi and the Wi-Fi suggestion in dash/,
+  util/Dbg.kt, util/DiagnosticsExport.kt), the
+  encrypted preferences (data/KeystoreBackedPrefs.kt), the dash video rules and
+  encoder (dash/video/), the stream pacing rules (stream/DashLogic.kt,
+  AutoFpsController.kt, AutoKeyframeController.kt, dash/DashConfig.kt), the
+  foreground service pattern (service/ProjectionService.kt and its locks and
+  notification), the maneuver glyphs (dash/nav/DashManeuverGlyphs.kt,
+  dash/nav/ManeuverType.kt) and the tests
+  of those parts, including the fake dash used by the instrumented tests. Each
+  copied file is changed only in its package name unless REau's own history says
+  otherwise. EstrelaAustral's own files carry portions that come from other
+  projects (NorthStar, better-dash, recon-dash and open-dash, each with its own
+  entry below); they come into REau with those files.
+
+OpenCfMoto (GNU Affero General Public License v3.0)
+  Copyright (C) 2026 Alexandru <https://alexandru.rocks> and the OpenCfMoto
+  contributors. https://github.com/zanderp/open-cfmoto
+  - Android Auto margins: the rule in video/AaMargins.kt (AaMargins.forAspect)
+    is adapted from app/src/main/java/dev/zanderp/opencfmoto/BikeProfile.kt,
+    commit 0abbe2a. It takes the coded frame's size as two numbers instead of
+    OpenCfMoto's AaVideoSpec; contentRect and the tests (AaMarginsTest) are
+    new. DashGlass.kt and FrameFit.kt are new code.
+  - Compositor: video/CompositorGl.kt and video/DashCompositor.kt are derived
+    from app/src/main/java/dev/zanderp/opencfmoto/AaCompositor.kt, commit
+    0abbe2a. Kept: the dedicated GL thread, the EGL setup, the
+    SurfaceTexture input that exists before any output, the shader program
+    and the idea of repeating the last picture when Android Auto goes quiet.
+    Changed: free source and destination rectangles instead of fit modes, a
+    clock of its own instead of drawing when a frame arrives, the video clock
+    as presentation time, black before the first picture; the phone preview,
+    the touch mapping, the mirror path and the app dependencies are cut. Each
+    file's header lists this. video/CompositorMath.kt and the tests
+    (CompositorMathTest, DashCompositorTest, with TestPattern and
+    H264TestDecoder) are new.
+  - Android Auto Projection receiver, message layer (package aa/), copied from
+    app/src/main/java/dev/zanderp/opencfmoto/aa/, commit 0abbe2a: the
+    generated protobuf classes (aa/proto/Common, Control, Input, Media,
+    MediaPlayback, NavigationStatus, Sensors, Wireless), AapMessage.kt,
+    AapMessageIncoming.kt, AapMessageHandler.kt, Messages.kt, MsgType.kt,
+    Channel.kt, ByteArrayWithLimit.kt, Utils.java, MediaAck.kt,
+    VideoFocusEvent.kt, DrivingStatusEvent.kt, NightModeEvent.kt, AaLog.kt,
+    AapSsl.kt and AccessoryConnection.kt. Only the Java package differs,
+    except AaLog.kt (logcat tag, comments, a Locale for String.format). The
+    tests (AapMessageTest, AapProtocolTablesTest) are new.
+  - Android Auto Projection receiver, transport (package aa/), copied from
+    the same folder and commit: AapSslContext.kt, SingleKeyKeyManager.kt,
+    NoCheckTrustManager.kt, ConscryptInitializer.kt, AapRead.kt,
+    AapReadSingleMessage.kt, AapReadMultipleMessages.kt,
+    SocketAccessoryConnection.kt and AapTransport.kt. AapTransport no longer
+    builds the video path or the message handler (its session's builder passes
+    the handler to startReading) and has no microphone hook; AapRead's
+    factory takes the handler; each file's header lists its changes.
+  - Android Auto Projection receiver, control (package aa/), from the same
+    folder and commit: AapControl.kt and AapMessageHandlerType.kt, copied.
+    AapControl no longer calls OpenCfMoto's AaVideoBridge, answers a
+    microphone request itself (as a microphone that did not open) and builds
+    the service discovery response from an AaConfig; AapMessageHandlerType is
+    given the video path as a function. aa/ServiceDiscoveryResponse.kt is
+    rewritten here after OpenCfMoto's file of the same name (which services
+    are made of which messages, and its findings about the audio sink and the
+    microphone); its header says what it keeps. aa/AaConfig.kt and the tests
+    (ServiceDiscoveryResponseTest, AapControlTest) are new.
+  - Android Auto Projection receiver, video (package aa/), from the same
+    folder and commit: VideoDecoder.kt, copied. Its stall watchdog's rule is
+    now aa/DecoderStallWatch.kt (new): the wait is measured from the first
+    unanswered input after an output or a pause instead of from the last
+    picture, input the phone offered counts whether or not the codec took it,
+    and the watchdog begins when a decoder opens instead of with its first
+    picture; the test for a hardware codec by name, for Android below 10, is
+    cut. aa/AapVideo.kt is rewritten here after OpenCfMoto's file of the same
+    name (the reassembly buffer, the two payload offsets, the start-code
+    test, the 1 s spacing of keyframe requests) and open-headunit's (below);
+    its header says what it keeps. aa/AaVideoSink.kt and the tests
+    (AapVideoTest, DecoderStallWatchTest, VideoDecoderTest, AaVideoSinkTest,
+    with TestH264Source) are new.
+  - Android Auto Projection receiver, the link (package aa/): aa/AaReceiver.kt
+    is written here after OpenCfMoto's file of the same name (same folder and
+    commit). Kept: dialling out to Android Auto's head unit server on
+    127.0.0.1:5277 with an 800 ms connect timeout and 2 s between dials, one
+    session at a time, and the order of a session (handshake, decoder
+    surface, read loop). Not here: the listening socket on 5288 with its NSD
+    registration and the AaSelfMode pokes, the 20-dial limit, BikeWifi's
+    process-wide network bind, AaVideoBridge, the microphone, the input sinks
+    and the night timer (day and night are given to the receiver by the
+    service, AaReceiver.setNight). The link states and the tests
+    (AaReceiverTest, AaReceiverNightTest) are new.
+  - Android Auto Projection receiver, input and microphone (package aa/ and
+    phone/): aa/AaInput.kt is copied from the same folder and commit (one finger
+    from the phone's screen instead of multi-touch; the key codes live in
+    ServiceDiscoveryResponse). aa/AaMicrophone.kt and phone/PhoneVoice.kt are
+    written here after OpenCfMoto's aa/AaMicrophone.kt (same commit): the
+    request/answer order, 20 ms chunks of 16 kHz mono PCM and the media data
+    message are kept; the capture sits behind VoiceSource and prefers the
+    Bluetooth headset. Each file's header says what it keeps and changes.
+  - Thermal ceiling: stream/ThermalCeiling.kt is written here after
+    AdaptivePolicy.thermalFpsCap in
+    app/src/main/java/dev/zanderp/opencfmoto/AdaptiveVideoController.kt,
+    commit 0abbe2a. Kept: four steps by the phone's thermal status, never
+    above the base. Changed: the steps are fractions of the rider's ceiling
+    (3/4, 5/8, 1/2) instead of OpenCfMoto's absolute rates; its header says
+    so. ThermalCeilingTest is new.
+  - res/raw/aa_cert and res/raw/aa_privkey, copied byte for byte from
+    app/src/main/res/raw/ at the same commit: the head-unit certificate and
+    key ("Google-Android-Reference") that open Android Auto receivers present
+    in the TLS handshake. They are not this project's and not OpenCfMoto's
+    work; they come down the headunit lineage.
+  - The tests (AapReadTest, AapSslHandshakeTest, AapTransportTest) and the
+    fake Android Auto peer they run against (src/sharedTest:
+    FakeAndroidAutoPeer, TestCertificate, with FakeAndroidAutoPeerTest) are
+    new.
+
+open-headunit (GNU Affero General Public License v3.0)
+  https://github.com/andreknieriem/open-headunit, the continuation of
+  headunit-revived, by the same lineage of authors and contributors.
+  - aa/HandshakeMessagePolicy.kt with HandshakeMessagePolicyTest, copied from
+    app/src/main/java/com/andrerinas/openheadunit/aap/ and its test folder,
+    commit 93c065dd; only the package differs.
+  - The fix that policy belongs to (open-headunit commit 489df5de, "keep a
+    retried version request's late answers out of TLS") is applied to the
+    copied aa/AapSslContext.kt and aa/AapTransport.kt; their headers say so.
+  - aa/VideoFragmentAssembler.kt with VideoFragmentAssemblerTest and
+    aa/VideoRecoveryPolicy.kt with VideoRecoveryPolicyTest, copied from
+    app/src/main/java/com/andrerinas/openheadunit/decoder/video/ and its test
+    folder, commit 93c065dd; only the package differs. aa/AapVideo.kt lets
+    the assembler decide what to do with each video message, as
+    open-headunit's aap/AapVideo.kt does (same commit); open-headunit's frame
+    pool, video thread and periodic anomaly report are not here.
+  - aa/AapFragments.kt and aa/AapCards.kt follow open-headunit's
+    aap/AapMediaPlayback.kt (same commit) for the piece flags and the
+    metadata message, and aa/AaVideoPipe.kt takes the idea of its
+    VideoDecoder.kt (a bounded queue of copied frames and a feeding thread).
+    Nothing of their code is copied.
+  - aa/AndroidAuto.kt (new) opens Android Auto's settings the way
+    connection/self/SelfLauncherManager.kt (openAaSettings, same commit)
+    does: the settings activity's name and the fallback to the system's page
+    of the app.
+
+headunit-revived (GNU Affero General Public License v3.0)
+  OpenCfMoto's receiver, and so the package aa/ above, is ported from
+  headunit-revived: https://github.com/andreknieriem/headunit-revived
+  Original work Copyright (C) 2011-2015 Michael A. Reid (the original
+  "headunit", https://github.com/mikereidis/headunit) and the authors of
+  "headunit-reloaded" and "headunit-revived" (andreknieriem), and their
+  respective contributors. All of them license it under the AGPL-3.0. The copied files keep the
+  "Ported from headunit-revived (AGPLv3)" headers they came with.
+  The protobuf classes in aa/proto/ are generated code: their .proto sources
+  (proto package com.andrerinas.headunitrevived.aap.protocol.proto) are in
+  headunit-revived, not in OpenCfMoto and not in this repository.
+
+MOTO-HUB (GNU Affero General Public License v3.0 only)
+  Copyright (C) 2026 Vincenzo Buonomano and the MOTO-HUB contributors.
+  https://github.com/vincenzobpt/MOTO-HUB
+  - Navigation status channel: aa/AapNavigationStatus.kt (the class
+    AapControlNavigation) and aa/NavGuidance.kt (its Snapshot) are copied from
+    apps/android/app/src/main/java/io/motohub/android/aa/AapNavigationStatus.kt,
+    commit 725a541, which itself follows headunit-revived's
+    aap/AapNavigation.kt. Changes: package; the guidance goes to a function
+    given to the class instead of MOTO-HUB's process-wide object; detekt
+    suppressions. The navigation status service in aa/ServiceDiscoveryResponse.kt
+    (channel 10, image codes only, one update a second) follows MOTO-HUB's
+    ServiceDiscoveryResponse.kt at the same commit. AapControlNavigationTest
+    (written after the code), AaManeuvers and their tests are new.
+
+NorthStar (Apache License 2.0)
+  Copyright 2026 Aditya Dasika. https://github.com/adityadasika21/NorthStar
+  The first implementation of the dash protocol, on which EstrelaAustral was
+  built. It reaches REau through the EstrelaAustral files listed above, which
+  carry the same Apache-2.0 notice.
+
+better-dash (Apache License 2.0)
+  Copyright norbertFeron. https://github.com/norbertFeron/better-dash
+  Two kinds of use, both marked in the files. As a reference: the K1G packet
+  layouts (dash/protocol/K1GPacket.kt, DashCommands.kt) are interoperability
+  facts that were cross-checked against it and against traffic observed on a
+  real dash, and the video rules in dash/video/NalProcessor.kt and
+  RtpPacketizer.kt are written from its analysis, as their headers say. As a
+  source for ported logic:
+  the authentication state machine (dash/DashAuth.kt, "ported from better-dash
+  AuthState"), the active-navigation packet builder (dash/protocol/DashCommands.kt,
+  "ported from better-dash build_active_nav_packet"), and the order of a dash
+  session and the layout of its sockets (dash/DashSession.kt, dash/DashSocket.kt,
+  which follow it). Those portions are marked "ported" or "matching" in the
+  file headers; they are derived work and this notice is their attribution.
+
+recon-dash (GNU Affero General Public License v3.0)
+  Copyright MinotaurG. https://github.com/MinotaurG/recon-dash
+  The pausing of sends when the network drops and the dash telemetry. They
+  come into REau through the EstrelaAustral files above, whose notice records
+  ports of recon-dash; the files have no header of their own for it. REau is
+  AGPL-3.0 as well.
+
+open-dash (Apache License 2.0)
+  Copyright 2026 Subtle Sayak and contributors. https://github.com/subtlesayak/open-dash
+  The project says it descends from NorthStar and better-dash (both above).
+  The dash output sequence comes from it through the EstrelaAustral files above,
+  from a version published before the project's source baseline of 2026-09-21,
+  which no longer carries the dash pairing, authentication, projection and
+  streaming code. The fork this notice used to cite (kapiljhajhria/open-dash)
+  is no longer online. The license and the holder are recorded as the
+  project's own NOTICE states them.
+
+The full text of the Apache License 2.0, which applies to the entries above that
+name it, is in licenses/Apache-2.0.txt. The OFL texts are in licenses/fonts/.
+
+Gradle Wrapper (Apache License 2.0)
+  gradlew, gradlew.bat and gradle/wrapper/ are the Gradle project's wrapper
+  scripts and bootstrap jar, unmodified.
+
+Fonts (SIL Open Font License 1.1)
+  app/src/main/res/font/ holds static instances of Google Fonts' variable
+  files (github.com/google/fonts, ofl/), made with fontTools' instancer for
+  the redesign; the outlines are unchanged and each file keeps
+  its copyright and licence in its own name table. The license texts are in
+  licenses/fonts/.
+  - Fraunces (Copyright 2020 The Fraunces Project Authors): fraunces_500.ttf
+    and fraunces_600.ttf, at opsz 28, SOFT 0, WONK 1, weights 500 and 600.
+  - Hanken Grotesk (Copyright 2021 The Hanken Grotesk Project Authors):
+    hanken_grotesk_400/500/600.ttf.
+  - JetBrains Mono (Copyright 2020 The JetBrains Mono Project Authors):
+    jetbrains_mono_400/500.ttf.
+
+Material Symbols (Apache License 2.0)
+  Copyright Google LLC. https://github.com/google/material-design-icons
+  app/src/main/res/drawable/ic_ms_*.xml are the interface icons of the
+  redesign: the Rounded style's SVGs (symbols/web/<name>/
+  materialsymbolsrounded/<name>_24px.svg, FILL 0, weight 400; the power icon
+  at weight 500, opsz 40), turned into Android vector drawables with the same
+  path data. Two exceptions: ic_ms_dns.xml is the "dns" glyph of Google's
+  Material Icons set (also Apache License 2.0), and ic_ms_weather.xml is REau's
+  own drawing, as is ic_stat_reau.xml (the notification silhouette). The license
+  text is in licenses/icons/.
+
+Kotlin and kotlinx.coroutines (Apache License 2.0)
+  Copyright JetBrains s.r.o. and the Kotlin Programming Language contributors.
+  https://github.com/JetBrains/kotlin and https://github.com/Kotlin/kotlinx.coroutines
+  The Kotlin standard library and the coroutines library (the latter pulled in by
+  Jetpack Compose) are compiled into the APK, unmodified.
+
+Jetpack Compose, AndroidX and Material 3 (Apache License 2.0)
+  Copyright The Android Open Source Project. https://developer.android.com/jetpack
+  The AndroidX libraries (core, lifecycle, activity, Compose UI and Compose
+  Material 3, versions fixed by the Compose BOM) are compiled into the APK,
+  unmodified. The license text is in licenses/Apache-2.0.txt.
+
+Protocol Buffers, protobuf-java (BSD 3-Clause License)
+  Copyright 2008 Google Inc. All rights reserved.
+  https://github.com/protocolbuffers/protobuf
+  The Java runtime is compiled into the APK, unmodified, to read and write the
+  Android Auto messages. The license text is in licenses/protobuf-BSD-3-Clause.txt.
+
+Conscrypt (Apache License 2.0)
+  Copyright 2013 The Android Open Source Project. https://github.com/google/conscrypt
+  The TLS provider that the Android Auto handshake needs; the library is compiled
+  into the APK, unmodified, together with the BoringSSL code it bundles (see the
+  project's own NOTICE for that code's licenses).
+
+JMuxer (MIT License)
+  Copyright (c) 2018 Samir Das. https://github.com/samirkumardas/jmuxer
+  app/src/main/assets/web/jmuxer.min.js is the library's own minified build,
+  unmodified, put inside the page that the web server (package web)
+  gives to the browsers: it turns the H.264 stream into video the
+  browser plays. The licence text travels beside it, in
+  app/src/main/assets/web/jmuxer.LICENSE, and so inside the APK.
+
+NOAA solar position equations (public domain)
+  data/SolarClock.kt is REau's own code, written from the equations the NOAA
+  Global Monitoring Laboratory publishes for its solar calculator (General Solar
+  Position Calculations). The equations are published for anyone's use; no
+  third-party code is in the file.
+
+Open-Meteo (data under Creative Commons Attribution 4.0)
+  Weather data by Open-Meteo.com (https://open-meteo.com), licensed under CC BY 4.0
+  (https://creativecommons.org/licenses/by/4.0/). The forecast and the air quality
+  are read from the free API, for non-commercial use, by weather/WeatherKeeper.kt;
+  the values are formatted and converted to the units shown, nothing more.
+
+--------------------------------------------------------------------------------
+Trademarks
+--------------------------------------------------------------------------------
+
+REau works with the Tripper Dash. It is an independent project, not affiliated
+with, endorsed by or supported by Royal Enfield. Royal Enfield and Tripper may
+be trademarks of their respective owners; Android, Android Auto and Waze are
+trademarks of Google LLC, which is not affiliated with REau either. Other names,
+such as Android Auto, Google, Waze, Spotify, WhatsApp, Telegram, Signal, Gemini
+and Meta, belong to their respective owners.

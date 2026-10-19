@@ -1,0 +1,9 @@
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    # Version updates are off on purpose: several libraries are pinned because they were tested on a real dash
+    # (see gradle/libs.versions.toml and app/lint.xml). Zero here keeps only Dependabot's security updates.
+    open-pull-requests-limit: 0

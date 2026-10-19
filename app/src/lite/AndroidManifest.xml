@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Manifest of the "lite" edition, merged over the main one in every build type: a name that tells it apart from the
+     full edition when both are installed (their ids differ: .lite). It has no accessibility service: that one is
+     declared in src/completa only. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- The complete edition, to tell the rider when it is installed as well (see OtherEdition). -->
+    <queries>
+        <package android:name="com.reau.app" />
+    </queries>
+
+    <application android:label="REau Lite" tools:replace="android:label" />
+</manifest>

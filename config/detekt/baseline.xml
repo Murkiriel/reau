@@ -1,0 +1,48 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:VideoDecoder.kt$VideoDecoder$buffer[j].toInt() == 0 &amp;&amp; buffer[j + 1].toInt() == 0 &amp;&amp; (buffer[j + 2].toInt() == 1 || (buffer[j + 2].toInt() == 0 &amp;&amp; buffer[j + 3].toInt() == 1))</ID>
+    <ID>CyclomaticComplexMethod:AapReadSingleMessage.kt$AapReadSingleMessage$@Suppress("TooGenericExceptionCaught") // a failed message is logged and skipped; the read loop goes on override fun doRead(connection: AccessoryConnection): Int</ID>
+    <ID>CyclomaticComplexMethod:AapSslContext.kt$AapSslContext$override fun performHandshake(connection: AccessoryConnection): Boolean</ID>
+    <ID>CyclomaticComplexMethod:AapTransport.kt$AapTransport$@Suppress("TooGenericExceptionCaught") // any handshake failure is logged and ends the attempt private fun handshake(connection: AccessoryConnection): Boolean</ID>
+    <ID>CyclomaticComplexMethod:DashSession.kt$DashSession$@Suppress("TooGenericExceptionCaught") // the button handler must never end the receive loop internal fun dispatchIncoming(pkt: ByteArray, sock: DashSocket)</ID>
+    <ID>CyclomaticComplexMethod:VideoDecoder.kt$VideoDecoder$@Suppress("TooGenericExceptionCaught") // a codec failure is counted and restarts the decoder private fun outputThreadLoop()</ID>
+    <ID>CyclomaticComplexMethod:VideoDecoder.kt$VideoDecoder$private fun forEachNalUnit(buffer: ByteArray, offset: Int, size: Int, callback: (ByteArray, Int) -&gt; Unit)</ID>
+    <ID>CyclomaticComplexMethod:VideoFragmentAssembler.kt$VideoFragmentAssembler$fun onMessage(flags: Int, payloadStartsAt10: Boolean, payloadStartsAt2: Boolean): Decision</ID>
+    <ID>LongMethod:AapReadSingleMessage.kt$AapReadSingleMessage$@Suppress("TooGenericExceptionCaught") // a failed message is logged and skipped; the read loop goes on override fun doRead(connection: AccessoryConnection): Int</ID>
+    <ID>LongMethod:AapSslContext.kt$AapSslContext$override fun performHandshake(connection: AccessoryConnection): Boolean</ID>
+    <ID>LongMethod:AapTransport.kt$AapTransport$@Suppress("TooGenericExceptionCaught") // any handshake failure is logged and ends the attempt private fun handshake(connection: AccessoryConnection): Boolean</ID>
+    <ID>LongMethod:DashSession.kt$DashSession$@Suppress("TooGenericExceptionCaught") // the button handler must never end the receive loop internal fun dispatchIncoming(pkt: ByteArray, sock: DashSocket)</ID>
+    <ID>LoopWithTooManyJumpStatements:AapReadMultipleMessages.kt$AapReadMultipleMessages$while</ID>
+    <ID>LoopWithTooManyJumpStatements:AapTransport.kt$AapTransport$while</ID>
+    <ID>LoopWithTooManyJumpStatements:DashSession.kt$DashSession$for</ID>
+    <ID>LoopWithTooManyJumpStatements:DashSession.kt$DashSession$while</ID>
+    <ID>LoopWithTooManyJumpStatements:VideoDecoder.kt$VideoDecoder$for</ID>
+    <ID>LoopWithTooManyJumpStatements:VideoDecoder.kt$VideoDecoder$while</ID>
+    <ID>NestedBlockDepth:AapReadSingleMessage.kt$AapReadSingleMessage$@Suppress("TooGenericExceptionCaught") // a failed message is logged and skipped; the read loop goes on override fun doRead(connection: AccessoryConnection): Int</ID>
+    <ID>NestedBlockDepth:AapSslContext.kt$AapSslContext$override fun performHandshake(connection: AccessoryConnection): Boolean</ID>
+    <ID>NestedBlockDepth:AapTransport.kt$AapTransport$@Suppress("TooGenericExceptionCaught") // any handshake failure is logged and ends the attempt private fun handshake(connection: AccessoryConnection): Boolean</ID>
+    <ID>NestedBlockDepth:DashSession.kt$DashSession$@Suppress("TooGenericExceptionCaught") // the button handler must never end the receive loop internal fun dispatchIncoming(pkt: ByteArray, sock: DashSocket)</ID>
+    <ID>NestedBlockDepth:VideoDecoder.kt$VideoDecoder$@Suppress("TooGenericExceptionCaught") // a codec failure is counted and restarts the decoder private fun outputThreadLoop()</ID>
+    <ID>NestedBlockDepth:VideoDecoder.kt$VideoDecoder$private fun forEachNalUnit(buffer: ByteArray, offset: Int, size: Int, callback: (ByteArray, Int) -&gt; Unit)</ID>
+    <ID>ReturnCount:AapControl.kt$AapControlGateway$override fun execute(message: AapMessage): Int</ID>
+    <ID>ReturnCount:AapControl.kt$AapControlMedia$override fun execute(message: AapMessage): Int</ID>
+    <ID>ReturnCount:AapControl.kt$AapControlService$override fun execute(message: AapMessage): Int</ID>
+    <ID>ReturnCount:AapReadMultipleMessages.kt$AapReadMultipleMessages$@Suppress("TooGenericExceptionCaught") // a failed read or message is logged; the read loop goes on override fun doRead(connection: AccessoryConnection): Int</ID>
+    <ID>ReturnCount:AapReadSingleMessage.kt$AapReadSingleMessage$@Suppress("TooGenericExceptionCaught") // a failed message is logged and skipped; the read loop goes on override fun doRead(connection: AccessoryConnection): Int</ID>
+    <ID>ReturnCount:AapSslContext.kt$AapSslContext$@Suppress("TooGenericExceptionCaught") // a record that fails to decrypt is logged and dropped, never thrown at the read loop override fun decrypt(start: Int, length: Int, buffer: ByteArray): ByteArrayWithLimit?</ID>
+    <ID>ReturnCount:AapSslContext.kt$AapSslContext$@Suppress("TooGenericExceptionCaught") // a record that fails to encrypt is logged and dropped override fun encrypt(offset: Int, length: Int, buffer: ByteArray): ByteArrayWithLimit?</ID>
+    <ID>ReturnCount:AapSslContext.kt$AapSslContext$override fun performHandshake(connection: AccessoryConnection): Boolean</ID>
+    <ID>ReturnCount:AapSslContext.kt$AapSslContext$private fun readOneAapMessage(connection: AccessoryConnection): ByteArray?</ID>
+    <ID>ReturnCount:AapTransport.kt$AapTransport$@Suppress("TooGenericExceptionCaught") // any handshake failure is logged and ends the attempt private fun handshake(connection: AccessoryConnection): Boolean</ID>
+    <ID>ReturnCount:VideoDecoder.kt$SpsParser$fun parse(sps: ByteArray, offset: Int, size: Int): SpsData?</ID>
+    <ID>ReturnCount:VideoDecoder.kt$VideoDecoder$@Suppress("TooGenericExceptionCaught") // any codec failure is logged; the frame is dropped private fun feedInputBuffer(buffer: ByteBuffer): Boolean</ID>
+    <ID>ReturnCount:VideoDecoder.kt$VideoDecoder$fun decode(buffer: ByteArray, offset: Int, size: Int)</ID>
+    <ID>ReturnCount:VideoDecoder.kt$VideoDecoder$private fun isCodecConfigData(data: ByteArray, offset: Int, size: Int): Boolean</ID>
+    <ID>TooManyFunctions:AapSslContext.kt$AapSslContext : AapSsl</ID>
+    <ID>TooManyFunctions:AapTransport.kt$AapTransport</ID>
+    <ID>TooManyFunctions:DashWifiManager.kt$DashWifiManager</ID>
+    <ID>TooManyFunctions:VideoDecoder.kt$VideoDecoder</ID>
+  </CurrentIssues>
+</SmellBaseline>

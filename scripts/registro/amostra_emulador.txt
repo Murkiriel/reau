@@ -1,0 +1,164 @@
+16:54:29.234  ==== process start: app — Google sdk_gphone64_x86_64, Android 16 (API 36) ====
+16:54:29.262  +    28ms  [system] data network available: wifi
+16:54:30.096  +   862ms  [compositor] compositor ready: source 800x480, no output yet
+16:54:30.125  ---- projeção ligada: projection ----
+16:54:30.146  +    21ms  [exit] past exit: user requested (10) at 2026-10-04 16:54:28.228, process com.reau.app pid 7636, was foreground service (125), "[FORCE STOP] stop com.reau.app due to finished inst"
+16:54:30.150  +    25ms  [projection] projection: foreground with wake and Wi-Fi locks
+16:54:30.182  +    57ms  [aa] [AA] Conscrypt installed as security provider (position: 1)
+16:54:30.184  +    59ms  [aa] [AA] AaReceiver: Android Auto 1.2.551000-stub is installed
+16:54:30.196  +    71ms  [device] device battery=100% charging=no temp=25.0C volt=5.000V thermal=none headroom=0.90 mem=5/192MB phone=1910MB low=no screen=on doze=no saver=off exempt=no bike=none data=wifi/ok [start]
+16:54:30.243  +   118ms  [aa] [AA] AaReceiver: connected to the head unit server on :42787, starting the handshake
+16:54:30.243  +   118ms  [aa] [AA] Start Aap transport handshake for com.reau.app.aa.SocketAccessoryConnection@d42e1db
+16:54:30.246  +   121ms  [aa] [AA] Handshake: Version response received (ret=12, attempt=1).
+16:54:30.275  +   150ms  [aa] [AA] SSL handshake complete. Session id: Ki9RRiFWJXxjtQV3DsvE7fXOYzdbDtuuDdZGq1ZXTLw=
+16:54:30.276  +   151ms  [aa] [AA] Handshake: Status OK sent (8). Handshake successful.
+16:54:30.276  +   151ms  [aa] [AA] New surface set: Surface(name=android.graphics.SurfaceTexture@498682f mNativeObject=136195905459424)/@0xd19abb6
+16:54:30.283  +   158ms  [aa] [AA] Start Aap transport read loop
+16:54:30.301  +   176ms  [session] connect() — ssid='DashFake' network=null
+16:54:30.317  +   192ms  [auth] RSA pubkey received → sending session key
+16:54:30.319  +   194ms  [aa] [AA] Media Start Request VIDEO: session=1, config_index=0
+16:54:30.322  +   197ms  [aa] [AA] H.264 SPS parsed: 800x480
+16:54:30.348  +   223ms  [aa] [AA] findBestCodec: hw=c2.goldfish.h264.decoder, sw=c2.android.avc.decoder, preferHardware=true, selected=c2.goldfish.h264.decoder
+16:54:30.372  +   247ms  [aa] [AA] Configuring decoder: c2.goldfish.h264.decoder for 800x480
+16:54:30.420  +   295ms  [aa] [AA] Codec initialized: c2.goldfish.h264.decoder
+16:54:30.420  +   295ms  [aa] [AA] Output thread started
+16:54:30.609  +   484ms  [aa] [AA] Output Format Changed: {crop-right=799, max-height=480, sar-width=1, color-format=2130708361, mime=video/raw, color-standard=1, color-transfer=3, sar-height=1, crop-bottom=479, max-width=800, crop-left=0, width=800, color-range=2, crop-top=0, rotation-degrees=0, height=480}
+16:54:30.636  +   511ms  [auth] initial burst sent — waiting up to 15000ms for 07 01 01
+16:54:30.637  +   512ms  [auth] authenticated (07 01 01) — entering nav mode
+16:54:32.452  +  2327ms  [session] nav-mode kick sent — READY (waiting for video pipeline)
+16:54:32.452  +  2327ms  [session] → STREAMING
+16:54:32.486  +  2361ms  [stream] encoder: c2.android.avc.encoder fpsHint=8 bitrateBps=1024000 profile=baseline iFrameIntervalSec=1 repeatAfterUs=900000 lowLatency=on
+16:54:32.497  +  2372ms  [stream] video loop start: 8 fps (ceiling 16), keyframe 1s, clock 0% slow
+16:54:32.498  +  2373ms  [stream] pace: a tick every 250 ms, a repeat every 250 ms
+16:54:32.500  +  2375ms  [stream] bitrate=512000
+16:54:32.508  +  2383ms  [compositor] compositor output set: draw 500x300 at (13,0 from the bottom), pace Pace(activeMs=250, idleMs=250, clockSlowPercent=0)
+16:54:32.524  +  2399ms  [dash] dash DECODED first IDR (09 06 55) — video accepted ✓
+16:54:32.762  +  2637ms  [stream] pace: a tick every 125 ms, a repeat every 250 ms
+16:54:32.764  +  2639ms  [stream] bitrate=1024000
+16:54:33.198  +  3073ms  [aa] [AA] Service Discovery Request: Fake phone
+16:54:35.286  +  5161ms  [aa] [AA] aa-stats 5.0s: msgs=79 (ch0=1 ch2=75 ch10=3) nav=3 units=74 bytes=53KB key=5 pieces=0 assembled=0 lost=0 focus=0 sensor=0 decoded=73 decode=9/94ms | total units=74 key=5 assembled=0 lost=0 decoded=73
+16:54:35.309  +  5184ms  [dash] dash-stats 5.0s: tx=63 (0501=8 0517=1 052E=1 052F=1 0556=14 0557=1 0605=1 0606=2 0608=6 060A=1 060B=1 0611=3 0612=19 0680=1 0800=1 0804=1 0A02=1) rx=25 (0700=1 0701=1 0703=1 0904=19 0906=3) acks=22 buttons=0 telemetry=0 heartbeats=17 tx-fail=0 last-rx=37ms ago | total tx=63 rx=25 acks=22 buttons=0 telemetry=0 tx-fail=0
+16:54:36.294  +  6169ms  [stream] video loop stop (0 frames held back before a keyframe)
+16:54:36.295  +  6170ms  [aa] [AA] AapTransport stopping and sending byebye
+16:54:36.450  +  6325ms  [aa] [AA] AapTransport quitting (clean=false)
+16:54:36.452  +  6326ms  [aa] [AA] AaReceiver: session ended (clean=false, userExit=false)
+16:54:36.459  +  6334ms  [aa] [AA] aa-stats 1.2s: msgs=18 (ch2=18) nav=0 units=18 bytes=15KB key=2 pieces=0 assembled=0 lost=0 focus=0 sensor=0 decoded=17 decode=5/7ms | total units=92 key=7 assembled=0 lost=0 decoded=90 (session end)
+16:54:36.461  +  6336ms  [aa] [AA] Output thread stopped
+16:54:36.495  +  6370ms  [aa] [AA] Decoder stopped: session over
+16:54:36.697  +  6572ms  [aa] [AA] AaReceiver: stopped
+16:54:36.705  +  6580ms  [dash] dash-stats 1.4s: tx=26 (0501=2 0517=2 0556=6 0605=5 0608=2 0611=1 0612=7 0680=1) rx=8 (0904=7 0906=1) acks=8 buttons=0 telemetry=0 heartbeats=7 tx-fail=0 last-rx=434ms ago | total tx=89 rx=33 acks=30 buttons=0 telemetry=0 tx-fail=0 (session end)
+16:54:36.705  +  6580ms  [session] disconnect() — explicit, not a link drop
+16:54:36.705  +  6580ms  [projection] resumo duration=6s streaming=3s drops dash=0 aa=0 watchdogs=0 frames=30 fps avg=7.9 min=- gap max=0.3s thermal max=none battery 100→100% (0) marks=0
+16:54:36.709  ---- projeção desligada: projection ----
+16:54:36.713  +  6588ms  [session] disconnect() — explicit, not a link drop
+16:54:36.714  +  6589ms  [projection] projection: service gone, locks released
+16:54:37.343  +  7218ms  [compositor] compositor ready: source 800x480, no output yet
+16:54:37.344  ---- projeção ligada: projection ----
+16:54:37.347  +     3ms  [projection] projection: foreground with wake and Wi-Fi locks
+16:54:37.348  +     4ms  [aa] [AA] AaReceiver: Android Auto 1.2.551000-stub is installed
+16:54:37.351  +     7ms  [device] device battery=100% charging=no temp=25.0C volt=5.000V thermal=none headroom=0.90 mem=26/192MB phone=1887MB low=no screen=on doze=no saver=off exempt=no bike=none data=wifi/ok [start]
+16:54:37.360  +    16ms  [aa] [AA] AaReceiver: connected to the head unit server on :40567, starting the handshake
+16:54:37.360  +    16ms  [aa] [AA] Start Aap transport handshake for com.reau.app.aa.SocketAccessoryConnection@4977167
+16:54:37.364  +    20ms  [aa] [AA] Handshake: Version response received (ret=12, attempt=1).
+16:54:37.377  +    33ms  [aa] [AA] SSL handshake complete. Session id: FUhPzhensmqvTBYURLx4g97dN0/4rDl4ywwSMFCV3oc=
+16:54:37.377  +    33ms  [aa] [AA] Handshake: Status OK sent (8). Handshake successful.
+16:54:37.378  +    34ms  [aa] [AA] New surface set: Surface(name=android.graphics.SurfaceTexture@f28c02 mNativeObject=136195905418224)/@0xc6c9480
+16:54:37.380  +    35ms  [aa] [AA] Start Aap transport read loop
+16:54:37.380  +    36ms  [aa] [AA] Media Start Request VIDEO: session=1, config_index=0
+16:54:37.381  +    37ms  [session] connect() — ssid='DashFake' network=null
+16:54:37.381  +    37ms  [aa] [AA] H.264 SPS parsed: 800x480
+16:54:37.382  +    38ms  [aa] [AA] findBestCodec: hw=c2.goldfish.h264.decoder, sw=c2.android.avc.decoder, preferHardware=true, selected=c2.goldfish.h264.decoder
+16:54:37.385  +    41ms  [auth] RSA pubkey received → sending session key
+16:54:37.394  +    50ms  [aa] [AA] Configuring decoder: c2.goldfish.h264.decoder for 800x480
+16:54:37.412  +    68ms  [aa] [AA] Codec initialized: c2.goldfish.h264.decoder
+16:54:37.412  +    68ms  [aa] [AA] Output thread started
+16:54:37.494  +   150ms  [aa] [AA] Output Format Changed: {crop-right=799, max-height=480, sar-width=1, color-format=2130708361, mime=video/raw, color-standard=1, color-transfer=3, sar-height=1, crop-bottom=479, max-width=800, crop-left=0, width=800, color-range=2, crop-top=0, rotation-degrees=0, height=480}
+16:54:37.618  +   274ms  [auth] initial burst sent — waiting up to 15000ms for 07 01 01
+16:54:37.619  +   275ms  [auth] authenticated (07 01 01) — entering nav mode
+16:54:39.432  +  2088ms  [session] nav-mode kick sent — READY (waiting for video pipeline)
+16:54:39.433  +  2089ms  [session] → STREAMING
+16:54:39.445  +  2101ms  [stream] encoder: c2.android.avc.encoder fpsHint=8 bitrateBps=1024000 profile=baseline iFrameIntervalSec=1 repeatAfterUs=900000 lowLatency=on
+16:54:39.454  +  2110ms  [stream] video loop start: 8 fps (ceiling 16), keyframe 1s, clock 0% slow
+16:54:39.454  +  2110ms  [stream] pace: a tick every 250 ms, a repeat every 250 ms
+16:54:39.455  +  2111ms  [stream] bitrate=512000
+16:54:39.462  +  2118ms  [compositor] compositor output set: draw 500x300 at (13,0 from the bottom), pace Pace(activeMs=250, idleMs=250, clockSlowPercent=0)
+16:54:39.478  +  2134ms  [dash] dash DECODED first IDR (09 06 55) — video accepted ✓
+16:54:39.713  +  2369ms  [stream] pace: a tick every 125 ms, a repeat every 250 ms
+16:54:39.715  +  2371ms  [stream] bitrate=1024000
+16:54:40.132  +  2788ms  [aa] [AA] Nav: cluster status ACTIVE
+16:54:40.136  +  2792ms  [aa] [AA] Nav: state steps=1 maneuver=TURN_NORMAL_LEFT
+16:54:40.443  +  3099ms  [aa] [AA] Nav: state steps=1 maneuver=ROUNDABOUT_ENTER_AND_EXIT_CCW
+16:54:41.475  +  4131ms  [aa] [AA] Nav: cluster status REROUTING
+16:54:42.381  +  5037ms  [aa] [AA] aa-stats 5.0s: msgs=81 (ch2=76 ch10=5) nav=5 units=75 bytes=53KB key=5 pieces=0 assembled=0 lost=0 focus=0 sensor=0 decoded=74 decode=6/79ms | total units=75 key=5 assembled=0 lost=0 decoded=74
+16:54:42.385  +  5041ms  [dash] dash-stats 5.0s: tx=66 (0501=8 0502=2 0517=1 052E=1 052F=1 0556=14 0557=1 0605=1 0606=2 0608=6 060A=1 060B=1 0611=3 0612=20 0680=1 0800=1 0804=1 0A02=1) rx=26 (0700=1 0701=1 0703=1 0904=20 0906=3) acks=23 buttons=0 telemetry=0 heartbeats=17 tx-fail=0 last-rx=32ms ago | total tx=66 rx=26 acks=23 buttons=0 telemetry=0 tx-fail=0
+16:54:42.456  +  5112ms  [aa] [AA] Nav: cluster status INACTIVE
+16:54:44.746  +  7402ms  [stream] video fps target=8 sent=8.2 (41frames/5.0s) composed=8.2 dash=8.2 kbps=118 set=1024k frame=1815B source=74 drawn=41 repeated=0 compose=1.1ms encode=6.2ms late=0 full=true thermal=OK kf=1s sync=1[stream start:1] auto=8fps [settling after change]
+16:54:46.981  +  9637ms  [stream] video loop stop (0 frames held back before a keyframe)
+16:54:46.982  +  9638ms  [aa] [AA] AapTransport stopping and sending byebye
+16:54:47.134  +  9790ms  [aa] [AA] AapTransport quitting (clean=false)
+16:54:47.135  +  9790ms  [aa] [AA] AaReceiver: session ended (clean=false, userExit=false)
+16:54:47.176  +  9832ms  [aa] [AA] aa-stats 4.8s: msgs=73 (ch2=72 ch10=1) nav=1 units=72 bytes=53KB key=5 pieces=0 assembled=0 lost=0 focus=0 sensor=0 decoded=71 decode=6/9ms | total units=147 key=10 assembled=0 lost=0 decoded=145 (session end)
+16:54:47.207  +  9863ms  [aa] [AA] Output thread stopped
+16:54:47.212  +  9868ms  [aa] [AA] Decoder stopped: session over
+16:54:47.388  + 10044ms  [dash] dash-stats 5.0s: tx=67 (0501=5 0502=1 0556=20 0608=5 0611=5 0612=31) rx=36 (0904=31 0906=5) acks=36 buttons=0 telemetry=0 heartbeats=25 tx-fail=0 last-rx=535ms ago | total tx=133 rx=62 acks=59 buttons=0 telemetry=0 tx-fail=0
+16:54:47.414  + 10070ms  [aa] [AA] AaReceiver: stopped
+16:54:47.417  + 10073ms  [dash] dash-stats 0.0s: tx=10 (0517=2 0556=1 0605=5 0608=1 0680=1) rx=0 () acks=0 buttons=0 telemetry=0 heartbeats=1 tx-fail=0 last-rx=565ms ago | total tx=143 rx=62 acks=59 buttons=0 telemetry=0 tx-fail=0 (session end)
+16:54:47.417  + 10073ms  [session] disconnect() — explicit, not a link drop
+16:54:47.418  + 10074ms  [projection] resumo duration=10s streaming=7s drops dash=0 aa=0 watchdogs=0 frames=58 fps avg=7.7 min=7.6 gap max=0.3s thermal max=none battery 100→100% (0) marks=0
+16:54:47.421  ---- projeção desligada: projection ----
+16:54:47.423  + 10078ms  [session] disconnect() — explicit, not a link drop
+16:54:47.426  + 10082ms  [projection] projection: service gone, locks released
+16:54:47.971  + 10627ms  [compositor] compositor ready: source 800x480, no output yet
+16:54:47.971  ---- projeção ligada: projection ----
+16:54:47.975  +     4ms  [projection] projection: foreground with wake and Wi-Fi locks
+16:54:47.975  +     4ms  [aa] [AA] AaReceiver: Android Auto 1.2.551000-stub is installed
+16:54:47.978  +     7ms  [device] device battery=100% charging=no temp=25.0C volt=5.000V thermal=none headroom=0.90 mem=11/192MB phone=1901MB low=no screen=on doze=no saver=off exempt=no bike=none data=wifi/ok [start]
+16:54:47.986  +    15ms  [aa] [AA] AaReceiver: connected to the head unit server on :41293, starting the handshake
+16:54:47.986  +    15ms  [aa] [AA] Start Aap transport handshake for com.reau.app.aa.SocketAccessoryConnection@bbda11b
+16:54:47.988  +    17ms  [aa] [AA] Handshake: Version response received (ret=12, attempt=1).
+16:54:48.008  +    36ms  [aa] [AA] SSL handshake complete. Session id: jqgUDTH9f5rr5iPB0gsabAjJLVfWscGMh9+kCFnZuok=
+16:54:48.008  +    37ms  [aa] [AA] Handshake: Status OK sent (8). Handshake successful.
+16:54:48.008  +    37ms  [aa] [AA] New surface set: Surface(name=android.graphics.SurfaceTexture@2859d46 mNativeObject=136195905418224)/@0xa249264
+16:54:48.009  +    38ms  [aa] [AA] Start Aap transport read loop
+16:54:48.010  +    39ms  [aa] [AA] Media Start Request VIDEO: session=1, config_index=0
+16:54:48.010  +    39ms  [session] connect() — ssid='DashFake' network=null
+16:54:48.011  +    40ms  [aa] [AA] H.264 SPS parsed: 800x480
+16:54:48.012  +    41ms  [aa] [AA] findBestCodec: hw=c2.goldfish.h264.decoder, sw=c2.android.avc.decoder, preferHardware=true, selected=c2.goldfish.h264.decoder
+16:54:48.018  +    47ms  [auth] RSA pubkey received → sending session key
+16:54:48.027  +    56ms  [aa] [AA] Configuring decoder: c2.goldfish.h264.decoder for 800x480
+16:54:48.044  +    73ms  [aa] [AA] Codec initialized: c2.goldfish.h264.decoder
+16:54:48.044  +    73ms  [aa] [AA] Output thread started
+16:54:48.153  +   182ms  [aa] [AA] Output Format Changed: {crop-right=799, max-height=480, sar-width=1, color-format=2130708361, mime=video/raw, color-standard=1, color-transfer=3, sar-height=1, crop-bottom=479, max-width=800, crop-left=0, width=800, color-range=2, crop-top=0, rotation-degrees=0, height=480}
+16:54:48.274  +   303ms  [auth] initial burst sent — waiting up to 15000ms for 07 01 01
+16:54:48.274  +   303ms  [auth] authenticated (07 01 01) — entering nav mode
+16:54:50.086  +  2115ms  [session] nav-mode kick sent — READY (waiting for video pipeline)
+16:54:50.086  +  2115ms  [session] → STREAMING
+16:54:50.102  +  2131ms  [stream] encoder: c2.android.avc.encoder fpsHint=8 bitrateBps=1024000 profile=baseline iFrameIntervalSec=1 repeatAfterUs=900000 lowLatency=on
+16:54:50.114  +  2143ms  [stream] video loop start: 8 fps (ceiling 16), keyframe 1s, clock 0% slow
+16:54:50.114  +  2143ms  [stream] pace: a tick every 250 ms, a repeat every 250 ms
+16:54:50.115  +  2144ms  [stream] bitrate=512000
+16:54:50.122  +  2151ms  [compositor] compositor output set: draw 500x300 at (13,0 from the bottom), pace Pace(activeMs=250, idleMs=250, clockSlowPercent=0)
+16:54:50.139  +  2168ms  [dash] dash DECODED first IDR (09 06 55) — video accepted ✓
+16:54:50.374  +  2403ms  [stream] pace: a tick every 125 ms, a repeat every 250 ms
+16:54:50.375  +  2404ms  [stream] bitrate=1024000
+16:54:50.776  +  2805ms  [aa] [AA] Nav: cluster status ACTIVE
+16:54:50.777  +  2806ms  [aa] [AA] Nav: state steps=1 maneuver=TURN_NORMAL_RIGHT
+16:54:51.152  +  3181ms  [aa] [AA] AapRead: Connection closed (EOF). Disconnecting.
+16:54:51.152  +  3181ms  [aa] [AA] Quitting because ret < 0 (-1)
+16:54:51.153  +  3182ms  [aa] [AA] AapTransport quitting (clean=false)
+16:54:51.153  +  3182ms  [aa] [AA] AaReceiver: session ended (clean=false, userExit=false)
+16:54:51.154  +  3183ms  [aa] [AA] aa-stats 3.2s: msgs=51 (ch2=48 ch10=3) nav=3 units=47 bytes=37KB key=4 pieces=0 assembled=0 lost=0 focus=0 sensor=0 decoded=46 decode=8/108ms | total units=47 key=4 assembled=0 lost=0 decoded=46 (session end)
+16:54:51.158  +  3187ms  [aa] [AA] Output thread stopped
+16:54:51.197  +  3226ms  [aa] [AA] Decoder stopped: session over
+16:54:51.400  +  3429ms  [aa] [AA] W: AaReceiver: no answer from the head unit server on /127.0.0.1:41293 (ConnectException: failed to connect to /127.0.0.1 (port 41293) from /127.0.0.1 (port 38804) after 800ms: isConnected failed: ECONNREFUSED (Connection refused)); will keep dialling
+16:54:52.887  +  4916ms  [stream] bitrate=512000
+16:54:53.016  +  5045ms  [dash] dash-stats 5.0s: tx=57 (0501=8 0502=1 0517=1 052E=1 052F=1 0556=14 0557=1 0605=1 0606=2 0608=6 060A=1 060B=1 0611=2 0612=13 0680=1 0800=1 0804=1 0A02=1) rx=18 (0700=1 0701=1 0703=1 0904=13 0906=2) acks=15 buttons=0 telemetry=0 heartbeats=17 tx-fail=0 last-rx=127ms ago | total tx=57 rx=18 acks=15 buttons=0 telemetry=0 tx-fail=0
+16:54:55.398  +  7427ms  [stream] video fps target=8 sent=4.8 (24frames/5.0s) composed=4.8 dash=4.8 kbps=59 set=512k frame=1535B source=11 drawn=7 repeated=17 compose=1.4ms encode=7.9ms late=0 full=false thermal=OK kf=1s sync=1[stream start:1] auto=8fps [idle window (map still), not judged]
+16:54:55.719  +  7748ms  [stream] video loop stop (0 frames held back before a keyframe)
+16:54:55.720  +  7749ms  [aa] [AA] AaReceiver: stopped
+16:54:55.724  +  7752ms  [dash] dash-stats 2.7s: tx=37 (0501=3 0517=2 0556=12 0605=5 0608=3 0611=2 0612=9 0680=1) rx=11 (0904=9 0906=2) acks=11 buttons=0 telemetry=0 heartbeats=14 tx-fail=0 last-rx=89ms ago | total tx=94 rx=29 acks=26 buttons=0 telemetry=0 tx-fail=0 (session end)
+16:54:55.724  +  7753ms  [session] disconnect() — explicit, not a link drop
+16:54:55.724  +  7753ms  [projection] resumo duration=7s streaming=5s drops dash=0 aa=1 watchdogs=0 frames=26 fps avg=4.6 min=4.6 gap max=0.5s thermal max=none battery 100→100% (0) marks=0
+16:54:55.727  ---- projeção desligada: projection ----
+16:54:55.732  +  7761ms  [session] disconnect() — explicit, not a link drop
+16:54:55.737  +  7766ms  [projection] projection: service gone, locks released

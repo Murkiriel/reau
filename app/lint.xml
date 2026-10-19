@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Lint configuration. Only what does not apply to this project is switched off, each with its reason; every other
+  finding fails `lintDebug` (build.gradle.kts: warningsAsErrors, no baseline).
+-->
+<lint>
+    <!-- Versions are pinned to the ones the copied code was tested against (gradle/libs.versions.toml explains);
+         a newer release existing is not a defect of this build. -->
+    <issue id="GradleDependency" severity="ignore" />
+    <issue id="NewerVersionAvailable" severity="ignore" />
+    <issue id="AndroidGradlePluginVersion" severity="ignore" />
+
+    <!-- targetSdk stays at 36: the foreground-service and Wi-Fi behaviour of the dash code was proven in use
+         at that level. Raising it is a deliberate step with its own test ride, not a lint fix. -->
+    <issue id="OldTargetApi" severity="ignore" />
+
+    <!-- Only web_viewers_many ("%1$d browsers connected" / "%1$d navegadores conectados"): WebAddress.viewersText() already picks between the
+         none / one / many strings, so the singular has its own text and a plurals resource would add nothing.
+         Any other string that puts a number before a word still fails. -->
+    <issue id="PluralsCandidate">
+        <ignore regexp="(&quot;navegadores&quot;|&quot;browsers&quot;)" />
+    </issue>
+
+    <!-- res/raw/aa_privkey is the head-unit identity that every open Android Auto receiver ships: a key that has
+         been public for years, not a secret of this app. Android Auto
+         refuses the TLS handshake without it. Only that one file is exempt. -->
+    <issue id="PackagedPrivateKey">
+        <ignore path="src/main/res/raw/aa_privkey" />
+    </issue>
+
+    <!-- aa/NoCheckTrustManager accepts whatever certificate the other side shows. The other side is Android Auto on
+         this same phone, reached over 127.0.0.1 only; its certificate chains to no public
+         authority, so there is nothing to check it against, and every open head unit does the same. It is used by
+         AapSslContext for that link and must never be used for anything else. Only that one file is exempt. -->
+    <issue id="TrustAllX509TrustManager">
+        <ignore path="src/main/java/com/reau/app/aa/NoCheckTrustManager.kt" />
+    </issue>
+    <issue id="CustomX509TrustManager">
+        <ignore path="src/main/java/com/reau/app/aa/NoCheckTrustManager.kt" />
+    </issue>
+</lint>

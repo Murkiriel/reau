@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="caller_private">Privado</string>
+    <string name="problem_compositor">o compositor de vídeo (OpenGL) não iniciou: sem imagem para o painel</string>
+    <string name="notif_mark_done">Marca %1$d gravada às %2$s</string>
+    <string name="card_legibility_sample">Rua 300 m</string>
+    <string-array name="wind_points">
+        <item>N</item>
+        <item>NNE</item>
+        <item>NE</item>
+        <item>ENE</item>
+        <item>L</item>
+        <item>ESE</item>
+        <item>SE</item>
+        <item>SSE</item>
+        <item>S</item>
+        <item>SSO</item>
+        <item>SO</item>
+        <item>OSO</item>
+        <item>O</item>
+        <item>ONO</item>
+        <item>NO</item>
+        <item>NNO</item>
+    </string-array>
+    <string name="weather_air_pm25">PM2,5 %1$d</string>
+    <string name="stats_dash">painel</string>
+    <string name="stats_default_mode">padrão</string>
+    <string name="stats_frame_unit">KB/quadro</string>
+    <string name="stats_keyframe">QC</string>
+    <string name="credit_role_opencfmoto">receptor do Android Auto, decodificador e compositor da imagem</string>
+    <string name="credit_role_headunit_revived">protocolo do Android Auto (pelo OpenCfMoto)</string>
+    <string name="credit_role_open_headunit">remontagem dos quadros e recuperação do vídeo</string>
+    <string name="credit_role_headunit">a origem de toda a linhagem</string>
+    <string name="credit_role_moto_hub">canal de navegação do Android Auto</string>
+    <string name="credit_role_northstar">primeira implementação do protocolo do painel (pelo EstrelaAustral)</string>
+    <string name="credit_role_estrelaaustral">ponto de partida: o lado do painel, o clima, os testes e a organização</string>
+    <string name="credit_role_better_dash">referência do protocolo K1G; algumas partes portadas dele</string>
+    <string name="credit_role_recon_dash">pausa dos envios quando a rede cai, telemetria</string>
+    <string name="credit_role_open_dash">sequência de saída do painel (de uma versão anterior à limpeza do projeto, em 21/09/2026)</string>
+    <string name="credit_role_fraunces">títulos</string>
+    <string name="credit_role_androidx">telas e base do app</string>
+    <string name="credit_role_conscrypt">cifra da conversa com o Android Auto (com o BoringSSL)</string>
+    <string name="credit_role_material_symbols">ícones</string>
+    <string name="credit_role_protobuf">mensagens do Android Auto</string>
+    <string name="credit_role_hanken">textos da interface</string>
+    <string name="credit_role_kotlin">a linguagem do app e as corrotinas</string>
+    <string name="credit_role_jetbrains_mono">valores, rótulos e o registro</string>
+    <string name="credit_role_open_meteo">dados do clima e da qualidade do ar</string>
+    <string name="credit_role_jmuxer">toca o vídeo no navegador (a página do servidor web)</string>
+    <string name="credit_holder_opencfmoto">© 2026 Alexandru e colaboradores</string>
+    <string name="credit_holder_headunit_revived">© andreknieriem e a linhagem headunit</string>
+    <string name="credit_holder_moto_hub">© 2026 Vincenzo Buonomano e colaboradores</string>
+    <string name="credit_holder_open_dash">© 2026 Subtle Sayak e colaboradores</string>
+    <string name="credit_holder_kotlin">© JetBrains e colaboradores do Kotlin</string>
+    <string name="credit_name_androidx">AndroidX e Jetpack Compose</string>
+    <string name="credit_name_kotlin">Kotlin e kotlinx-coroutines</string>
+</resources>
