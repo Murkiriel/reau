@@ -1,0 +1,74 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:03.733
+Step-by-step installation of REau Lite
+
+2
+00:00:03.733 --> 00:00:10.400
+1. Download the REau Lite APK from the project's Releases page and open the file to install it
+
+3
+00:00:10.400 --> 00:00:16.467
+Lite and Full can be installed together, but only one can be on at a time
+
+4
+00:00:16.467 --> 00:00:22.467
+2. Open REau Lite and scroll the terms of use to the end, or tap Scroll to the end
+
+5
+00:00:22.467 --> 00:00:25.467
+Then tap I accept
+
+6
+00:00:25.467 --> 00:00:31.733
+3. Allow location while using the app: it is only used to find the dash's Wi-Fi
+
+7
+00:00:31.733 --> 00:00:35.267
+Also allow the suggested Wi-Fi networks
+
+8
+00:00:35.267 --> 00:00:39.400
+4. Tap Turn on and allow notifications
+
+9
+00:00:39.400 --> 00:00:46.867
+5. On Lite, the Android Auto server is turned on by hand: tap Open Android Auto settings
+
+10
+00:00:46.867 --> 00:00:50.267
+Scroll to the bottom and tap Version ten times
+
+11
+00:00:50.267 --> 00:00:54.600
+Confirm: Enable developer settings, OK
+
+12
+00:00:54.600 --> 00:00:59.400
+In the three-dot menu, tap Start head unit server
+
+13
+00:00:59.400 --> 00:01:06.000
+The server turns off when the session ends and after restarting the phone: turn it on again every time
+
+14
+00:01:06.000 --> 00:01:13.333
+6. Go back to REau Lite. The first time, tap Connect so Android lets it join the dash's Wi-Fi
+
+15
+00:01:13.333 --> 00:01:18.533
+With Android Auto active and the dash ready, REau Lite is streaming
+
+16
+00:01:18.533 --> 00:01:23.333
+7. In Permissions, tap Ask for the missing ones and allow everything
+
+17
+00:01:23.333 --> 00:01:29.667
+Exclude REau from battery optimization, so Android does not pause the app with the screen off
+
+18
+00:01:29.667 --> 00:01:35.067
+Done. Set the route in Waze and put the phone away. To finish, tap Turn off
+

@@ -1,0 +1,118 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:03.800
+Step-by-step installation of REau Full
+
+2
+00:00:03.800 --> 00:00:10.667
+1. Download the Full edition APK from the project's Releases page and open the file to install it
+
+3
+00:00:10.667 --> 00:00:17.133
+Play Protect may block the installation: that is expected on this edition, which uses Accessibility
+
+4
+00:00:17.133 --> 00:00:23.800
+In the Play Store, tap your profile picture, then Play Protect and the gear, and pause app scanning
+
+5
+00:00:23.800 --> 00:00:28.533
+Install the APK again and, after installing, turn Play Protect back on
+
+6
+00:00:28.533 --> 00:00:34.200
+2. Open REau and scroll the terms of use to the end, or tap Scroll to the end
+
+7
+00:00:34.200 --> 00:00:37.200
+Then tap I accept
+
+8
+00:00:37.200 --> 00:00:43.467
+3. Allow location while using the app: it is only used to find the dash's Wi-Fi
+
+9
+00:00:43.467 --> 00:00:47.000
+Also allow the suggested Wi-Fi networks
+
+10
+00:00:47.000 --> 00:00:50.000
+4. Tap Turn on
+
+11
+00:00:50.000 --> 00:00:53.000
+and allow notifications
+
+12
+00:00:53.000 --> 00:01:00.800
+5. The first time, the server-off warning asks for Accessibility: tap Open Accessibility
+
+13
+00:01:00.800 --> 00:01:08.267
+REau warns that some apps, such as banking apps, may refuse to open with Accessibility on. Tap Continue
+
+14
+00:01:08.267 --> 00:01:16.000
+6. On Android 13 or newer, try to turn Accessibility on first: Restricted setting appears
+
+15
+00:01:16.000 --> 00:01:22.333
+In Settings, Apps, REau, in the three-dot menu, tap Allow restricted settings
+
+16
+00:01:22.333 --> 00:01:26.533
+Done: now REau's Accessibility can be turned on
+
+17
+00:01:26.533 --> 00:01:33.600
+7. In Accessibility, open the downloaded apps list and choose REau: Android Auto server
+
+18
+00:01:33.600 --> 00:01:39.400
+On Samsung, the path is Accessibility, Installed apps, and then REau
+
+19
+00:01:39.400 --> 00:01:42.667
+Turn on Use REau: Android Auto server
+
+20
+00:01:42.667 --> 00:01:47.533
+and tap Allow. That is what turns the Android Auto server on by itself
+
+21
+00:01:47.533 --> 00:01:54.200
+8. Android Auto developer mode: tap Open Android Auto settings
+
+22
+00:01:54.200 --> 00:01:57.600
+Scroll to the bottom and tap Version ten times
+
+23
+00:01:57.600 --> 00:02:00.600
+Confirm with OK
+
+24
+00:02:00.600 --> 00:02:05.333
+Go back to REau and tap Try again: it turns the server on by itself
+
+25
+00:02:05.333 --> 00:02:11.800
+9. The first time, tap Connect so Android lets REau join the dash's Wi-Fi
+
+26
+00:02:11.800 --> 00:02:16.600
+With Android Auto active and the dash ready, REau is streaming
+
+27
+00:02:16.600 --> 00:02:21.267
+10. In Permissions, tap Ask for the missing ones and allow everything
+
+28
+00:02:21.267 --> 00:02:27.800
+Also tap Exclude from battery optimization, so Android does not pause REau with the screen off
+
+29
+00:02:27.800 --> 00:02:33.200
+Done. Set the route in Waze and put the phone away. To finish, tap Turn off
+

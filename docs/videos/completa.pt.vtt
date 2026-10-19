@@ -1,0 +1,118 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:03.800
+Instalação completa do REau Completa, passo a passo
+
+2
+00:00:03.800 --> 00:00:10.667
+1. Baixe o APK da edição Completa na página de Releases do projeto e abra o arquivo para instalar
+
+3
+00:00:10.667 --> 00:00:17.133
+O Play Protect pode bloquear a instalação: é esperado nesta edição, que usa a Acessibilidade
+
+4
+00:00:17.133 --> 00:00:23.800
+Na Play Store, toque na foto do perfil, em Play Protect e na engrenagem, e pause a verificação de apps
+
+5
+00:00:23.800 --> 00:00:28.533
+Instale o APK de novo e, depois de instalar, religue o Play Protect
+
+6
+00:00:28.533 --> 00:00:34.200
+2. Abra o REau e role os termos de uso até o fim, ou toque em Descer até o fim
+
+7
+00:00:34.200 --> 00:00:37.200
+Depois toque em Li e aceito
+
+8
+00:00:37.200 --> 00:00:43.467
+3. Permita a localização durante o uso do app: ela serve só para achar o Wi-Fi do painel
+
+9
+00:00:43.467 --> 00:00:47.000
+Permita também as redes Wi-Fi sugeridas
+
+10
+00:00:47.000 --> 00:00:50.000
+4. Toque em Ligar
+
+11
+00:00:50.000 --> 00:00:53.000
+e permita as notificações
+
+12
+00:00:53.000 --> 00:01:00.800
+5. Na primeira vez, o aviso de servidor desligado pede a Acessibilidade: toque em Abrir Acessibilidade
+
+13
+00:01:00.800 --> 00:01:08.267
+O REau avisa que alguns apps, como os de banco, podem recusar abrir com a Acessibilidade ligada. Toque em Continuar
+
+14
+00:01:08.267 --> 00:01:16.000
+6. No Android 13 ou mais novo, tente ativar a Acessibilidade primeiro: aparece Configuração restrita
+
+15
+00:01:16.000 --> 00:01:22.333
+Em Configurações, Apps, REau, no menu de três pontos, toque em Permitir configurações restritas
+
+16
+00:01:22.333 --> 00:01:26.533
+Pronto: agora a Acessibilidade do REau pode ser ativada
+
+17
+00:01:26.533 --> 00:01:33.600
+7. Em Acessibilidade, abra a lista de apps baixados e escolha REau, servidor do Android Auto
+
+18
+00:01:33.600 --> 00:01:39.400
+No Samsung, o caminho é Acessibilidade, Aplicativos instalados, e depois o REau
+
+19
+00:01:39.400 --> 00:01:42.667
+Ligue Usar REau, servidor do Android Auto
+
+20
+00:01:42.667 --> 00:01:47.533
+e toque em Permitir. É isso que liga o servidor do Android Auto sozinho
+
+21
+00:01:47.533 --> 00:01:54.200
+8. Modo desenvolvedor do Android Auto: toque em Abrir as configurações do Android Auto
+
+22
+00:01:54.200 --> 00:01:57.600
+Role até o fim e toque dez vezes em Versão
+
+23
+00:01:57.600 --> 00:02:00.600
+Confirme em OK
+
+24
+00:02:00.600 --> 00:02:05.333
+Volte ao REau e toque em Tentar de novo: ele liga o servidor sozinho
+
+25
+00:02:05.333 --> 00:02:11.800
+9. Na primeira vez, toque em Conectar para o Android deixar o REau entrar no Wi-Fi do painel
+
+26
+00:02:11.800 --> 00:02:16.600
+Com o Android Auto ativo e o painel pronto, o REau está transmitindo
+
+27
+00:02:16.600 --> 00:02:21.267
+10. Em Permissões, toque em Pedir as que faltam e permita tudo
+
+28
+00:02:21.267 --> 00:02:27.800
+Toque também em Fora da otimização de bateria, para o Android não pausar o REau com a tela apagada
+
+29
+00:02:27.800 --> 00:02:33.200
+Pronto. Coloque a rota no Waze e guarde o celular. Para encerrar, toque em Desligar
+

@@ -1,0 +1,74 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:03.733
+Instalação completa do REau Lite, passo a passo
+
+2
+00:00:03.733 --> 00:00:10.400
+1. Baixe o APK do REau Lite na página de Releases do projeto e abra o arquivo para instalar
+
+3
+00:00:10.400 --> 00:00:16.467
+A Lite e a Completa podem estar instaladas juntas, mas só uma pode ficar ligada por vez
+
+4
+00:00:16.467 --> 00:00:22.467
+2. Abra o REau Lite e role os termos de uso até o fim, ou toque em Descer até o fim
+
+5
+00:00:22.467 --> 00:00:25.467
+Depois toque em Li e aceito
+
+6
+00:00:25.467 --> 00:00:31.733
+3. Permita a localização durante o uso do app: ela serve só para achar o Wi-Fi do painel
+
+7
+00:00:31.733 --> 00:00:35.267
+Permita também as redes Wi-Fi sugeridas
+
+8
+00:00:35.267 --> 00:00:39.400
+4. Toque em Ligar e permita as notificações
+
+9
+00:00:39.400 --> 00:00:46.867
+5. Na Lite, o servidor do Android Auto se liga à mão: toque em Abrir as configurações do Android Auto
+
+10
+00:00:46.867 --> 00:00:50.267
+Role até o fim e toque dez vezes em Versão
+
+11
+00:00:50.267 --> 00:00:54.600
+Confirme: Ativar as configurações de desenvolvimento, OK
+
+12
+00:00:54.600 --> 00:00:59.400
+No menu de três pontos, toque em Iniciar servidor da unidade principal
+
+13
+00:00:59.400 --> 00:01:06.000
+O servidor desliga quando a sessão termina e depois de reiniciar o celular: ligue de novo a cada uso
+
+14
+00:01:06.000 --> 00:01:13.333
+6. Volte ao REau Lite. Na primeira vez, toque em Conectar para o Android deixar entrar no Wi-Fi do painel
+
+15
+00:01:13.333 --> 00:01:18.533
+Com o Android Auto ativo e o painel pronto, o REau Lite está transmitindo
+
+16
+00:01:18.533 --> 00:01:23.333
+7. Em Permissões, toque em Pedir as que faltam e permita tudo
+
+17
+00:01:23.333 --> 00:01:29.667
+Deixe o REau fora da otimização de bateria, para o Android não pausar o app com a tela apagada
+
+18
+00:01:29.667 --> 00:01:35.067
+Pronto. Coloque a rota no Waze e guarde o celular. Para encerrar, toque em Desligar
+
