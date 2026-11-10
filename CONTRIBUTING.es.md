@@ -16,15 +16,15 @@ misma licencia. Si un cambio trae código, datos o hechos de otro proyecto, di d
 Con JDK 21 y el Android SDK instalados, desde esta carpeta:
 
 ```
-./gradlew :app:testCompletaDebugUnitTest :app:testLiteDebugUnitTest --console=plain
+./gradlew :app:testDebugUnitTest --console=plain
 ./gradlew :app:detekt :app:lintDebug --console=plain
 ```
 
-La primera línea ejecuta las pruebas unitarias de las dos ediciones; la segunda ejecuta el análisis de código (detekt) y el lint. Corrige lo
+La primera línea ejecuta las pruebas unitarias; la segunda ejecuta el análisis de código (detekt) y el lint. Corrige lo
 que informen en el código que escribiste, y no agregues nada al baseline de detekt. Algunas pruebas leen archivos del
 repositorio (`docs/`, `NOTICE`, los README, los historiales de cambios, `app/src/main/res/`): Gradle sabe que leen esos archivos, así que
-se ejecutan de nuevo solas cuando cambia un texto. Las pruebas instrumentadas (`app/src/androidTest`, y
-`app/src/androidTestCompleta` para la edición completa) necesitan un emulador, como dice el README; `scripts/emu/` tiene los scripts.
+se ejecutan de nuevo solas cuando cambia un texto. Las pruebas instrumentadas (`app/src/androidTest`) necesitan un
+emulador, como dice el README; `scripts/emu/` tiene los scripts.
 Los scripts en Python tienen sus propias pruebas (`python3 -B -m unittest discover -p "test_*.py"` dentro de `scripts/`, `scripts/registro/`,
 `scripts/dev/`, `scripts/emu/`, `scripts/icon/` y `bench/`; los dos últimos necesitan Pillow, fijado en `scripts/requirements.txt`), y la
 integración continua también las ejecuta.
@@ -43,7 +43,7 @@ archivos de `app/src/test/resources/com/reau/app/fuzz/ParserFuzzTargetsInputs/<o
 verdad, guiado por el código que alcanza cada entrada, define la variable de entorno (20 segundos por objetivo; `JAZZER_MAX_DURATION` lo cambia):
 
 ```
-JAZZER_FUZZ=1 ./gradlew :app:testCompletaDebugUnitTest --tests '*ParserFuzzTargets*' --console=plain
+JAZZER_FUZZ=1 ./gradlew :app:testDebugUnitTest --tests '*ParserFuzzTargets*' --console=plain
 ```
 
 La ejecución deja su corpus de trabajo en `app/.cifuzz-corpus/` y, si una entrada rompió un lector, un archivo `crash-<hash>` en `app/` (los dos
@@ -72,5 +72,5 @@ Un problema de seguridad no se informa en un issue público: sigue [SECURITY.md]
 
 ## Informar un error
 
-Usa la plantilla de informe de errores: pide la versión y la edición de REau, la versión de Android Auto, el firmware del tablero y
+Usa la plantilla de informe de errores: pide la versión de REau, la versión de Android Auto, el firmware del tablero y
 el teléfono, e indica dónde la app comparte sus registros.

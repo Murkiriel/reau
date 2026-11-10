@@ -11,8 +11,12 @@ import com.reau.app.settings.SettingsStore
 
 /** The app's process: the ride log's folder and the crash handler are set before anything else runs. */
 class REauApp : Application() {
-    override fun onCreate() {
+    override fun onCreate() = com.reau.app.util.StartupTiming.timed("Application.onCreate") {
         super.onCreate()
+        create()
+    }
+
+    private fun create() {
         // Privacy: the logs and recordings in internal storage; an older version's are moved there,
         // off the main thread (recordings may be large). Before init, so the folder the log opens is the new one.
         kotlin.concurrent.thread(name = "folders") {
@@ -33,6 +37,7 @@ class REauApp : Application() {
         RideDiagnostics.startProcess("app")
         // What the rider had set when the app started (the projection says it again with each start).
         RideDiagnostics.log("settings", com.reau.app.settings.SettingsInUse.line(settings.sanitized()))
+        com.reau.app.settings.SettingsInUse.experimentsLine(settings)?.let { RideDiagnostics.log("settings", it) }
         // The app's own logcat to diag/logcat-*.txt while it lives.
         OwnLogcat.start(this)
         // The phone's events (screen, doze, saver, charger, networks, background) to the log.

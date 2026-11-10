@@ -124,6 +124,8 @@ internal class AaReceiver(
         val onVideoSilent: ((Boolean) -> Unit)? = null,
         /** Non-null: Android Auto 17.3 and older, where it dials in ([CallIn]); null: the receiver dials the head unit server. */
         val callIn: CallIn? = null,
+        /** How long the compositor that [videoSurface] belongs to has been stuck inside one frame, 0 when it is not: the decoder's stall watch asks. */
+        val downstreamBusyMs: () -> Long = { 0L },
     )
 
     private val port = options.port
@@ -138,6 +140,7 @@ internal class AaReceiver(
     private val quickUnresponsive = options.quickUnresponsive
     private val onVideoSilent = options.onVideoSilent
     private val callIn = options.callIn
+    private val downstreamBusyMs = options.downstreamBusyMs
 
     @Volatile var state: AaLinkState = AaLinkState.IDLE
         private set
@@ -206,6 +209,31 @@ internal class AaReceiver(
         val current = session ?: return
         AaLog.i("AaReceiver: new configuration (density ${config.density}, ${config.margins}): a new session")
         current.stop()
+    }
+
+    // The rider's mark keeps a copy of the session recording (MarkFreezer); the copy runs on a thread of its own, never the read thread's.
+    private val freezer = recording?.let { option ->
+        MarkFreezer(option.dir, { com.reau.app.data.RideDiagnostics.log("mark", it) }, limits = MarkFreezer.Limits.forBuild())
+    }
+    private val freezeIo by lazy { Executors.newSingleThreadExecutor { Thread(it, "mark-freeze").apply { isDaemon = true } } }
+
+    /**
+     * The rider's mark number [mark]: the session recording as it is now is copied to a name the ring does not overwrite ([MarkFreezer]).
+     * It returns at once (the files are opened here, the bytes copied on another thread). False when there is nothing to keep: the option
+     * is off, or no session is open.
+     */
+    fun freezeRecording(mark: Int): Boolean {
+        val keeper = freezer ?: return false
+        val snapshot = sentRecorder?.snapshot()
+        if (snapshot == null) {
+            com.reau.app.data.RideDiagnostics.log("mark", "mark $mark: no session recording is open to keep a copy of")
+            return false
+        }
+        freezeIo.execute {
+            runCatching { keeper.freeze(snapshot, mark) }
+                .onFailure { com.reau.app.data.RideDiagnostics.warn("mark", "mark $mark: keeping the session recording failed: $it") }
+        }
+        return true
     }
 
     /** A key or a wheel step for Android Auto (the dash's joystick); nothing without a session. */
@@ -497,7 +525,9 @@ internal class AaReceiver(
         // The session counted before the decoder, one aa-stats line every statsEveryMs.
         val stats = AaStats()
         transport.stats = stats
-        val sink = AaVideoSink(stats) { transport.triggerFocusCycleRecovery() }
+        // No keyframe cycle while the compositor is stuck inside a frame (the cycle waits and goes out when it is free).
+        transport.keyframeBlocked = { downstreamBusyMs() >= DecoderStallWatch.DOWNSTREAM_BUSY_MS }
+        val sink = AaVideoSink(stats, compositorBusyMs = downstreamBusyMs) { transport.triggerFocusCycleRecovery() }
         val statsLine = Executors.newSingleThreadScheduledExecutor { Thread(it, "aa-stats").apply { isDaemon = true } }
         val recorder = recording?.let { option ->
             SessionRecorder(option.dir, SessionRecorder.nameFor(System.currentTimeMillis()), option.maxBytes, { AaLog.i(it) }, ring = true)
@@ -525,6 +555,8 @@ internal class AaReceiver(
             val counted = AaStatsHandler(stats, reading)
             transport.startReading(if (recorder == null) counted else RecordingHandler(recorder, counted))
             statsLine.scheduleWithFixedDelay({ AaLog.i(stats.windowLine()) }, timing.statsEveryMs, timing.statsEveryMs, TimeUnit.MILLISECONDS)
+            // A keyframe request that had to wait (the storm guard, the compositor) goes out from here.
+            statsLine.scheduleWithFixedDelay(transport::keyframeTick, KEYFRAME_TICK_MS, KEYFRAME_TICK_MS, TimeUnit.MILLISECONDS)
             session = transport
             sentRecorder = recorder
             // The session's day/night: if Android Auto has already started the night sensor (with the transport's
@@ -560,8 +592,11 @@ internal class AaReceiver(
             onNowPlaying?.invoke(null)
             onCaller?.invoke(null)
             recorder?.close()
-            sink.release()
+            // The socket first: a decoder that hangs in its release (the codec's driver, not REau) must not leave it open, with Android Auto
+            // serving a session nobody reads and answering the next dial into silence.
             link.disconnect()
+            AaLog.i("AaReceiver: the link is closed, the video path is released")
+            sink.release()
             connection = null
             forgetDialled(socket)
         }
@@ -604,10 +639,13 @@ internal class AaReceiver(
         /** Failed tries in a row after which the rider is told Android Auto is not calling. */
         const val CALL_IN_TRIES_BEFORE_SAYING = 5
 
-        /** A few minutes of an 800×480 session. */
-        const val DEFAULT_RECORDING_BYTES = 100L * 1024 * 1024
+        /** A few minutes of an 800×480 session (the ring of a release; a debug build's is [com.reau.app.data.RecordingsSpace.ringBytes]). */
+        const val DEFAULT_RECORDING_BYTES = com.reau.app.data.RecordingsSpace.RING_BYTES
         private val IPV4_LOOPBACK = byteArrayOf(127, 0, 0, 1)
         private const val SILENCE_CHECK_MS = 1_000L
+
+        /** How often a keyframe request that had to wait is looked at. */
+        private const val KEYFRAME_TICK_MS = 1_000L
         private const val THREAD_NAME = "aa-link"
         private const val STOP_JOIN_MS = 3_000L
         private const val READ_LOOP_EXIT_MS = 1_500L

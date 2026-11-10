@@ -138,7 +138,7 @@ class SettingsScreenTest {
     @Test
     fun itSaysTheSettingsCountFromTheNextStartAndGoesBack() {
         compose.onNodeWithTag("applies_next_time").performScrollTo().assertIsDisplayed()
-        compose.infoSays("applies_next_time", "Densidade e margens também")
+        compose.infoSays("applies_next_time", "Densidade também vale")
         compose.onNodeWithTag("back").performClick() // the fixed top bar
         assertEquals(1, back)
     }

@@ -4,30 +4,23 @@ import android.content.Context
 import android.content.pm.PackageManager
 
 /**
- * The two editions of REau (see [Edition]) can be installed side by side, and both dial the one head unit server Android
- * Auto opens on the phone, which takes a single session at a time. Turned on together, the second finds the handshake
- * unanswered and, without this, the screen only said that Android Auto does not respond. Whether the other edition is
- * installed is all that can be known of it (there is no way to tell, short of an IPC nobody asked for, whether it is
- * running), so the screen says "may be using it" and only while Android Auto is not answering.
+ * REau used to come in two editions, one with the id com.reau.app and one with com.reau.app.lite (the one with the seal on its icon).
+ * Since version 0.3.0 there is one app, com.reau.app: the old full edition is updated in place (same id), but the old "lite" one
+ * stays installed beside it until the rider removes it, and both dial the one head unit server Android Auto opens on the phone, which
+ * takes a single session at a time. Turned on together, the second finds the handshake unanswered and, without this, the screen only
+ * said that Android Auto does not respond. Whether the old app is installed is all that can be known of it (there is no way to tell,
+ * short of an IPC nobody asked for, whether it is running), so the warning says "may be using it" and only while Android Auto is not
+ * answering, and a discreet line on the main screen says it can be uninstalled.
  *
- * Each edition's manifest lists the other's package in its `<queries>`, so the package manager shows it (Android 11+).
+ * The manifest lists its package in `<queries>`, so the package manager shows it (Android 11+).
  */
 object OtherEdition {
-    /** The id of the complete edition. */
-    const val FULL_ID = "com.reau.app"
-
-    /** The id of the Lite edition (the complete one's with ".lite"). */
+    /** The id of the old "lite" app. */
     const val LITE_ID = "com.reau.app.lite"
 
-    /** The id of the edition that is not [lite] (this one's by default). */
-    fun packageOf(lite: Boolean = Edition.lite): String = if (lite) FULL_ID else LITE_ID
-
-    /** The name the rider knows the edition that is not [lite] by. */
-    fun nameOf(lite: Boolean = Edition.lite): String = if (lite) "REau" else "REau Lite"
-
-    /** Whether the other edition is installed for this user. Never throws: a package manager that refuses says no. */
-    fun installed(context: Context, lite: Boolean = Edition.lite): Boolean = try {
-        context.packageManager.getPackageInfo(packageOf(lite), 0)
+    /** Whether the old "lite" app is installed for this user. Never throws: a package manager that refuses says no. */
+    fun installed(context: Context): Boolean = try {
+        context.packageManager.getPackageInfo(LITE_ID, 0)
         true
     } catch (_: PackageManager.NameNotFoundException) {
         false
@@ -35,7 +28,7 @@ object OtherEdition {
         false
     }
 
-    /** What the diagnostics log adds to the line that says Android Auto does not answer; empty when the other edition is not there. */
+    /** What the diagnostics log adds to the line that says Android Auto does not answer; empty when the old app is not there. */
     fun logNote(context: Context): String =
-        if (installed(context)) "; ${packageOf()} (the other edition) is installed and may be using the same server" else ""
+        if (installed(context)) "; $LITE_ID (the old lite app) is installed and may be using the same server" else ""
 }

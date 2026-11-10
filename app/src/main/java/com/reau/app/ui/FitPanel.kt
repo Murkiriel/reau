@@ -71,8 +71,7 @@ import com.reau.app.video.StatsOverlay
  */
 @Composable
 internal fun FitPanel(s: REauSettings, change: (REauSettings) -> Unit, screen: AaScreen = AaScreen.APPS) {
-    // Which screen Android Auto shows is read by the accessibility service where there is one, and by the picture alone (the little
-    // neural net, PictureLook) in the Lite edition: both editions have the two tabs.
+    // Which screen Android Auto shows is read from the picture (the little neural net, PictureLook).
     var tab by remember(screen) { mutableStateOf(FitTab.opening(screen)) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SECTION_GAP)) {
         Column(verticalArrangement = Arrangement.spacedBy(LABEL_GAP)) {
@@ -89,7 +88,7 @@ internal fun FitPanel(s: REauSettings, change: (REauSettings) -> Unit, screen: A
     }
 }
 
-/** The tabs of the fit, one per kind of screen Android Auto shows (the navigation apps, and all the rest); they need the accessibility service to be followed. */
+/** The tabs of the fit, one per kind of screen Android Auto shows (the navigation apps, and all the rest); the one shown now opens first. */
 internal enum class FitTab(val tag: String) {
     NAV("fit_tab_nav"),
     APPS("fit_tab_apps"),

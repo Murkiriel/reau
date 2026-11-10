@@ -19,6 +19,13 @@ import com.reau.app.dash.video.RtpPacketizer
  */
 internal class RtpOutput(
     private val tap: ((ByteArray, Boolean, Long) -> Unit)? = null,
+    /** Told after each keyframe went out: its bytes and how many RTP packets it took (for the line written when the dash goes quiet). */
+    private val onKeyframe: ((bytes: Int, packets: Int) -> Unit)? = null,
+    /**
+     * The experimental spacing of the packets ([RtpPacing]); null, the default, sends them as they are made. It waits on the thread that calls
+     * [onEncoded] (the encoder's output thread), between two sends.
+     */
+    private val pacing: RtpPacing? = null,
     private val sendRtp: (ByteArray) -> Unit,
 ) {
 
@@ -35,7 +42,13 @@ internal class RtpOutput(
 
     private val packetizer = RtpPacketizer { packet ->
         packetsMade++
-        sendRtp(packet)
+        if (pacing == null) {
+            sendRtp(packet)
+        } else {
+            pacing.before()
+            sendRtp(packet)
+            pacing.after()
+        }
     }
 
     // All NALs of one frame share the time that frame was stamped with, however late the encoder hands it back.
@@ -59,12 +72,22 @@ internal class RtpOutput(
     /** Keyframes not sent because no SPS/PPS had come before them. */
     val idrWithheld: Int @Synchronized get() = nalProcessor.withheldIdr
 
+    // Set when a keyframe was withheld: what follows it has nothing to refer to, and waiting for the encoder's next keyframe
+    // would leave the dash without a picture for its whole interval. It is a flag read by the video loop's poll, not a callback,
+    // so the encoder's output thread never takes the loop's lock while it holds this one.
+    private var keyframeWanted = false
+
     /** From now on only [encoder]'s buffers are heard, starting at its next keyframe. */
     @Synchronized
     fun switchTo(encoder: Any) {
         this.encoder = encoder
+        keyframeWanted = false
         gate.close()
     }
+
+    /** Whether a keyframe was withheld since the previous call, which asks for a new one; the answer starts again. */
+    @Synchronized
+    fun takeKeyframeWanted(): Boolean = keyframeWanted.also { keyframeWanted = false }
 
     /** The dash is at the start of a stream again: nothing more goes out until a keyframe. */
     @Synchronized
@@ -77,12 +100,14 @@ internal class RtpOutput(
     fun onEncoded(from: Any, annexB: ByteArray, isKey: Boolean, ptsMs: Long) {
         if (from !== encoder || !gate.admit(annexB, isKey)) return
         framePtsMs = ptsMs
+        pacing?.frameStart()
         val withheldBefore = nalProcessor.withheldIdr
         val packetsBefore = packetsMade
         nalProcessor.process(annexB)
         if (nalProcessor.withheldIdr != withheldBefore) {
             // The keyframe stayed back, so what follows it has nothing to refer to: wait for the next one.
             gate.close()
+            keyframeWanted = true
             return
         }
         if (!KeyframeGate.isParameterSetsOnly(annexB, isKey)) {
@@ -92,6 +117,7 @@ internal class RtpOutput(
                 keyframes++
                 keyBytesMax = maxOf(keyBytesMax, annexB.size)
                 keyPacketsMax = maxOf(keyPacketsMax, packetsMade - packetsBefore)
+                onKeyframe?.invoke(annexB.size, packetsMade - packetsBefore)
             }
         }
     }

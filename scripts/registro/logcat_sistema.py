@@ -20,20 +20,43 @@ PID_DO_APP = [re.compile(r"\[(?:0,)?(\d+),\d+,com\.reau\.app(?:\.lite)?[,\]]"), 
 DAVEY = re.compile(r"Davey! duration=(\d+)ms")
 PULADOS = re.compile(r"Skipped (\d+) frames")
 PULADOS_MINIMO = 100
+MASCARADO = ".mascarado"  # `logcat-sistema.mascarado.txt`: a cópia com o nome do painel trocado
 BYE_ATE_S = 60.0  # a crash this soon after our byebye is told as the cause being close; later, only the time
 Entrada = namedtuple("Entrada", "mes dia hora pid tid nivel tag texto")
+# O formato `-v threadtime` não diz de que buffer é a linha; as etiquetas dizem. `main` é o dos apps e dos serviços (o `wpa_supplicant`, o Android Auto `GH.`/`CAR.`,
+# o `WifiNetworkFactory`, o codec); `system` é o do `system_server` (o `ActivityManager`, o `AppOps`). Na coleta de 08/11/2026 o `system` ia de 08:39 e o `main` só de 18:24:53.
+ETIQUETAS_DO_BUFFER = {
+    "main": ("wpa_supplicant", "WifiNetworkFactory", "GH.", "CAR.", "CCodec", "QC2C2DEngine", "FusedLocation", "netd", "Choreographer"),
+    "system": ("ActivityManager", "AppOps", "WindowManager", "ThermalManagerService"),
+}
+# O HAL térmico morto de alguns celulares (`ThermalHAL not initialized properly`) escreve centenas de milhares de linhas e expulsa o resto do buffer: não conta como cobertura.
+ENCHENTE_TERMICA = ("ThermalHalWrapper", "android.hardware.thermal")
+
+
+def e_enchente(e):
+    return e.tag.startswith(ENCHENTE_TERMICA)
+
+
+def etiqueta_do_buffer(e, buffer):
+    """A entrada é de uma etiqueta que só o buffer `main` ou `system` carrega (ver `ETIQUETAS_DO_BUFFER`); falso para as outras e para a enchente térmica."""
+    return not e_enchente(e) and e.tag.startswith(ETIQUETAS_DO_BUFFER[buffer])
 
 
 def arquivos(caminhos):
-    """Os `logcat-sistema*.txt` dos caminhos: arquivos soltos, ou pastas (e a pasta de cima quando a dada é a `diag`)."""
-    saida = []
+    """Os `logcat-sistema*.txt` dos caminhos: arquivos soltos, ou pastas (e a pasta de cima quando a dada é a `diag`).
+
+    A coleta guarda o logcat duas vezes, `logcat-sistema.txt` e `logcat-sistema.mascarado.txt` (o mesmo texto com o nome do painel trocado): lido os dois, cada
+    evento contaria em dobro (o NPE do Android Auto, 03/11/2026). Fica um só: o não mascarado; o mascarado só entra quando não há o outro com o mesmo nome base."""
+    achados = []
     for c in map(Path, caminhos):
         if c.is_dir():
             pastas = [c] + ([c.parent] if c.name == "diag" else [])
-            saida += [a for p in pastas for a in sorted(p.glob("logcat-sistema*.txt"))]
+            achados += [a for p in pastas for a in sorted(p.glob("logcat-sistema*.txt"))]
         elif c.name.startswith("logcat-sistema"):
-            saida.append(c)
-    return saida
+            achados.append(c)
+    unicos = list(dict.fromkeys(a.resolve() for a in achados))
+    inteiros = {a.name for a in unicos if MASCARADO not in a.name}
+    return [a for a in unicos if MASCARADO not in a.name or a.name.replace(MASCARADO, "") not in inteiros]
 
 
 def arquivos_do_app(caminhos):
@@ -149,4 +172,57 @@ def travadas_do_app_por_evento(entradas, ano, caminhadas):
     saida = [linha for _, linha, _ in sorted(primeiros, key=lambda c: contados.index(c))]
     if len(eventos) > POR_EVENTO_MAX:
         saida.append(f"(mais {len(eventos) - POR_EVENTO_MAX} travadas do app no logcat; as {POR_EVENTO_MAX} listadas são as das caminhadas e, depois, as primeiras)")
+    return saida
+
+
+# O que o SISTEMA diz do Wi-Fi do painel na hora de uma queda (plano 25). Só o que não identifica ninguém: do `wpa_supplicant`, o nome do evento
+# e os campos `reason`, `status_code`, `locally_generated`, `auth_type` (nunca o BSSID nem o SSID); das outras fontes, só as linhas que citam o
+# Wi-Fi do painel (`RE_xxxx_nnnnnn`), com o nome e os endereços MAC escondidos e o texto cortado. Outras redes (a de casa) nunca saem.
+WIFI_ANTES_S = 30.0
+WIFI_DEPOIS_S = 10.0
+WIFI_POR_QUEDA = 8
+WIFI_TAGS = ("wpa_supplicant", "WifiService", "WifiClientModeImpl", "ClientModeImpl", "WifiConnectivityManager", "WifiNetworkFactory",
+             "WifiNative", "WifiHealthMonitor", "ConnectivityService", "NetworkMonitor", "NetworkAgent", "netd")
+EVENTO_WPA = re.compile(
+    r"CTRL-EVENT-(?:DISCONNECTED|CONNECTED|ASSOC-REJECT|AUTH-REJECT|SSID-TEMP-DISABLED|SSID-REENABLED|NETWORK-NOT-FOUND|TERMINATING|CHANNEL-SWITCH)"
+)  # not the signal changes, one every few seconds
+CAMPO_WPA = re.compile(r"\b(reason|status_code|locally_generated|auth_type)=(\S+)")
+DASH = re.compile(r"\bRE_[A-Za-z0-9_]{4,}")
+MAC = re.compile(r"\b(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}\b")
+WIFI_TEXTO_MAX = 140
+
+
+def _resumo_wifi(e):
+    """A linha do sistema como pode ser contada, ou None se não é do Wi-Fi do painel nem um evento do `wpa_supplicant`."""
+    if e.tag == "wpa_supplicant":
+        evento = EVENTO_WPA.search(e.texto)
+        if not evento:
+            return None
+        campos = " ".join(f"{k}={v}" for k, v in CAMPO_WPA.findall(e.texto))
+        return f"wpa_supplicant {evento.group(0)}" + (f" {campos}" if campos else "")
+    if e.tag in WIFI_TAGS and DASH.search(e.texto):
+        texto = MAC.sub("**:**:**:**:**:**", DASH.sub("RE_****_******", e.texto)).strip()
+        return f"{e.tag} {texto[:WIFI_TEXTO_MAX]}"
+    return None
+
+
+def wifi_nas_quedas(entradas, quedas, ano, da_moto=()):
+    """Para cada queda do Wi-Fi do painel (`quedas`: instantes em datetime, do registro do app), o que o sistema disse nos `WIFI_ANTES_S` s antes e
+    nos `WIFI_DEPOIS_S` s depois: `10:06:55: o Wi-Fi do painel caiu — o sistema disse: 10:06:54.9 wpa_supplicant CTRL-EVENT-DISCONNECTED reason=3 … `.
+    Até `WIFI_POR_QUEDA` linhas por queda; uma queda sem nada no logcat não gera linha (o logcat guarda pouca história). `da_moto` são as quedas (instantes) que são o painel
+    desligando com a moto: a linha diz `(moto desligada)` para o leitor não a contar como defeito."""
+    saida = []
+    com_instante = [(e, _instante(e, ano, [])) for e in entradas if e.tag in WIFI_TAGS]
+    for queda in sorted(set(quedas)):
+        achados = []
+        for e, quando in com_instante:
+            if quando is None or not -WIFI_ANTES_S <= (quando - queda).total_seconds() <= WIFI_DEPOIS_S:
+                continue
+            resumo = _resumo_wifi(e)
+            if resumo:
+                achados.append(f"{e.hora[:10]} {resumo}")
+        if achados:
+            mais = f" (+{len(achados) - WIFI_POR_QUEDA} linhas)" if len(achados) > WIFI_POR_QUEDA else ""
+            moto = " (moto desligada)" if queda in da_moto else ""
+            saida.append(f"{queda:%H:%M:%S}: o Wi-Fi do painel caiu{moto} — o sistema disse: " + " | ".join(achados[:WIFI_POR_QUEDA]) + mais)
     return saida

@@ -13,8 +13,6 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.reau.app.aa.AaLinkState
-import com.reau.app.aa.ServerResult
-import com.reau.app.service.AaServerStarter
 import com.reau.app.service.DashLink
 import com.reau.app.service.Phase
 import com.reau.app.service.Projection
@@ -49,7 +47,6 @@ class ScreensBothThemesTest {
     private val rows = AppPermissions.rows(
         requested = listOf("android.permission.INTERNET", "android.permission.RECORD_AUDIO", "android.permission.POST_NOTIFICATIONS"),
         granted = { it != "android.permission.RECORD_AUDIO" },
-        accessibilityOn = true,
         batteryExempt = false,
     )
 
@@ -61,8 +58,7 @@ class ScreensBothThemesTest {
         },
         "main_problem" to {
             val serverOff = Projection(phase = Phase.RUNNING, androidAuto = AaLinkState.SERVER_OFF, dash = DashLink.READY)
-            val server = ServerUi(auto = true, result = ServerResult.LOCKED, accessibility = AaServerStarter.Accessibility.CONNECTED)
-            MainScreen(MainUiState(serverOff, "17.9.664004", server = server, startedAtMs = 0), {}, {}, {}, clock = { 61_000L })
+            MainScreen(MainUiState(serverOff, "17.9.664004", startedAtMs = 0), {}, {}, {}, clock = { 61_000L })
         },
         "settings" to { SettingsScreen(REauSettings(), SettingsActions({}, {}, {}, {})) },
         "android_auto" to {

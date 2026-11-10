@@ -169,7 +169,37 @@ object DashCommands {
         val gpsOn: Boolean,
         /** 06 01: 0x01 the phone has cell signal (level above 0) / 0x00 none. */
         val signalPresent: Boolean,
+        /**
+         * 05 4C (music), on the wire 0x10 + level: the music stream's volume as [volumeLevel] makes it (0..10). Out of that range
+         * ([LEVEL_UNKNOWN], what the phone could not read) the heartbeat keeps the captured template's byte.
+         */
+        val musicLevel: Int = LEVEL_UNKNOWN,
+        /** 05 1B (call), on the wire 0x10 + level: the voice-call stream's volume, as [musicLevel]. */
+        val callLevel: Int = LEVEL_UNKNOWN,
+        /**
+         * 05 2D: the heading in degrees (0..359, two bytes, most significant first) of the phone's last GPS fix while it moves. Out of
+         * that range ([BEARING_NONE]) the field stays at the template's zero.
+         */
+        val bearingDeg: Int = BEARING_NONE,
     )
+
+    /** [PhoneStatus.musicLevel] or [PhoneStatus.callLevel] when the volume could not be read. */
+    const val LEVEL_UNKNOWN = -1
+
+    /** [PhoneStatus.bearingDeg] when there is no heading to say (no fix, standing still, or the location is off). */
+    const val BEARING_NONE = -1
+
+    /** The highest level the dash's volume bar takes: levels are 0..10, eleven steps. */
+    const val VOLUME_LEVEL_MAX = 10
+
+    /**
+     * A stream's [volume] out of its [max] steps as the dash's 0..10 level, rounded to the nearest step (0 is mute, [max] is 10); [LEVEL_UNKNOWN]
+     * when the phone said no maximum. A volume above [max] is the top step.
+     */
+    fun volumeLevel(volume: Int, max: Int): Int {
+        if (max <= 0 || volume < 0) return LEVEL_UNKNOWN
+        return ((volume * VOLUME_LEVEL_MAX + max / 2) / max).coerceIn(0, VOLUME_LEVEL_MAX)
+    }
 
     /**
      * The weather for the heartbeat (behind the switch "Clima no painel"): [tempC] in
@@ -204,6 +234,23 @@ object DashCommands {
         patchHeartbeatByte(pkt, 0x06, 0x0F, if (status.charging) 0x55 else 0xAA)
         patchHeartbeatByte(pkt, 0x06, 0x03, if (status.gpsOn) 0x55 else 0xAA)
         patchHeartbeatByte(pkt, 0x06, 0x01, if (status.signalPresent) 0x01 else 0x00)
+        // The volumes and the heading ride in the same packet (05 4C, 05 1B, 05 2D); what is not known keeps the template's bytes.
+        if (status.musicLevel in 0..VOLUME_LEVEL_MAX) patchHeartbeatByte(pkt, 0x05, 0x4C, VOLUME_BASE + status.musicLevel)
+        if (status.callLevel in 0..VOLUME_LEVEL_MAX) patchHeartbeatByte(pkt, 0x05, 0x1B, VOLUME_BASE + status.callLevel)
+        if (status.bearingDeg in 0 until FULL_TURN) patchHeartbeatWord(pkt, 0x05, 0x2D, status.bearingDeg)
+    }
+
+    /** The volume levels go on the wire as 0x10 + level. */
+    private const val VOLUME_BASE = 0x10
+    private const val FULL_TURN = 360
+
+    private fun patchHeartbeatWord(pkt: ByteArray, type: Int, sub: Int, value: Int) {
+        val marker = byteArrayOf(type.toByte(), sub.toByte(), 0x00, 0x02)
+        val i = indexOf(pkt, marker)
+        if (i >= 0 && i + 5 < pkt.size) {
+            pkt[i + 4] = ((value shr 8) and 0xFF).toByte()
+            pkt[i + 5] = (value and 0xFF).toByte()
+        }
     }
 
     private fun patchHeartbeatByte(pkt: ByteArray, type: Int, sub: Int, value: Int) {
@@ -413,6 +460,29 @@ object DashCommands {
         }
     const val NAV_UNIT_KM_TENTHS = 0x10   // distance field = km × 10
     const val NAV_UNIT_METERS    = 0x30
+
+    /** With the dash in miles: the field is miles × 10 above 550 feet (05 06 and 05 46 say 0x20) ... */
+    const val NAV_UNIT_MILE_TENTHS = 0x20
+
+    /** ... and feet below it (0x50). */
+    const val NAV_UNIT_FEET = 0x50
+
+    internal const val METRES_PER_KM_TENTH = 100.0
+    internal const val METRES_PER_MILE_TENTH = 160.9344
+
+    /** The factor the app of the bike's maker uses (a foot is 0.3048 m); the 550-foot limit between feet and tenths of a mile is counted with it. */
+    internal const val FEET_PER_METRE = 3.281
+
+    /**
+     * A distance field [value] in the unit byte [unit] (05 06, 05 46) as metres, for what is decided in metres whatever the unit shown
+     * (the proximity bar). A unit this does not know is taken as metres.
+     */
+    fun navMeters(value: Int, unit: Int): Int = when (unit) {
+        NAV_UNIT_KM_TENTHS -> Math.round(value * METRES_PER_KM_TENTH).toInt()
+        NAV_UNIT_MILE_TENTHS -> Math.round(value * METRES_PER_MILE_TENTH).toInt()
+        NAV_UNIT_FEET -> Math.round(value / FEET_PER_METRE).toInt()
+        else -> value
+    }
     private const val NAV_HDR = "00000000020100054B31472000"
 
     /**

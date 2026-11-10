@@ -41,11 +41,11 @@
     <string name="credit_role_moto_hub">Android Auto navigation channel</string>
     <string name="credit_role_headqlink">the 1.5 s pause when the server is restarted (one value, no code)</string>
     <string name="credit_role_aa_proxy_rs">protocol facts: phone status and media messages (no code)</string>
-    <string name="credit_role_northstar">first implementation of the dash protocol (through EstrelaAustral)</string>
+    <string name="credit_role_northstar">an implementation of the dash protocol (through EstrelaAustral)</string>
     <string name="credit_role_estrelaaustral">starting point: the dash side, the weather, the tests and the organization</string>
     <string name="credit_role_better_dash">reference for the K1G protocol; some parts ported from it</string>
-    <string name="credit_role_recon_dash">pausing sends when the network drops, telemetry</string>
-    <string name="credit_role_open_dash">dash output sequence (from a version before the project’s cleanup of September 21, 2026)</string>
+    <string name="credit_role_recon_dash">the idea of pausing sends when the network drops and the shape of the telemetry record (no copied file)</string>
+    <string name="credit_role_open_dash">search for the dash network the system already joined, and the dash exit sequence (from a version before the project’s cleanup of September 21, 2026)</string>
     <string name="credit_role_fraunces">headings</string>
     <string name="credit_role_androidx">screens and app base</string>
     <string name="credit_role_conscrypt">encryption of the Android Auto conversation (with BoringSSL)</string>

@@ -1,5 +1,8 @@
 package com.reau.app.dash.video
 
+import com.reau.app.util.StageClock
+import com.reau.app.util.StageStats
+
 /**
  * Frames handed to the encoder that have not come out of it yet, oldest first — what lets every
  * encoded frame leave with the presentation time of ITS OWN submission when the output is read on
@@ -16,7 +19,14 @@ internal class PendingFrames {
 
     data class Emitted(val ptsMs: Long, val late: Boolean)
 
-    data class Stats(val frames: Int, val late: Int, val latencySumNs: Long)
+    data class Stats(val frames: Int, val late: Int, val latencySumNs: Long) {
+        /**
+         * The same time [latencySumNs] sums, frame by frame: its worst and 95th percentile go to the `video fps` line. Outside the
+         * data class's own fields on purpose: what the counts say is still compared as it was.
+         */
+        var latency: StageStats = StageStats.EMPTY
+            internal set
+    }
 
     private val ptsMs = ArrayDeque<Long>()
     private val submittedNs = ArrayDeque<Long>()
@@ -24,6 +34,7 @@ internal class PendingFrames {
     private var frames = 0
     private var late = 0
     private var latencySumNs = 0L
+    private val latencies = StageClock()
 
     /** Presentation time of the last frame that came out (0 before the first). */
     @Synchronized fun lastPtsMs(): Long = lastPtsMs
@@ -51,13 +62,16 @@ internal class PendingFrames {
         val isLate = ptsMs.isNotEmpty()
         frames++
         if (isLate) late++
-        latencySumNs += nowNs - submittedNs.removeFirst()
+        val inEncoderNs = nowNs - submittedNs.removeFirst()
+        latencySumNs += inEncoderNs
+        latencies.add(inEncoderNs)
         return Emitted(lastPtsMs, isLate)
     }
 
     /** Totals since the previous call, then starts counting again. */
     @Synchronized
     fun takeStats(): Stats = Stats(frames, late, latencySumNs).also {
+        it.latency = latencies.take()
         frames = 0; late = 0; latencySumNs = 0L
     }
 

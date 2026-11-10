@@ -85,6 +85,54 @@ class AapSslHandshakeTest {
         )
     }
 
+    // ── what the handshake came to, with the bundled Conscrypt and without it ──────────────────────────────
+
+    @Test
+    fun theHandshakeEndsWithOneLineSayingProtocolCipherProviderAndTheFirstFlightsSize() {
+        assertTrue(ConscryptInitializer.initialize())
+        val lines = mutableListOf<String>()
+        AaLog.sink = { synchronized(lines) { lines += it } }
+        val (_, conn) = connect()
+
+        assertTrue(handshake(conn, newSsl()))
+
+        val line = synchronized(lines) { lines.single { "SSL handshake negotiated" in it } }
+        // For the comparison between the Conscrypt of the complete edition and the lite one: `adb logcat -s AapSslHandshakeTest`.
+        android.util.Log.i("AapSslHandshakeTest", "version=${ConscryptInitializer.version()} $line")
+        assertTrue("got $line", "protocol=TLSv1.2" in line)
+        assertTrue("got $line", "provider=Conscrypt" in line)
+        val size = Regex("client-hello=(\\d+) B").find(line)?.groupValues?.get(1)?.toInt()
+        assertTrue("the first flight's size must be told, got $line", size != null && size > 0)
+        // Conscrypt 2.6 sends a post-quantum key share by default (1455 bytes, measured); the groups are kept to the classic ones (TlsGroups).
+        assertTrue("the first flight must stay small, got $line", size!! < 500)
+    }
+
+    @Test
+    fun theBundledConscryptSaysItsVersion() {
+        assertTrue(ConscryptInitializer.initialize())
+        val version = ConscryptInitializer.version()
+        assertTrue("got $version", version != null && Regex("\\d+\\.\\d+\\.\\d+").matches(version))
+        // Plan 20: 2.6.x, whose native library loads with 16 KB pages (the 2.5.3 one does not; scripts/elf_16kb_check.py).
+        assertTrue("got $version", version!!.startsWith("2.6."))
+    }
+
+    /** What an app without a working bundled library (a 16 KB phone with the old one, say) does: the platform's own TLS. */
+    @Test
+    fun withoutTheBundledConscryptTheHandshakeGoesThroughOnThePlatformsTls() {
+        assertTrue(ConscryptInitializer.initialize())
+        val lines = mutableListOf<String>()
+        AaLog.sink = { synchronized(lines) { lines += it } }
+        val (fake, conn) = connect()
+
+        assertTrue(handshake(conn, AapSslContext(SingleKeyKeyManager(headUnit.certificate, headUnit.keyPair.private), providerName = null)))
+        assertTrue("the peer never saw the handshake finish: ${fake.events}", fake.awaitHandshake())
+
+        assertEquals("TLSv1.2", fake.protocol)
+        assertEquals("the head unit must present its certificate on the platform's TLS too", headUnit.certificate, fake.clientCertificate)
+        val line = synchronized(lines) { lines.single { "SSL handshake negotiated" in it } }
+        assertFalse("the platform's provider is not the bundled one, got $line", "provider=Conscrypt" in line)
+    }
+
     @Test
     fun afterTheHandshakeAMessageEncryptedByTheHeadUnitReachesThePeerInTheClear() {
         val (fake, conn) = connect()

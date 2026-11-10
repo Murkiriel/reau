@@ -38,7 +38,7 @@ REau uses features that were not made for this purpose and that nobody supports:
 
 - It presents itself to Android Auto as a car's head unit, using the head unit server of Android Auto's developer mode and third-party reference credentials. This can stop working at any time, after an update of Android Auto, Google Play Services or the phone, and may go against third parties' terms of use.
 - It talks to the dash through a protocol that the maker neither documents nor supports, reconstructed by open community projects and by compatibility testing. Compatibility was verified with the Tripper Dash, firmware 13.10. On another dash or firmware, nothing is guaranteed.
-- It uses the dash's Wi-Fi network, the microphone (for Gemini, which is on by default), call data and the location (also on by default), each only once you allow its permission; the full edition also uses an accessibility service, to turn the Android Auto server on and, while "Answer calls" is on, to see the call notifications of WhatsApp, Telegram and Signal (the Lite edition does not).
+- It uses the dash's Wi-Fi network, the microphone (for Gemini, which is on by default), call data and the location (also on by default), each only once you allow its permission.
 
 So using REau may, among other things: drain the battery and heat the phone; change the Wi-Fi network the phone is connected to; interfere with other apps; make the dash behave unexpectedly, freeze, show wrong information or show nothing; affect the warranty or support of the phone, the dash or the motorcycle; and lead third-party companies to limit or suspend accounts, apps or services. You take these risks.
 
@@ -48,7 +48,7 @@ REau has no account, no ads and no data collection, and it sends nothing to its 
 
 - By default REau sends the dash, over the dash's Wi-Fi, the picture, the song that is playing (with its album art), who is calling and the phone's battery, GPS and signal; each of these can be switched off in the settings.
 - The diagnostic log is on by default, stays on the phone only and deletes itself after the number of days you choose (30 by default; "never" is one of the options); you can switch it off. The recordings of the video and of the sessions are optional: off by default in the app you install to ride and on in the test build, they stay on the phone only and are deleted by the same rules as the log (the days you choose, a size cap). They hold what the dash shows (the map, the route and your positions) and Android Auto's messages, so share them only knowing that.
-- The weather on the dash and the info ring are on by default and can be switched off; once the location is allowed, they query the internet with your rounded position.
+- The weather on the dash is on by default and the info ring is off; each has a switch, and once the location is allowed, whichever is on queries the internet with your rounded position.
 - "Turn on the network server" is optional and is off by default. When on, it shows your Android Auto to other devices on the same network, protected by a PIN but without encryption. Do not turn it on on a stranger's network.
 - What Android Auto, Waze, Google Maps, Gemini and other apps do with your data follows the terms and policies of each one, out of REau's reach.
 

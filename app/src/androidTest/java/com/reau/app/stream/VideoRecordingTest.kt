@@ -80,7 +80,8 @@ class VideoRecordingTest {
     private fun unitsOf(file: File, sizes: List<Int>): List<ByteArray> {
         val data = file.readBytes()
         var at = 0
-        return sizes.map { size -> data.copyOfRange(at, at + 4 + size).also { at += 4 + size } }.also {
+        // bytes_in_file: the size of each unit in the file already has its start code in it
+        return sizes.map { size -> data.copyOfRange(at, at + size).also { at += size } }.also {
             assertEquals("the index must account for every byte of the file", data.size, at)
         }
     }
@@ -95,7 +96,7 @@ class VideoRecordingTest {
 
         val file = recordings().singleOrNull() ?: throw AssertionError("expected one recording in $dir, got ${dir.list()?.toList()}; log: $log")
         val index = File(dir, file.nameWithoutExtension + ".csv").readLines()
-        assertEquals("frame,pts_ms,bytes,key", index.first())
+        assertEquals("frame,pts_ms,bytes_in_file,key", index.first())
         val rows = index.drop(1).map { it.split(",") }
         assertEquals("the limit was 8 units", 8, rows.size)
         assertEquals("the recording opens with a keyframe", "1", rows.first()[3])

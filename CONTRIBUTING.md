@@ -16,15 +16,15 @@ same license. If a change brings in code, data or facts from another project, sa
 With JDK 21 and the Android SDK installed, from this folder:
 
 ```
-./gradlew :app:testCompletaDebugUnitTest :app:testLiteDebugUnitTest --console=plain
+./gradlew :app:testDebugUnitTest --console=plain
 ./gradlew :app:detekt :app:lintDebug --console=plain
 ```
 
-The first line runs the unit tests of both editions; the second runs the code analysis (detekt) and the lint. Fix what
+The first line runs the unit tests; the second runs the code analysis (detekt) and the lint. Fix what
 they report in the code you wrote, and do not add anything to the detekt baseline. Some tests read files from the
 repository (`docs/`, `NOTICE`, the READMEs, the changelogs, `app/src/main/res/`): Gradle knows they read those files, so
-they run again by themselves when a text changes. The instrumented tests (`app/src/androidTest`, and
-`app/src/androidTestCompleta` for the full edition) need an emulator, as the README says; `scripts/emu/` has the scripts.
+they run again by themselves when a text changes. The instrumented tests (`app/src/androidTest`) need an
+emulator, as the README says; `scripts/emu/` has the scripts.
 The Python scripts have their own tests (`python3 -B -m unittest discover -p "test_*.py"` inside `scripts/`, `scripts/registro/`,
 `scripts/dev/`, `scripts/emu/`, `scripts/icon/` and `bench/`; the last two need Pillow, pinned in `scripts/requirements.txt`), and the
 continuous integration runs them too.
@@ -43,7 +43,7 @@ files under `app/src/test/resources/com/reau/app/fuzz/ParserFuzzTargetsInputs/<t
 the code each input reaches, set the environment variable (20 seconds per target, `JAZZER_MAX_DURATION` changes it):
 
 ```
-JAZZER_FUZZ=1 ./gradlew :app:testCompletaDebugUnitTest --tests '*ParserFuzzTargets*' --console=plain
+JAZZER_FUZZ=1 ./gradlew :app:testDebugUnitTest --tests '*ParserFuzzTargets*' --console=plain
 ```
 
 A run leaves its working corpus in `app/.cifuzz-corpus/` and, if an input broke a parser, a `crash-<hash>` file in `app/` (both ignored by
@@ -72,5 +72,5 @@ A security problem is not reported in a public issue: follow [SECURITY.md](SECUR
 
 ## Reporting a bug
 
-Use the bug report template: it asks for the REau version and edition, the Android Auto version, the dash's firmware and
+Use the bug report template: it asks for the REau version, the Android Auto version, the dash's firmware and
 the phone, and tells where the app shares its logs.

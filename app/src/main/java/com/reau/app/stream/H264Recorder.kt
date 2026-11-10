@@ -15,13 +15,13 @@ import java.util.Locale
  * - `<name>.h264`: the units exactly as they went out (SPS + PPS + IDR bundled, SPS already rewritten for the
  *   dash), each after a 00 00 00 01 start code. A plain Annex-B stream: `ffplay`, VLC and MediaCodec open it.
  * - `<name>.csv`: one line per unit with the time it was stamped with (the video clock, which an H.264 stream
- *   does not carry), its size and whether it is a keyframe. That is what shows the pace the dash was given. The time
+ *   does not carry), its size in the file (`bytes_in_file`: the start code counts, so the column adds up to the file) and whether it is a keyframe. That is what shows the pace the dash was given. The time
  *   counts from the file's first unit (0), whatever the clock read when the recording began: the clock runs on across
  *   a dash that dropped and came back, and a second recording of the same projection began at 400000 ms.
  *
  * It opens with the first keyframe it is handed. After [maxFrames] units it stops by itself, or, with [rolling] (the app's option),
  * goes on in a new part (`<name>_p02`, `_p03`…, each with its own csv, opening with the next keyframe): a connection of hours is then
- * recorded to its end, and the ceiling of the recordings (1 GB with the sessions') lets the oldest parts go, with no count of files. Whatever goes wrong with the files costs the recording and one line in the log,
+ * recorded to its end, and the ceiling of the recordings (1024 MB in a debug build, with the sessions') lets the oldest parts go, with no count of files. Whatever goes wrong with the files costs the recording and one line in the log,
  * never the stream: [write] is called on the encoder's output thread, in the middle of sending.
  *
  * Names to the
@@ -72,7 +72,7 @@ internal class H264Recorder(
             val out = video ?: open().also { firstPtsMs = ptsMs }
             out.write(START_CODE)
             out.write(nal)
-            checkNotNull(index).write("${frames + 1},${ptsMs - firstPtsMs},${nal.size},${if (isKey) 1 else 0}\n")
+            checkNotNull(index).write("${frames + 1},${ptsMs - firstPtsMs},${START_CODE.size + nal.size},${if (isKey) 1 else 0}\n")
             frames++
             bytes += START_CODE.size + nal.size
             if (isKey) {
@@ -99,7 +99,7 @@ internal class H264Recorder(
     private fun open(): OutputStream {
         dir.mkdirs()
         com.reau.app.data.RecordingsSpace.makeRoom(dir)?.let(log) // Both recording folders together under their ceiling
-        index = indexFile.bufferedWriter().also { it.write("frame,pts_ms,bytes,key\n") }
+        index = indexFile.bufferedWriter().also { it.write("$INDEX_HEADER\n") }
         return BufferedOutputStream(videoFile.outputStream()).also { video = it }
     }
 
@@ -131,6 +131,13 @@ internal class H264Recorder(
     companion object {
         private const val VIDEO_EXT = "h264"
         private val START_CODE = byteArrayOf(0, 0, 0, 1)
+
+        /**
+         * The first line of every `.csv`. `bytes_in_file` is the size of the unit **in the `.h264`, start code included**, so the column adds up
+         * to the file's size (and a unit's offset is the sum of the ones before it). Recordings from 20/10 to 03/11/2026 have `frame,pts_ms,bytes,key`,
+         * where `bytes` left the 4 bytes of the start code out: a tool that reads both adds 4 per unit to the old ones.
+         */
+        const val INDEX_HEADER = "frame,pts_ms,bytes_in_file,key"
 
         /** The file name (no extension) of a recording that begins at [nowMs]: it sorts by time. */
         fun nameFor(nowMs: Long): String = "reau_" + SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date(nowMs))

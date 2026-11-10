@@ -9,8 +9,7 @@ labels: bug
 **Steps to reproduce**
 
 **Versions** (these change the behaviour the most)
-- REau version (foot of the main screen, "REau · 0.2.0"):
-- REau edition: Lite or Full ("Completa" in Portuguese and Spanish; the Lite is called "REau Lite" and has no Accessibility service):
+- REau version (foot of the main screen, "REau · 0.3.0"):
 - Android Auto version (foot of the main screen, "Android Auto installed · …"):
 - Dash firmware (Bike data › Dash version › Firmware; it is only there after the dash has connected):
 - Phone model:

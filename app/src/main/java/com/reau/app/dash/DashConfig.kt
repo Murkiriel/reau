@@ -54,6 +54,13 @@ object DashConfig {
     const val PROFILE_REDUCED_BPS = 200_000
     const val PROFILE_KEYFRAME_SEC = 1
 
+    /**
+     * The experimental lower bitrate ([com.reau.app.settings.REauSettings.experimentAdaptiveBitrate]): the target of the normal stream, 200 kbps instead of the
+     * profile's 400, and the least the live adjustment ([com.reau.app.stream.BitrateAdapter]) goes down to.
+     */
+    const val EXPERIMENT_TARGET_BPS = 200_000
+    const val EXPERIMENT_FLOOR_BPS = 64_000
+
     /** "Automatic": the streaming loop picks 1 or 2 s itself. */
     const val KEYFRAME_INTERVAL_AUTO = 0
     val KEYFRAME_INTERVAL_OPTIONS = listOf(KEYFRAME_INTERVAL_AUTO, 1, 2)

@@ -90,7 +90,7 @@ fun MainScreen(
                         Warning(warning, state, onOpenAndroidAutoSettings, onOpenSettings, extras)
                     }
                     BridgeCard(
-                        headlineText(p), subText(p, MainLook.muteByRider(state.server)), androidAutoSide(state), dashSide(p),
+                        headlineText(p), subText(p), androidAutoSide(state), dashSide(p),
                         on = p.phase != Phase.STOPPED, elapsed = rememberElapsed(p, state.startedAtMs, clock), onToggle = onToggle,
                         // The network server's icon; the card mode sends a picture and has no server to show.
                         aaOverlay = {
@@ -106,7 +106,6 @@ fun MainScreen(
                             Modifier.align(Alignment.CenterHorizontally),
                         )
                     }
-                    AfterProjectionLine(p, state.server)
                     GroupLabel(null, stringResource(R.string.shortcuts_label))
                     Shortcuts(state, onOpenAndroidAutoSettings, onOpenSettings, extras, say)
                     Column(Modifier.fillMaxWidth().padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -114,6 +113,8 @@ fun MainScreen(
                         FootLine(androidAuto ?: stringResource(R.string.aa_not_installed), "aa_version")
                         // REau's own version under Android Auto's.
                         FootLine(stringResource(R.string.reau_version, state.reauVersion), "reau_version")
+                        // The old app with the seal on its icon, if it is still installed: it is not needed any more.
+                        if (state.otherEditionInstalled) FootLine(stringResource(R.string.old_app_note), "old_app_note")
                     }
                 }
                 SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) {
@@ -182,13 +183,13 @@ private fun headlineText(p: Projection): String = stringResource(ScreenText.head
 
 /** The headline's line; a start that failed says its reason there. */
 @Composable
-private fun subText(p: Projection, muteByRider: Boolean): String {
+private fun subText(p: Projection): String {
     if (p.headline == Headline.DASH_LOST) {
         val now = rememberNowWhile(true)
         val (res, secs) = DashLostText.text(p.dashGoneAtMs, now)
         return if (secs == null) stringResource(res) else stringResource(res, secs)
     }
-    return MainLook.sub(p, muteByRider)?.let { stringResource(it) } ?: p.problem.orEmpty()
+    return MainLook.sub(p)?.let { stringResource(it) } ?: p.problem.orEmpty()
 }
 
 /** The monotonic clock, read again each second while [active]. */

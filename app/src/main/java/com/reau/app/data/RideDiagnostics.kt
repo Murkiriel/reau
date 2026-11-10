@@ -74,7 +74,7 @@ object RideDiagnostics {
     // Default streaming loop (tick(), every ~15s), and even the MediaCodec callback thread. The
     // actual disk write is offloaded to this single-thread executor so none of those callers ever
     // block on File I/O; the executor's single thread also keeps writes in submission order.
-    private val ioExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private val ioExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "diag-writer") }
     private val queued = java.util.concurrent.atomic.AtomicInteger()
     private var dropped = 0
 
@@ -124,7 +124,7 @@ object RideDiagnostics {
         val d = dir ?: return
         synchronized(lock) {
             if (file != null) return
-            openFile(d)
+            openFile(d, tidyNow = false)
             processOpen = true
             sessionStartMs = System.currentTimeMillis()
             // Which APK wrote the log: name, code and the commit it was built from.
@@ -168,7 +168,7 @@ object RideDiagnostics {
                 raw("---- projeção ligada: $reason ----")
                 return
             }
-            openFile(d)
+            openFile(d, tidyNow = false)
             raw("==== session start: $reason — ${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) ====")
             noteSpace()
             flushPending()
@@ -182,33 +182,46 @@ object RideDiagnostics {
         pending.clear()
     }
 
-    /** A new file in [d], named by the second (with a suffix when that name is taken), and the old ones rotated. */
+    /**
+     * A new file in [d], named by the second (with a suffix when that name is taken), and the old ones rotated and trimmed: at once with
+     * [tidyNow] (the rider's own deletion), or on the tidy thread ([tidyLater]) so that the caller -- the Application's onCreate, a roll
+     * inside log() -- does not wait for the folder's listing and sorting, which grow with the number of files in it.
+     */
     private fun openFile(d: File, tidyNow: Boolean = true) {
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
         var f = File(d, "ride-$stamp.log")
         var n = 2
         while (f.exists()) f = File(d, "ride-$stamp-${n++}.log")
-        // Created synchronously so it exists the instant this returns; only the lines go through the writer.
+        // Created synchronously, before any tidying is queued, so it exists the instant this returns (and is the newest file in the
+        // folder); only the lines go through the writer.
         runCatching { f.createNewFile() }
         file = f
         fileDay = today()
         fileBytes = 0L
-        rotate(d)
-        if (!tidyNow) return tidyLater(d)
+        if (!tidyNow) return tidyLater(d, f.name)
+        val keep = setOfNotNull(f.name, OwnLogcat.currentFile()?.name)
+        rotate(d, keep)
         // The folder under its ceiling, said right after the new file's header (noteSpace).
-        spaceNote = DiagSpace.trim(d, spaceCapBytes, setOfNotNull(f.name, OwnLogcat.currentFile()?.name))
-        ageNote = trimByAge(d)
+        spaceNote = DiagSpace.trim(d, spaceCapBytes, keep)
+        ageNote = trimByAge(d, keep)
     }
 
     // The folder's tidying (listing, summing, deleting) is the slowest thing a roll does, and a roll happens inside log(),
     // which the MediaCodec callbacks and the stream loop call: it runs on a thread of its own, and the notes come when it is done.
+    // The same goes for the process file opened by the Application's onCreate.
     private val tidyExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "diag-tidy").apply { isDaemon = true } }
 
-    private fun tidyLater(d: File) {
+    /**
+     * Never removes the file just opened ([opened]) nor whichever is being written when the tidying runs (a roll may have gone on to
+     * another meanwhile), nor the logcat file: the new file was created before this was queued, and these names are kept out of every
+     * step, so no race with the tidy thread can take the new log.
+     */
+    private fun tidyLater(d: File, opened: String) {
         tidyExecutor.execute {
-            val keep = synchronized(lock) { setOfNotNull(file?.name, OwnLogcat.currentFile()?.name) }
+            val keep = synchronized(lock) { setOfNotNull(opened, file?.name, OwnLogcat.currentFile()?.name) }
+            rotate(d, keep)
             val space = DiagSpace.trim(d, spaceCapBytes, keep)
-            val age = trimByAge(d)
+            val age = trimByAge(d, keep)
             synchronized(lock) {
                 spaceNote = space
                 ageNote = age
@@ -397,14 +410,14 @@ object RideDiagnostics {
         keepDays = days
         synchronized(lock) {
             val d = dir ?: return
-            ageNote = trimByAge(d)
+            ageNote = trimByAge(d, setOfNotNull(file?.name, OwnLogcat.currentFile()?.name))
             noteSpace()
         }
     }
 
-    private fun trimByAge(d: File): String? {
+    private fun trimByAge(d: File, keep: Set<String>): String? {
         val recordings = d.parentFile?.let { listOf(File(it, "video"), File(it, "sessions")) }.orEmpty()
-        return LogAge.trim(listOf(d) + recordings, keepDays, System.currentTimeMillis(), setOfNotNull(file?.name, OwnLogcat.currentFile()?.name))
+        return LogAge.trim(listOf(d) + recordings, keepDays, System.currentTimeMillis(), keep)
     }
 
     /** The log on again: a new process file, as at the app's start. */
@@ -488,10 +501,13 @@ object RideDiagnostics {
      */
     internal fun testOnlyActiveFileName(): String? = file?.name
 
-    /** Internal (not private) so RideDiagnosticsRotateTest can exercise it with a real temp dir. */
-    internal fun rotate(d: File) {
+    /** Internal (not private) so RideDiagnosticsRotateTest can exercise it with a real temp dir. The names in [keep] are never deleted. */
+    internal fun rotate(d: File, keep: Set<String> = emptySet()) {
         val logs = d.listFiles { x -> x.name.startsWith("ride-") && x.name.endsWith(".log") } ?: return
         if (logs.size <= KEEP_FILES) return
-        logs.sortedBy { it.lastModified() }.dropLast(KEEP_FILES).forEach { runCatching { it.delete() } }
+        // The kept ones count toward the limit but are never the ones to go.
+        val others = logs.filter { it.name !in keep }.sortedBy { it.lastModified() }
+        val room = (KEEP_FILES - (logs.size - others.size)).coerceAtLeast(0)
+        others.dropLast(room).forEach { runCatching { it.delete() } }
     }
 }

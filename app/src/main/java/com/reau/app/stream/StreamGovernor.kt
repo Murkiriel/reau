@@ -2,6 +2,9 @@ package com.reau.app.stream
 
 import com.reau.app.dash.DashConfig
 import com.reau.app.dash.NavProfileMode
+import com.reau.app.util.StageReport
+import com.reau.app.util.StageStats
+import com.reau.app.util.StageTotals
 import com.reau.app.video.DashCompositor
 import java.util.Locale
 
@@ -65,6 +68,8 @@ internal class StreamGovernor(
         val navSample: NavSample? = null,
         /** Android Auto's screen in front is a light one (its app menu). */
         val lightScreen: Boolean = false,
+        /** Each frame's time in the encoder in this poll (the same time [encodeNs] sums), for the window's worst and 95th percentile. */
+        val encode: StageStats = StageStats.EMPTY,
     )
 
     /**
@@ -87,7 +92,13 @@ internal class StreamGovernor(
         data class RequestSync(val reason: String) : Action
 
         /** Replace the encoder: its rate hint and keyframe interval are fixed when it is prepared. */
-        data class Rebuild(val fps: Int, val keyframeSec: Int, val bitrateBps: Int) : Action
+        data class Rebuild(
+            val fps: Int,
+            val keyframeSec: Int,
+            val bitrateBps: Int,
+            /** What the encoder is asked for as its own interval, in seconds ([StreamGovernor.encoderKeyframeSec]); the rider's [keyframeSec] when the pace never goes above the encoder's. */
+            val encoderKeyframeSec: Int = keyframeSec,
+        ) : Action
         data class Log(val line: String) : Action
 
         /** What the last second measured, for the stats text on the dash's video (every second). */
@@ -110,6 +121,11 @@ internal class StreamGovernor(
         var keyPacketsMax = 0
         var allFull = true
         var thermalOk = true
+        var wakeups = 0
+        val compose = StageTotals()
+        val encode = StageTotals()
+        val look = StageTotals()
+        val latch = StageTotals()
         val link = LinkWindow()
 
         fun add(p: Poll, full: Boolean) {
@@ -127,6 +143,11 @@ internal class StreamGovernor(
             keyPacketsMax = maxOf(keyPacketsMax, p.keyPacketsMax)
             allFull = allFull && full
             thermalOk = thermalOk && p.thermalOk
+            wakeups += p.compositor.wakeups
+            compose.add(p.compositor.compose)
+            look.add(p.compositor.look)
+            latch.add(p.compositor.latch)
+            encode.add(p.encode)
             link.add(p.link)
         }
     }
@@ -165,6 +186,16 @@ internal class StreamGovernor(
      * tier needs no new encoder. Without one, the automatic rate, as it always was.
      */
     val encoderFps: Int get() = if (navProfilesOn) autoFps.ceiling else autoFps.currentFps
+
+    /**
+     * The fastest pace the stream can have on this encoder: the light screens' ([lightScreenFps], 6) when it is above the encoder's rate hint
+     * ([encoderFps], 4 with a navigation profile), else the hint itself. The encoder's keyframe interval is counted in frames at the hint,
+     * so it is made longer than the rider's seconds at this pace ([encoderKeyframeSec]) and the loop asks for the keyframes by the clock.
+     */
+    val gopFps: Int get() = if (lightScreenFps > 0) maxOf(encoderFps, lightScreenFps) else encoderFps
+
+    /** The `KEY_I_FRAME_INTERVAL` for the encoder, in seconds: [keyframeSec] made longer for [gopFps] ([DashLogic.encoderKeyframeSec]). */
+    val encoderKeyframeSec: Int get() = DashLogic.encoderKeyframeSec(keyframeSec, gopFps, encoderFps)
 
     /** The bitrate the encoder is built for, and the one profile 1 sets while frames keep coming: the rider's ceiling. */
     val activeBitrateBps: Int get() = DashLogic.effectiveActiveBitrate(bitrateCeilingBps, encoderFps)
@@ -208,7 +239,8 @@ internal class StreamGovernor(
      * that is applied now. It used to be built for the pace's fps and the full bitrate, so a stream that was still (or in the
      * reduced profile) came back at the full bitrate with the pace unchanged, and nothing set it right (audit of 20/10/2026).
      */
-    fun rebuildAction(): Action.Rebuild = Action.Rebuild(encoderFps, keyframeSec, bitrateBps.takeIf { it > 0 } ?: activeBitrateBps)
+    fun rebuildAction(): Action.Rebuild =
+        Action.Rebuild(encoderFps, keyframeSec, bitrateBps.takeIf { it > 0 } ?: activeBitrateBps, encoderKeyframeSec)
 
     /** A stream to the dash begins: the still pace, the still bitrate, and a keyframe. */
     fun start(nowMs: Long): List<Action> {
@@ -241,7 +273,7 @@ internal class StreamGovernor(
         // switched on or off while running, or the plan's own rate.
         if (encoderFps != builtFps) {
             builtFps = encoderFps
-            actions += Action.Rebuild(encoderFps, keyframeSec, bitrateBps)
+            actions += Action.Rebuild(encoderFps, keyframeSec, bitrateBps, encoderKeyframeSec)
         }
         actions += idleSync(full, p.nowMs)
         actions += account(p, full)
@@ -364,13 +396,17 @@ internal class StreamGovernor(
     private fun idleSync(full: Boolean, nowMs: Long): List<Action> {
         if (full) return paceSync(nowMs)
         val idleMs = DashLogic.frameIntervalsMsForFps(fps).second
-        val due = DashLogic.idleSyncNeeded(encoderFps, keyframeSec, idleMs) && nowMs - lastSyncAtMs >= DashLogic.IDLE_SYNC_EVERY_MS
+        val due = DashLogic.idleSyncNeeded(encoderFps, encoderKeyframeSec, idleMs) && nowMs - lastSyncAtMs >= DashLogic.IDLE_SYNC_EVERY_MS
         return if (due) sync("idle", nowMs) else emptyList()
     }
 
-    /** At the full rate the encoder's own keyframes do; below it, one at the rider's interval. */
+    /**
+     * At the encoder's own rate the encoder's own keyframes do; below it, or with its interval lengthened for a faster pace
+     * ([gopFps], see [DashLogic.paceSyncNeeded]), one at the rider's interval, by the clock whatever the pace (6 fps on a light screen
+     * came to a keyframe every 0.67 s, 1.49 a second, when only the encoder's count of 4 frames made them).
+     */
     private fun paceSync(nowMs: Long): List<Action> {
-        if (fps >= encoderFps) {
+        if (!DashLogic.paceSyncNeeded(fps, encoderFps, gopFps)) {
             lastSyncAtMs = nowMs
             return emptyList()
         }
@@ -441,13 +477,13 @@ internal class StreamGovernor(
             w.source, w.drawn, w.repeated, perFrame(w.composeNs, w.drawn + w.repeated), perFrame(w.encodeNs, w.frames), w.late,
             com.reau.app.video.TickWait.text(w.tickWaits), judged, if (w.thermalOk) "OK" else "HOT", w.link.text(), keyframe.intervalSec,
             w.keyframes, w.keyBytesMax, w.keyPacketsMax, syncSummary(), rate.fps, rate.reason,
-        )
+        ) + StageReport.text(w.compose.stats(), w.encode.stats(), w.look.stats(), w.latch.stats(), w.wakeups, elapsedMs)
         val actions = mutableListOf<Action>(Action.Log(line))
         if (rate.changed || keyframe.changed) {
             // With a navigation profile on, the encoder is built for the full rate whatever the automatic rate does.
             if (keyframe.changed || encoderFps != builtFps) {
                 builtFps = encoderFps
-                actions += Action.Rebuild(encoderFps, keyframeSec, bitrateBps)
+                actions += Action.Rebuild(encoderFps, keyframeSec, bitrateBps, encoderKeyframeSec)
             }
             actions += paceChange(p.firstFrameConfirmed)
         }

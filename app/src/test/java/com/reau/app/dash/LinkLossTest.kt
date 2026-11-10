@@ -72,4 +72,36 @@ class LinkLossTest {
     fun `the warning that a network is going names the time left`() {
         assertEquals("link losing: Android will drop the dash's Wi-Fi within 3000 ms", LinkLoss.losingLine(3_000))
     }
+
+    @Test
+    fun `the phone's own side of a loss is one line with the radio, the main Wi-Fi and the networks up, and no name`() {
+        val line = LinkLoss.phoneSideLine(
+            "enabled", "DISCONNECTED",
+            listOf(LinkLoss.PhoneNet("cell", validated = true), LinkLoss.PhoneNet("wifi", validated = false)),
+            LinkLoss.PhoneNet("cell", validated = true),
+        )
+        assertEquals(
+            "phone side of the loss: Wi-Fi radio enabled, main Wi-Fi DISCONNECTED, networks up: cell(validated) + wifi, default cell(validated)",
+            line,
+        )
+        assertFalse(line.contains("RE_"))
+        assertFalse("not the beginning the log reader takes for a drop of the Wi-Fi", line.startsWith("link lost"))
+    }
+
+    @Test
+    fun `the phone's side says unknown for what Android would not say, and none for no network`() {
+        assertEquals(
+            "phone side of the loss: Wi-Fi radio unknown, main Wi-Fi unknown, networks up: none, default none",
+            LinkLoss.phoneSideLine(null, null, emptyList(), null),
+        )
+    }
+
+    @Test
+    fun `the Wi-Fi radio's state has a word for each state`() {
+        assertEquals("enabled", PhoneSide.radioName(android.net.wifi.WifiManager.WIFI_STATE_ENABLED))
+        assertEquals("disabled", PhoneSide.radioName(android.net.wifi.WifiManager.WIFI_STATE_DISABLED))
+        assertEquals("enabling", PhoneSide.radioName(android.net.wifi.WifiManager.WIFI_STATE_ENABLING))
+        assertEquals("disabling", PhoneSide.radioName(android.net.wifi.WifiManager.WIFI_STATE_DISABLING))
+        assertEquals("unknown", PhoneSide.radioName(android.net.wifi.WifiManager.WIFI_STATE_UNKNOWN))
+    }
 }

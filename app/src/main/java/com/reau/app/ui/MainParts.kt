@@ -6,23 +6,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.reau.app.OtherEdition
 import com.reau.app.R
-import com.reau.app.aa.ServerResult
-import com.reau.app.service.Phase
-import com.reau.app.service.Projection
-import com.reau.app.ui.MainLook.ServerAction
 import com.reau.app.ui.MainLook.Warning
 import com.reau.app.ui.components.CardAction
 import com.reau.app.ui.components.ShortcutTile
@@ -36,15 +27,15 @@ import com.reau.app.ui.components.WarningCard
 internal fun Warning(warning: Warning, state: MainUiState, onOpenAndroidAutoSettings: () -> Unit, onOpenSettings: () -> Unit, extras: MainExtras) {
     val warn = StatusKind.CONNECTING
     when (warning) {
-        Warning.SERVER_OFF -> ServerWarning(state.server, state.androidAutoInstalled, onOpenAndroidAutoSettings, extras)
-        Warning.UNRESPONSIVE -> UnresponsiveWarning(state, onOpenAndroidAutoSettings, extras)
+        Warning.SERVER_OFF -> ServerWarning(state.androidAutoInstalled, onOpenAndroidAutoSettings)
+        Warning.UNRESPONSIVE -> UnresponsiveWarning()
         Warning.CLOSING_PREVIOUS -> WarningCard(
             warn, R.drawable.ic_ms_error, stringResource(R.string.warn_closing_previous_title),
             stringResource(R.string.aa_closing_previous_warning), null, null, tag = "aa_closing_previous_warning",
         )
         Warning.OTHER_EDITION -> WarningCard(
             warn, R.drawable.ic_ms_error, stringResource(R.string.warn_other_edition_title),
-            stringResource(R.string.aa_other_edition_warning, OtherEdition.nameOf()), null, null, tag = "aa_other_edition_warning",
+            stringResource(R.string.aa_other_edition_warning), null, null, tag = "aa_other_edition_warning",
         )
         Warning.NOT_CALLING -> WarningCard(
             StatusKind.ERROR, R.drawable.ic_ms_error, stringResource(R.string.warn_not_calling_title),
@@ -86,79 +77,26 @@ internal fun Warning(warning: Warning, state: MainUiState, onOpenAndroidAutoSett
     }
 }
 
-/** The "Android Auto does not answer" card: how to restart its server, with the way to the accessibility settings when the service is off. */
+/** The "Android Auto does not answer" card: how to restart its server, in Android Auto's own menu. */
 @Composable
-private fun UnresponsiveWarning(state: MainUiState, onOpenAndroidAutoSettings: () -> Unit, extras: MainExtras) {
-    // Where REau cannot restart the server itself, the rider is told how to do it in Android Auto's own menu.
-    val byHand = MainLook.muteByRider(state.server)
-    // The full edition with the service off still has the way out of asking for it: its line, as under the server card.
-    val accessibility = MainLook.serverLines(state.server).accessibility?.let { stringResource(it) }
-    val aaSettings = CardAction(aaButtonLabel(state.androidAutoInstalled), "open_aa_settings", onOpenAndroidAutoSettings)
-    AccessibilityAsk(extras.onOpenAccessibility) { askAccessibility ->
-        // The line speaks of the accessibility service, so the way to it is on the card, as under the server card.
-        val primary = if (MainLook.serverAction(state.server) == ServerAction.OPEN_ACCESSIBILITY) {
-            CardAction(stringResource(R.string.action_open_accessibility), "open_accessibility", askAccessibility)
-        } else {
-            null
-        }
-        WarningCard(
-            StatusKind.ERROR, R.drawable.ic_ms_error, stringResource(R.string.warn_unresponsive_title),
-            stringResource(if (byHand) R.string.aa_unresponsive_by_hand_warning else R.string.aa_unresponsive_warning),
-            primary, if (primary != null) aaSettings else null,
-            tag = "aa_unresponsive_warning", more = listOfNotNull(accessibility?.let { it to "aa_server_accessibility" }),
-        )
-    }
+private fun UnresponsiveWarning() {
+    WarningCard(
+        StatusKind.ERROR, R.drawable.ic_ms_error, stringResource(R.string.warn_unresponsive_title),
+        stringResource(R.string.aa_unresponsive_warning), null, null, tag = "aa_unresponsive_warning",
+    )
 }
 
-/**
- * While Android Auto's head unit server is off: how to switch it on, with the way to Android Auto's settings and, with
- * the automatic switch, how its try went and "Tentar de novo" or the way to the accessibility settings.
- */
+/** While Android Auto's head unit server is off: how to switch it on by hand, with the way to Android Auto's settings. */
 @Composable
-private fun ServerWarning(server: ServerUi, aaInstalled: Boolean, onOpenAndroidAutoSettings: () -> Unit, extras: MainExtras) {
-    // The Lite edition has no accessibility service: its warning never speaks of the automatic switch.
-    val lines = MainLook.serverLines(server)
-    val status = lines.status?.let { stringResource(it) }
-    val accessibility = lines.accessibility?.let { stringResource(it) }
+private fun ServerWarning(aaInstalled: Boolean, onOpenAndroidAutoSettings: () -> Unit) {
     // Without Android Auto the card says so first: its settings button is the way to the store.
     val missing = if (aaInstalled) null else stringResource(R.string.aa_missing_note)
-    val more = listOfNotNull(
-        missing?.let { it to "aa_missing_note" }, status?.let { it to "aa_server_status" }, accessibility?.let { it to "aa_server_accessibility" },
+    val more = listOfNotNull(missing?.let { it to "aa_missing_note" })
+    WarningCard(
+        StatusKind.ERROR, R.drawable.ic_ms_error, stringResource(R.string.warn_server_title), stringResource(R.string.server_warning),
+        null, CardAction(aaButtonLabel(aaInstalled), "open_aa_settings", onOpenAndroidAutoSettings), tag = "server_warning", more = more,
     )
-    val retry = CardAction(stringResource(R.string.action_retry_aa_server), "retry_aa_server", extras.onRetryServer)
-    val aaSettings = CardAction(aaButtonLabel(aaInstalled), "open_aa_settings", onOpenAndroidAutoSettings)
-    AccessibilityAsk(extras.onOpenAccessibility) { askAccessibility ->
-        val (primary, secondary) = when (MainLook.serverAction(server)) {
-            ServerAction.RETRY -> retry to aaSettings
-            ServerAction.OPEN_ACCESSIBILITY ->
-                CardAction(stringResource(R.string.action_open_accessibility), "open_accessibility", askAccessibility) to aaSettings
-            ServerAction.OPEN_AA_SETTINGS -> aaSettings to retry
-            null -> null to aaSettings
-        }
-        WarningCard(
-            StatusKind.ERROR, R.drawable.ic_ms_error, stringResource(R.string.warn_server_title), stringResource(R.string.server_warning),
-            primary, secondary, tag = "server_warning", more = more,
-        )
-    }
 }
-
-/**
- * Once the projection is off, the automatic switch says so only when it could not turn Android Auto's server off;
- * a server turned off as it should be (STOPPED) says nothing.
- */
-@Composable
-internal fun AfterProjectionLine(p: Projection, server: ServerUi) {
-    if (!MainLook.autoShown(server) || p.phase != Phase.STOPPED || !saidAfterProjection(server.result)) return
-    ScreenText.server(server.result)?.let {
-        Text(
-            stringResource(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().testTag("aa_server_status"),
-        )
-    }
-}
-
-/** Whether [result] is worth a line on the start screen once the projection is off: only a server left on. */
-internal fun saidAfterProjection(result: ServerResult): Boolean = result == ServerResult.LEFT_ON
 
 /** The six shortcuts, two to a line; the Android Auto screen says why when it cannot open ([say], a Snackbar). */
 @Composable

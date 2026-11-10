@@ -1,6 +1,8 @@
 // Copied from OpenCfMoto (AGPL-3.0): app/src/main/java/dev/zanderp/opencfmoto/aa/AapSslContext.kt, commit 0abbe2a.
 // Changes: package; late version responses are skipped during the TLS handshake (open-headunit, AGPL-3.0, commit 489df5de,
 // aap/AapSslContext.kt: readAapMessage/readOneAapMessage and LATE_VERSION_RESPONSE).
+// REau's own: the provider can be given (null: the platform's TLS), the groups of the first flight are kept to the classic ones (TlsGroups),
+// and the end of the handshake logs the protocol, cipher, provider and ClientHello size.
 // Ported from headunit-revived (AGPLv3): aap/AapSslContext.kt
 // Pure-JVM SSLEngine driver for the AAP TLS handshake tunnelled inside AAP messages.
 // No native code. Uses Conscrypt as provider when available (falls back to platform TLS).
@@ -11,8 +13,12 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLEngine
 import javax.net.ssl.SSLEngineResult
 
-class AapSslContext(keyManager: SingleKeyKeyManager) : AapSsl {
-    private val sslContext: SSLContext = createSslContext(keyManager)
+class AapSslContext(
+    keyManager: SingleKeyKeyManager,
+    /** The security provider to ask for ("Conscrypt" when the bundled library is installed); null: the platform's own TLS. */
+    providerName: String? = ConscryptInitializer.getProviderName(),
+) : AapSsl {
+    private val sslContext: SSLContext = createSslContext(keyManager, providerName)
     private lateinit var sslEngine: SSLEngine
     private lateinit var txBuffer: ByteBuffer
     private lateinit var rxBuffer: ByteBuffer
@@ -23,6 +29,8 @@ class AapSslContext(keyManager: SingleKeyKeyManager) : AapSsl {
         if (prepare() < 0) return false
 
         var pendingTlsData = ByteArray(0)
+        // The size of the head unit's first flight (its ClientHello), for the line that says what the handshake came to.
+        var clientHelloBytes = 0
         val deadline = android.os.SystemClock.elapsedRealtime() + SSL_HANDSHAKE_TIMEOUT_MS
 
         while (getHandshakeStatus() != SSLEngineResult.HandshakeStatus.FINISHED &&
@@ -65,6 +73,7 @@ class AapSslContext(keyManager: SingleKeyKeyManager) : AapSsl {
 
                 SSLEngineResult.HandshakeStatus.NEED_WRAP -> {
                     val handshakeData = handshakeRead()
+                    if (clientHelloBytes == 0) clientHelloBytes = handshakeData.size
                     val bio = Messages.createRawMessage(0, 3, 3, handshakeData)
                     if (connection.sendBlocking(bio, bio.size, 2000) < 0) {
                         AaLog.e("SSL Handshake: Send failed")
@@ -87,6 +96,8 @@ class AapSslContext(keyManager: SingleKeyKeyManager) : AapSsl {
         } else {
             AaLog.i("SSL handshake complete. No session id (full handshake).")
         }
+        val negotiated = sslEngine.session
+        AaLog.i(TlsSummary.line(sslContext.provider?.name, negotiated?.protocol, negotiated?.cipherSuite, clientHelloBytes))
         return true
     }
 
@@ -130,6 +141,7 @@ class AapSslContext(keyManager: SingleKeyKeyManager) : AapSsl {
     private fun prepare(): Int {
         sslEngine = sslContext.createSSLEngine("android-auto", 5277).apply {
             useClientMode = true
+            AaLog.i(TlsGroups.line(TlsGroups.restrict(TlsGroups.setterOf(this))))
             session.also {
                 val appBufferMax = it.applicationBufferSize
                 val netBufferMax = it.packetBufferSize
@@ -253,8 +265,7 @@ class AapSslContext(keyManager: SingleKeyKeyManager) : AapSsl {
         private const val SSL_HANDSHAKE_TIMEOUT_MS = 15_000L
 
         @Suppress("TooGenericExceptionCaught") // any provider failure falls back to the default SSLContext
-        private fun createSslContext(keyManager: SingleKeyKeyManager): SSLContext {
-            val providerName = ConscryptInitializer.getProviderName()
+        private fun createSslContext(keyManager: SingleKeyKeyManager, providerName: String?): SSLContext {
             val sslContext = if (providerName != null) {
                 try {
                     AaLog.d("Creating SSLContext with Conscrypt provider")

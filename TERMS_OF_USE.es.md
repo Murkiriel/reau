@@ -38,7 +38,7 @@ REau usa funciones que no se hicieron con este fin y que nadie respalda:
 
 - Se presenta ante Android Auto como la unidad principal de un auto, usando el servidor de unidad principal del modo de desarrollador de Android Auto y credenciales de referencia de terceros. Esto puede dejar de funcionar en cualquier momento, después de una actualización de Android Auto, de Google Play Services o del teléfono, y puede ir en contra de los términos de uso de terceros.
 - Habla con el tablero mediante un protocolo que el fabricante no documenta ni respalda, reconstruido por proyectos abiertos de la comunidad y por pruebas de compatibilidad. La compatibilidad se verificó con el Tripper Dash, firmware 13.10. En otro tablero o firmware, no se garantiza nada.
-- Usa la red Wi-Fi del tablero, el micrófono (para Gemini, que viene activado), los datos de llamadas y la ubicación (que también viene activada), cada uno solo cuando concedes su permiso; la edición completa también usa un servicio de accesibilidad, para encender el servidor de Android Auto y, con "Contestar llamadas" activado, ver las notificaciones de llamadas de WhatsApp, Telegram y Signal (la Lite no lo usa).
+- Usa la red Wi-Fi del tablero, el micrófono (para Gemini, que viene activado), los datos de llamadas y la ubicación (que también viene activada), cada uno solo cuando concedes su permiso.
 
 Por eso, usar REau puede, entre otras cosas: gastar batería y calentar el teléfono; cambiar la red Wi-Fi a la que está conectado el teléfono; interferir con otras apps; hacer que el tablero se comporte de forma inesperada, se congele, muestre información equivocada o no muestre nada; afectar la garantía o el soporte del teléfono, del tablero o de la moto; y llevar a empresas terceras a limitar o suspender cuentas, apps o servicios. Tú asumes estos riesgos.
 
@@ -48,7 +48,7 @@ REau no tiene cuenta, anuncios ni recolección de datos, y no le envía nada a s
 
 - Por defecto REau envía al tablero, por el Wi-Fi del tablero, la imagen, la canción que suena (con su carátula), quién llama y la batería, el GPS y la señal del teléfono; cada uno de estos se puede apagar en los ajustes.
 - El registro de diagnóstico viene activado, se queda solo en el teléfono y se borra solo después del número de días que elijas (30 por defecto; "Nunca" es una de las opciones); puedes desactivarlo. Las grabaciones del video y de las sesiones son opcionales: vienen desactivadas en la app que instalas para rodar y activadas en la compilación de prueba, se quedan solo en el teléfono y se borran con las mismas reglas del registro (los días que elijas y un tope de tamaño). Guardan lo que muestra el tablero (el mapa, la ruta y las posiciones) y los mensajes de Android Auto, así que compártelas solo sabiéndolo.
-- El clima en el tablero y el anillo de información vienen activados y se pueden apagar; con la ubicación concedida, consultan internet con tu posición redondeada.
+- El clima en el tablero viene activado y el anillo de información viene apagado; cada uno tiene un interruptor y, con la ubicación concedida, el que esté encendido consulta internet con tu posición redondeada.
 - "Encender el servidor de red" es opcional y viene apagado. Cuando está encendido, muestra tu Android Auto a otros dispositivos de la misma red, protegido por un PIN pero sin cifrado. No lo enciendas en la red de desconocidos.
 - Lo que Android Auto, Waze, Google Maps, Gemini y otras apps hacen con tus datos sigue los términos y las políticas de cada una, fuera del alcance de REau.
 

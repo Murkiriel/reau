@@ -13,7 +13,8 @@ import kotlin.math.roundToInt
  * through the catalog's own rule, roundabouts with their exit (counter-clockwise, as right-hand traffic goes, unless
  * Android Auto says clockwise), ferries, arrivals. Anything else is the hidden bubble here, which the session never
  * sends while guiding (DashSession.ringManeuver keeps the last drawable maneuver); rerouting shows the spinning
- * compass. Distances under a kilometre go in metres, from there in tenths of a kilometre (the dash's two units).
+ * compass. Distances under a kilometre go in metres, from there in tenths of a kilometre; with the dash in miles ([distance]'s imperial) in feet
+ * up to 550 of them and then in tenths of a mile.
  */
 object AaManeuvers {
     /** What the dash's nav packet carries ([com.reau.app.dash.DashSession.updateNavInfo]). */
@@ -30,8 +31,10 @@ object AaManeuvers {
     /** The scanned catalog's ferry and railway-crossing glyphs ([DashManeuverGlyphs.describe] 0x3E, 0x3F). */
     private const val FERRY = 0x3E
     private const val RAIL = 0x3F
-    private const val METRES_PER_KM_TENTH = 100.0
     private const val ONE_KM = 1_000
+
+    /** With the dash in miles, up to this many feet the distance goes in feet, above it in tenths of a mile. */
+    private const val FEET_LIMIT = 550
     private const val FIELD_MAX = 0xFFFF
     private val CLOCK = Regex("""\d{1,2}:\d{2}""")
 
@@ -73,11 +76,24 @@ object AaManeuvers {
         else -> BY_TYPE[navigationType] ?: DashManeuverGlyphs.HIDDEN_BUBBLE
     }
 
-    /** [meters] as the dash's (value, unit); unknown (negative) is 0 m. */
-    fun distance(meters: Int): Pair<Int, Int> = when {
+    /**
+     * [meters] as the dash's (value, unit); unknown (negative) is 0 m, or 0 ft when [imperial]. Metric: metres under a kilometre, from there
+     * tenths of a kilometre. Imperial (the dash in miles): feet up to 550 of them, above that tenths of a mile.
+     */
+    fun distance(meters: Int, imperial: Boolean = false): Pair<Int, Int> = when {
+        imperial -> imperialDistance(meters)
         meters < 0 -> 0 to DashCommands.NAV_UNIT_METERS
         meters < ONE_KM -> meters to DashCommands.NAV_UNIT_METERS
-        else -> (meters / METRES_PER_KM_TENTH).roundToInt().coerceAtMost(FIELD_MAX) to DashCommands.NAV_UNIT_KM_TENTHS
+        else -> (meters / DashCommands.METRES_PER_KM_TENTH).roundToInt().coerceAtMost(FIELD_MAX) to DashCommands.NAV_UNIT_KM_TENTHS
+    }
+
+    private fun imperialDistance(meters: Int): Pair<Int, Int> {
+        val feet = meters.coerceAtLeast(0) * DashCommands.FEET_PER_METRE
+        return if (feet <= FEET_LIMIT) {
+            feet.roundToInt() to DashCommands.NAV_UNIT_FEET
+        } else {
+            (meters / DashCommands.METRES_PER_MILE_TENTH).roundToInt().coerceAtMost(FIELD_MAX) to DashCommands.NAV_UNIT_MILE_TENTHS
+        }
     }
 
     private const val SECONDS_PER_DAY = 86_400L
@@ -103,10 +119,12 @@ object AaManeuvers {
      * The dash's nav figures for [guidance]; null when there is no guidance. [noNetwork]: the phone has been
      * without a network for a while, which turns the recalculating compass into the lost-signal icon; a real turn is never hidden.
      */
-    fun toDash(guidance: NavGuidance, noNetwork: Boolean = false, now: java.time.LocalTime = java.time.LocalTime.now()): DashNav? {
+    fun toDash(
+        guidance: NavGuidance, noNetwork: Boolean = false, now: java.time.LocalTime = java.time.LocalTime.now(), imperial: Boolean = false,
+    ): DashNav? {
         if (!guidance.active) return null
-        val (primary, primaryUnit) = distance(guidance.distanceToManeuverMeters)
-        val (total, totalUnit) = distance(guidance.distanceRemainingMeters)
+        val (primary, primaryUnit) = distance(guidance.distanceToManeuverMeters, imperial)
+        val (total, totalUnit) = distance(guidance.distanceRemainingMeters, imperial)
         val glyph = if (guidance.rerouting && noNetwork) {
             DashManeuverGlyphs.SIGNAL_LOST
         } else {

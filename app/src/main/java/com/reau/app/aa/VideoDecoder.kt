@@ -17,7 +17,11 @@ import android.media.MediaCodecList
 import android.media.MediaFormat
 import android.os.SystemClock
 import android.view.Surface
+import com.reau.app.util.BoundedRelease
+import com.reau.app.util.CodecErrors
+import com.reau.app.util.CodecMetrics
 import com.reau.app.util.CodecNames
+import com.reau.app.util.CodecReport
 import java.nio.ByteBuffer
 import java.util.Locale
 
@@ -35,8 +39,14 @@ class VideoDecoder {
         private const val OUTPUT_POLL_US = 100_000L
         private const val OUTPUT_JOIN_MS = 500L
 
+        /** The phone's H.264 decoders as the look at the codec list that picked one saw them ([CodecReport.candidates]), for the `codecs:` line. */
+        @Volatile private var candidateReport: String? = null
+
         /** The key the H.264 decoder's name is remembered under ([CodecNames]); a test pre-seeds it to pick the software decoder. */
         internal const val AVC_DECODER_KEY = "decoder video/avc hardware"
+
+        /** Why the decoder is restarted for giving no picture while input flows. */
+        private const val STALL_RESTART = "sync_stall"
 
         /** Output exceptions in a row after which the decoder is restarted. */
         private const val RESTART_AFTER_ERRORS = 3
@@ -81,6 +91,9 @@ class VideoDecoder {
         /** Whether the fps count of the window is due: a second passed. */
         internal fun fpsWindowOver(elapsedMs: Long): Boolean = elapsedMs >= 1000
 
+        /** Whether a codec that started on a picture with [dropped] pictures dropped before it, [startsOnKeyframe] or not, begins mid-chain. */
+        internal fun startedMidChain(dropped: Int, startsOnKeyframe: Boolean): Boolean = dropped > 0 && !startsOnKeyframe
+
         /** The output thread asks for a restart from the third exception in a row. */
         internal fun restartAfterErrors(consecutive: Int): Boolean = consecutive >= RESTART_AFTER_ERRORS
     }
@@ -99,6 +112,9 @@ class VideoDecoder {
     private var codecConfigured = false
     private var currentCodecName: String? = null
 
+    // The codec the `codecs:` line of the ride log was told for, so a restart on the same one does not tell it again.
+    private var reportedCodec: String? = null
+
     /** Fallback dimensions used if SPS parsing fails (set to the negotiated AA resolution). */
     @Volatile var fallbackWidth = 0
     @Volatile var fallbackHeight = 0
@@ -116,14 +132,30 @@ class VideoDecoder {
      *  (no input) during a UI transition or call. */
     private val stallWatch = DecoderStallWatch()
 
+    /** How long the compositor this decoder draws into has been stuck inside one frame (0: not stuck), asked at each check of the stall watch. */
+    @Volatile var downstreamBusyMs: () -> Long = { 0L }
+
     /** Spaces out the starts after a failed one, and asks for the software decoder when the hardware one keeps failing. */
     private val startGuard = DecoderStartGuard()
 
     /** Invoked when the decoder must be re-primed — the transport requests a fresh keyframe. */
     var onDecoderError: (() -> Unit)? = null
 
+    /**
+     * Invoked, with the reason, when a picture was lost for good in here without the decoder being restarted: the chain of
+     * pictures is broken and the next ones predict from what went missing, so the session asks for a keyframe (otherwise the
+     * picture stays broken until Android Auto's own, a minute away).
+     */
+    @Volatile var onFrameLost: ((String) -> Unit)? = null
+
+    /** How many pictures came while there was no codec (starting up, waiting out a failed start, no surface) since the last one started. */
+    private var droppedWhileDown = 0
+
     /** Each picture out, with the microseconds since its input went in. */
     @Volatile var onDecoded: ((Long) -> Unit)? = null
+
+    /** Whether a codec is started and being drained (false while one starts up, after a stop, and while the guard waits out a failed start). */
+    val isRunning: Boolean get() = running
 
     val videoWidth: Int get() = mWidth
     val videoHeight: Int get() = mHeight
@@ -162,8 +194,20 @@ class VideoDecoder {
             }
             outputThread = null
 
-            try { codec?.stop() } catch (_: Exception) {}
-            try { codec?.release() } catch (e: Exception) { AaLog.e("Error releasing decoder", e) }
+            // release() alone, and with a time limit: a codec whose driver hangs must not take the session's thread with it. stop() first
+            // is not needed to release a codec that runs, and it was the call that hung in the ridescreen-aa fork.
+            codec?.let { held ->
+                // The framework's own count of this decoder's life, once, before it goes (bounded: it costs 300 ms at most, and the release follows).
+                CodecMetrics.logBounded("decoder", currentCodecName, held) { AaLog.i(it) }
+                BoundedRelease.run(
+                    task = { try { held.release() } catch (e: Exception) { AaLog.e("Error releasing decoder", e) } },
+                    joinMs = BoundedRelease.RELEASE_JOIN_MS,
+                    onStuck = {
+                        AaLog.w("Decoder release did not return in ${BoundedRelease.RELEASE_JOIN_MS} ms: given up on, the session goes on")
+                        com.reau.app.data.ProjectionSummary.current.watchdog("decoder-release-stuck")
+                    },
+                )
+            }
 
             codec = null
             codecBufferInfo = null
@@ -211,20 +255,40 @@ class VideoDecoder {
             if (decoderNeedsRestart) {
                 AaLog.w("Decoder restart requested: $decoderRestartReason")
                 com.reau.app.data.ProjectionSummary.current.watchdog("decoder") // counted in the projection's summary
+                if (decoderRestartReason == STALL_RESTART && startGuard.stalled()) {
+                    AaLog.w("Decoder stalled twice: the software decoder for the rest of the session")
+                    com.reau.app.data.ProjectionSummary.current.watchdog("decoder-software")
+                }
                 stop("restart: $decoderRestartReason")
                 decoderNeedsRestart = false
                 decoderRestartReason = null
                 onDecoderError?.invoke()
             }
 
-            if (codec == null) startWith(buffer, offset, size)
-            if (codec == null) return
+            if (codec == null) {
+                startWith(buffer, offset, size)
+                if (codec == null) {
+                    droppedWhileDown++
+                    return
+                }
+                tellIfStartedMidChain(buffer, offset, size)
+            }
 
             val buf = ByteBuffer.wrap(buffer, offset, size)
             while (buf.hasRemaining()) {
                 if (!feedInputBuffer(buf)) return
             }
         }
+    }
+
+    /**
+     * A codec just started on this picture. If pictures were dropped before it and this one is not a keyframe, the codec starts in the
+     * middle of a chain and shows green or black until the next keyframe: ask for one.
+     */
+    private fun tellIfStartedMidChain(buffer: ByteArray, offset: Int, size: Int) {
+        val dropped = droppedWhileDown
+        droppedWhileDown = 0
+        if (startedMidChain(dropped, AaStats.hasIdr(buffer, offset, size))) onFrameLost?.invoke("$dropped picture(s) dropped before the decoder started")
     }
 
     /** No decoder yet: reads the stream's parameters from this picture and starts one when the surface, the size and the wait after a failure allow. */
@@ -277,7 +341,11 @@ class VideoDecoder {
             startTime = System.nanoTime()
             val mimeType = "video/avc"
             val bestCodec = (
-                if (startGuard.useSoftware) findBestCodec(mimeType, false) else CodecNames.pick(AVC_DECODER_KEY) { findBestCodec(mimeType, true) }
+                if (startGuard.useSoftware) {
+                    findBestCodec(mimeType, false, width, height)
+                } else {
+                    CodecNames.pick(AVC_DECODER_KEY) { findBestCodec(mimeType, true, width, height) }
+                }
                 ) ?: error("No decoder available for $mimeType")
             this.currentCodecName = bestCodec
 
@@ -308,10 +376,11 @@ class VideoDecoder {
             }.apply { name = "AaVideoDecoder-Output"; start() }
 
             AaLog.i("Codec initialized: $bestCodec")
+            reportChoice(bestCodec, width, height)
         } catch (e: Exception) {
             startGuard.failed(SystemClock.elapsedRealtime())
             AaLog.e("Failed to start decoder (${startGuard.failuresInARow} in a row; next try in ${DecoderStartGuard.backoffMs(startGuard.failuresInARow)} ms" +
-                "${if (startGuard.useSoftware) ", software decoder next" else ""})", e)
+                "${if (startGuard.useSoftware) ", software decoder next" else ""}): ${CodecErrors.describe(e, currentCodecName)}", e)
             try { codec?.release() } catch (_: Exception) {}
             codec = null; running = false
         }
@@ -332,6 +401,7 @@ class VideoDecoder {
             }
             if (inputIndex < 0) {
                 AaLog.e("Input buffer feed failed (full)")
+                onFrameLost?.invoke("no input buffer free in the decoder")
                 return false
             }
 
@@ -360,9 +430,32 @@ class VideoDecoder {
             currentCodec.queueInputBuffer(inputIndex, 0, inputBuffer.limit(), pts, flags)
             return true
         } catch (e: Exception) {
-            AaLog.e("Error feeding input buffer", e)
+            AaLog.e("Error feeding input buffer (${CodecErrors.describe(e, currentCodecName)})", e)
+            onFrameLost?.invoke("the decoder failed on a picture")
             return false
         }
+    }
+
+    // Whether the wait now going on was already told as excused (the output thread's only).
+    private var waitExcusedLogged = false
+
+    /**
+     * Whether the stall watch says to restart the decoder now. A stalled decoder whose compositor is the one stuck inside a frame is
+     * not restarted (it would not help): that is told once per wait, in the ride log.
+     */
+    private fun stallRestartDue(now: Long): Boolean {
+        val busyMs = downstreamBusyMs()
+        if (stallWatch.restartDue(now, busyMs)) return true
+        if (!stallWatch.isStalled(now)) {
+            waitExcusedLogged = false
+        } else if (!waitExcusedLogged) {
+            waitExcusedLogged = true
+            com.reau.app.data.RideDiagnostics.warn(
+                "aa",
+                "decoder wait not counted as a stall: the compositor has been inside one frame for ${busyMs}ms",
+            )
+        }
+        return false
     }
 
     @Suppress("TooGenericExceptionCaught") // a codec failure is counted and restarts the decoder
@@ -405,18 +498,18 @@ class VideoDecoder {
                 // the bike connection meanwhile. This avoids tearing down a healthy decoder and
                 // fighting AA's own Media Stop/Start sequence.
                 val now = SystemClock.elapsedRealtime()
-                if (stallWatch.isStalled(now)) {
+                if (stallRestartDue(now)) {
                     AaLog.w(
                         "Decoder stall detected (no output for ${stallWatch.waitingMs(now)}ms, " +
                             "input ${stallWatch.inputGapMs(now)}ms ago). Forcing restart.",
                     )
-                    scheduleRestart("sync_stall")
+                    scheduleRestart(STALL_RESTART)
                     break
                 }
             } catch (e: Exception) {
                 if (running) {
                     consecutiveErrors++
-                    AaLog.w("Codec exception in output thread (attempt $consecutiveErrors): ${e.message}")
+                    AaLog.w("Codec exception in output thread (attempt $consecutiveErrors): ${CodecErrors.describe(e, currentCodecName)}")
                     if (restartAfterErrors(consecutiveErrors)) {
                         AaLog.e("Too many consecutive exceptions in output thread. Forcing restart.")
                         scheduleRestart("sync_consecutive_errors")
@@ -429,14 +522,39 @@ class VideoDecoder {
         AaLog.i("Output thread stopped")
     }
 
-    private fun findBestCodec(mimeType: String, preferHardware: Boolean): String? {
+    private fun findBestCodec(mimeType: String, preferHardware: Boolean, width: Int, height: Int): String? {
         val codecInfos = MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos.toList()
         val infos = codecInfos.filter { !it.isEncoder && it.supportedTypes.any { t -> t.equals(mimeType, true) } }
+        candidateReport = CodecReport.candidates(infos.map { candidateOf(it, mimeType, width, height) })
         val hw = infos.find { isHardwareAccelerated(it) }
         val sw = infos.find { !isHardwareAccelerated(it) }
         val selected = if (preferHardware && hw != null) hw.name else sw?.name ?: hw?.name
         AaLog.i("findBestCodec: hw=${hw?.name}, sw=${sw?.name}, preferHardware=$preferHardware, selected=$selected")
         return selected
+    }
+
+    /** What the codec's capabilities say about the stream's size and Baseline, for the `codecs:` line (null: could not be read). */
+    private fun candidateOf(info: MediaCodecInfo, mimeType: String, width: Int, height: Int): CodecReport.Candidate {
+        val caps = runCatching { info.getCapabilitiesForType(mimeType) }.getOrNull()
+        return CodecReport.Candidate(
+            name = info.name,
+            hardware = isHardwareAccelerated(info),
+            sizeSupported = runCatching { caps?.videoCapabilities?.isSizeSupported(width, height) }.getOrNull(),
+            baselineSupported = caps?.profileLevels?.any { it.profile == MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline },
+        )
+    }
+
+    /**
+     * The `codecs:` line of the ride log: the decoders the phone lists (from the one look at the list that picked this one), and the one in use;
+     * told once for this decoder, and again only if the choice changed (the software decoder after failures). Never throws.
+     */
+    private fun reportChoice(chosen: String, width: Int, height: Int) {
+        if (chosen == reportedCodec) return
+        reportedCodec = chosen
+        runCatching {
+            val hardware = MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos.firstOrNull { it.name == chosen }?.let { isHardwareAccelerated(it) }
+            AaLog.i(CodecReport.line("decoder", "video/avc", "${width}x$height", candidateReport ?: "not listed", chosen, hardware))
+        }
     }
 
     private fun isHardwareAccelerated(info: MediaCodecInfo): Boolean {

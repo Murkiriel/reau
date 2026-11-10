@@ -32,6 +32,9 @@ class DashStats(private val onFirst: (String) -> Unit = {}) {
     /** The last 30 s of packets, for the black-box lines (never a payload). */
     val trail = PacketTrail()
 
+    /** The last seconds of what REau sent (RTP per second, the biggest burst, the last keyframe and command), for the line written when the dash goes quiet. */
+    val sendTail = SendTail()
+
     private val lock = Any()
     private var window = Counts()
     private val total = Counts()
@@ -47,6 +50,7 @@ class DashStats(private val onFirst: (String) -> Unit = {}) {
     fun sent(packet: ByteArray, nowMs: Long = MonotonicClock.nowMs()) {
         val key = sentKey(packet) ?: return
         DashDump.outgoingTlvs(packet).forEach { trail.add(nowMs, tx = true, it) }
+        if (key !in PERIODIC_KEYS) sendTail.command(key)
         both { tx.merge(key, 1L, Long::plus) }
     }
 
@@ -129,6 +133,14 @@ class DashStats(private val onFirst: (String) -> Unit = {}) {
         const val HEADER_SUB = 0x01
 
         fun key(tlv: Tlv) = "%02X%02X".format(Locale.US, tlv.type, tlv.sub)
+
+        /** The first TLV of the packets that go out on a timer (the 1 Hz status heartbeat, the 4 Hz projection frame): not "the last command" of [SendTail]. */
+        private val PERIODIC_KEYS: Set<String> by lazy {
+            listOfNotNull(
+                sentKey(com.reau.app.dash.protocol.DashCommands.heartbeat()),
+                sentKey(com.reau.app.dash.protocol.DashCommands.projectionFrame()),
+            ).toSet()
+        }
 
         /**
          * The telemetry kinds (0C.., 0F..) come about 25 a window, one each, and filled a fifth of the line;

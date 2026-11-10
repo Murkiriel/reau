@@ -82,5 +82,7 @@ object LiveTuning {
             before.maneuverRing != after.maneuverRing
 
     /** What a stream to the dash is made with. */
-    private val REauSettings.stream get() = listOf(fpsCeiling, clockSlowPercent, streamBitrateBps, bitrateMode, keyframeSec)
+    private val REauSettings.stream get() = listOf(
+        fpsCeiling, clockSlowPercent, effectiveStreamBitrateBps, bitrateMode, keyframeSec, experimentRtpPacing, experimentAdaptiveBitrate,
+    )
 }

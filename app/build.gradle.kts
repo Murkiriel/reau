@@ -7,10 +7,10 @@ plugins {
     jacoco
 }
 
-// Semantic version 0.y.z: versionName is "0.2.0" on a release build and "0.2.0-dev+yy.MM.dd-HH.mm" on a debug build, whose
+// Semantic version 0.y.z: versionName is "0.3.0" on a release build and "0.3.0-dev+yy.MM.dd-HH.mm" on a debug build, whose
 // timestamp tells one debug build from another. versionCode is the minutes since the Unix epoch (it never goes down). Both
 // come from the same instant, so they describe one build, and the ride log can say exactly which APK wrote it.
-val appVersionName = "0.2.0"
+val appVersionName = "0.3.0"
 val buildTimestamp: String = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yy.MM.dd-HH.mm"))
 val buildVersionCode = (System.currentTimeMillis() / 60_000L).toInt()
 // The commit the APK was built from, for the ride log header; "?" outside a git checkout.
@@ -40,25 +40,9 @@ android {
         testInstrumentationRunner = "com.reau.app.KeepAppStateRunner"
     }
 
-    // Two editions of the app from the same sources, installable side by side (their ids differ):
-    //  - completa: id com.reau.app; any Android Auto; has the accessibility service that switches the Android Auto
-    //    head unit server on (Android Auto 17.4 or newer).
-    //  - lite: id com.reau.app.lite; no accessibility service (its source is in src/completa only, and the
-    //    manifest in src/lite takes it out); the rider switches the server on by hand, and Android Auto 17.3 or
-    //    older is asked to dial in instead.
-    // The code tells them apart by Edition (src/main), never by testing the flavor by name.
-    flavorDimensions += "edition"
-    productFlavors {
-        create("completa") {
-            dimension = "edition"
-            buildConfigField("boolean", "LITE", "false")
-        }
-        create("lite") {
-            dimension = "edition"
-            applicationIdSuffix = ".lite"
-            buildConfigField("boolean", "LITE", "true")
-        }
-    }
+    // One app, com.reau.app, no product flavors (until 0.2.0 there were two editions, "completa" and "lite"; their sources are not in this repository
+    // any more, only in the git history up to the commit of 20/10/2026). The app has no accessibility service (the one it had until 0.3.0 is
+    // not in this repository either, only in that history).
 
     // Release signing. The official Releases are signed with the project's own key, which is never in this repository: its
     // path and passwords come from four environment variables. Without them (or with a path that is not a file) packaging a release
@@ -164,19 +148,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
 
-// `lintDebug` and `testDebugUnitTest` cover both editions; each edition's own tasks (lintLiteDebug, ...) exist too.
-tasks.register("testDebugUnitTest") {
-    group = "verification"
-    description = "JVM unit tests of both editions' debug variants."
-    dependsOn("testCompletaDebugUnitTest", "testLiteDebugUnitTest")
-}
-tasks.register("lintDebug") {
-    group = "verification"
-    description = "Lint of both editions' debug variants; any warning fails."
-    dependsOn("lintCompletaDebug", "lintLiteDebug")
-}
-
-// Coverage of the JVM unit tests of the full edition: `./gradlew :app:jacocoTestReport` runs them and writes the HTML and XML
+// Coverage of the JVM unit tests: `./gradlew :app:jacocoTestReport` runs them and writes the HTML and XML
 // reports to app/build/reports/jacoco/. It is not part of `check`, `assemble` or CI, and it does not touch the APK.
 jacoco {
     toolVersion = "0.8.13"
@@ -184,15 +156,15 @@ jacoco {
 
 tasks.register<JacocoReport>("jacocoTestReport") {
     group = "verification"
-    description = "Coverage report (HTML and XML) of the full edition's JVM unit tests, in build/reports/jacoco/."
-    dependsOn("testCompletaDebugUnitTest")
-    val classes = fileTree(layout.buildDirectory.dir("intermediates/built_in_kotlinc/completaDebug/compileCompletaDebugKotlin/classes")) {
+    description = "Coverage report (HTML and XML) of the JVM unit tests, in build/reports/jacoco/."
+    dependsOn("testDebugUnitTest")
+    val classes = fileTree(layout.buildDirectory.dir("intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes")) {
         exclude("**/R.class", "**/R$*.class", "**/BuildConfig.class")
     }
     classDirectories.setFrom(classes)
-    sourceDirectories.setFrom(files("src/main/java", "src/completa/java"))
+    sourceDirectories.setFrom(files("src/main/java"))
     executionData.setFrom(
-        fileTree(layout.buildDirectory.dir("outputs/unit_test_code_coverage/completaDebugUnitTest")) { include("*.exec") },
+        fileTree(layout.buildDirectory.dir("outputs/unit_test_code_coverage/debugUnitTest")) { include("*.exec") },
     )
     reports {
         html.required.set(true)
@@ -208,9 +180,8 @@ tasks.register<JacocoReport>("jacocoTestReport") {
 val detektCli by configurations.creating
 dependencies { detektCli(libs.detekt.cli) }
 
-// What is analysed: the shared code and what only one edition (completa, lite) or the debug build has. The accessibility service of
-// the full edition (src/completa) was left out when only src/main/java was named.
-val detektInputs = listOf("main", "completa", "lite", "debug").map { file("src/$it/java") }.filter { it.isDirectory }
+// What is analysed: the main code and what only the debug build has.
+val detektInputs = listOf("main", "debug").map { file("src/$it/java") }.filter { it.isDirectory }
 
 fun detektArgs(extra: List<String>) = listOf(
     "--input", detektInputs.joinToString(",") { it.path },

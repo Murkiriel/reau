@@ -3,8 +3,10 @@
 // nor builds AapVideo, startReading() is given the message handler, quit() no longer releases the video path (the
 // onQuit callback's owner does), triggerFocusCycleRecovery() is internal so the video path can call it. The
 // microphone hook is cut. From open-headunit (AGPL-3.0, commit 489df5de, aap/AapTransport.kt): the last version
-// request waits out the whole handshake budget. Video focus changes and sensor requests are counted in
-// [stats].
+// request waits out the whole handshake budget. From the same project (commit 68c2bbb5): over a socket there is
+// one version request, not up to three (the loop is kept, [versionRequests] is AaConfig.VERSION_REQUESTS; open-headunit
+// keeps three only for USB, which REau does not have). Video focus changes and sensor requests are counted in
+// [stats]. The focus cycle that asks for a keyframe goes through [KeyframeCycleGate] and gives focus back on the send thread.
 // Adapted from headunit-revived (AGPLv3): aap/AapTransport.kt
 // Trimmed for video-only headless projection: no audio decoder / audio manager / mic recorder /
 // notification / Settings. Keeps the send+poll HandlerThreads, the AAP version+SSL handshake,
@@ -15,7 +17,6 @@ package com.reau.app.aa
 import android.content.Context
 import android.os.Handler
 import android.os.HandlerThread
-import android.os.Looper
 import android.os.Process
 import android.os.SystemClock
 import android.util.SparseIntArray
@@ -79,13 +80,49 @@ class AapTransport(
     val isAlive: Boolean
         get() = pollThread?.isAlive ?: false
 
-    /** Asks Android Auto for a keyframe by taking video focus away and giving it back. */
+    private val keyframeGate = KeyframeCycleGate()
+
+    /**
+     * Whether the cycle must wait because the compositor the picture goes to is stuck (a keyframe is no use to a consumer that
+     * cannot show it). Set by the session; read with every request and tick.
+     */
+    @Volatile internal var keyframeBlocked: () -> Boolean = { false }
+
+    /**
+     * Asks Android Auto for a keyframe by taking video focus away and giving it back, when [keyframeGate] allows it. A request
+     * that has to wait is kept and goes out from [keyframeTick].
+     */
     internal fun triggerFocusCycleRecovery() {
+        val now = SystemClock.elapsedRealtime()
+        when (val verdict = keyframeGate.request(now, keyframeBlocked())) {
+            KeyframeCycleGate.Verdict.GO -> cycleVideoFocus()
+            KeyframeCycleGate.Verdict.WAIT_SPACING ->
+                AaLog.i("AapTransport: keyframe cycle waits for the second to pass, ${keyframeGate.waitLeftMs(now)} ms left")
+            else -> {
+                AaLog.w("AapTransport: keyframe cycle held back: ${holdName(verdict)}, ${keyframeGate.waitLeftMs(now) / 1000} s left")
+                com.reau.app.data.ProjectionSummary.current.watchdog("keyframe-gate")
+            }
+        }
+    }
+
+    /** Once a second: lets out a keyframe request that had to wait. */
+    internal fun keyframeTick() {
+        if (keyframeGate.takePending(SystemClock.elapsedRealtime(), keyframeBlocked())) {
+            AaLog.i("AapTransport: the keyframe request that waited goes out")
+            cycleVideoFocus()
+        }
+    }
+
+    private fun holdName(verdict: KeyframeCycleGate.Verdict) =
+        if (verdict == KeyframeCycleGate.Verdict.WAIT_BLOCKED) "the compositor is stuck" else "storm guard"
+
+    private fun cycleVideoFocus() {
         AaLog.w("AapTransport: Requesting recovery keyframe via focus cycle.")
         send(VideoFocusEvent(gain = false, unsolicited = false))
-        Handler(Looper.getMainLooper()).postDelayed({
+        // The gain goes out on the send thread, not the main one: a main thread held up (a slow frame, the cold start) would leave Android Auto without focus.
+        sendHandler?.postDelayed({
             if (isAlive) send(VideoFocusEvent(gain = true, unsolicited = true))
-        }, 100)
+        }, FOCUS_GAIN_DELAY_MS)
     }
 
     internal fun startSensor(type: Int) {
@@ -340,6 +377,9 @@ class AapTransport(
         /** How long the end of a session waits for Android Auto's answer to the bye. */
         internal const val BYE_WAIT_MS = 1_000L
         private const val BYE_PAUSE_ON_READ_THREAD_MS = 150L
+
+        /** How long after losing video focus Android Auto gets it back. */
+        private const val FOCUS_GAIN_DELAY_MS = 100L
         /** Sensors.SensorType.NIGHT value (see proto). */
         private const val SENSOR_NIGHT = 10
     }

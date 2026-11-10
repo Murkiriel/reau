@@ -32,14 +32,8 @@ class ProjectionNotificationTest {
     }
 
     @Test
-    fun `a mute server's notification says the menu by hand only where the rider has to restart it`() {
-        val title = R.string.notif_title_unresponsive
-        assertEquals(title to R.string.notif_text_unresponsive, ProjectionNotification.contentFor(Headline.ANDROID_AUTO_UNRESPONSIVE))
-        assertEquals(title to R.string.notif_text_unresponsive, ProjectionNotification.contentFor(Headline.ANDROID_AUTO_UNRESPONSIVE, muteByRider = false))
-        assertEquals(title to R.string.notif_text_unresponsive_by_hand, ProjectionNotification.contentFor(Headline.ANDROID_AUTO_UNRESPONSIVE, muteByRider = true))
-        for (headline in Headline.entries.filter { it != Headline.ANDROID_AUTO_UNRESPONSIVE }) {
-            assertEquals(headline.name, ProjectionNotification.contentFor(headline), ProjectionNotification.contentFor(headline, muteByRider = true))
-        }
+    fun `a mute server's notification says the menu by hand`() {
+        assertEquals(R.string.notif_title_unresponsive to R.string.notif_text_unresponsive, ProjectionNotification.contentFor(Headline.ANDROID_AUTO_UNRESPONSIVE))
     }
 
     @Test

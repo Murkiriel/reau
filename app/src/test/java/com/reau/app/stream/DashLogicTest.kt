@@ -61,6 +61,22 @@ class DashLogicTest {
         assertTrue(DashLogic.idleSyncNeeded(hintFps = 8, keyframeIntervalSec = 2, idleFrameMs = 250))    // 4.0 s
     }
 
+    // ── withheldAskDue: the keyframe asked for after one was withheld ───────────────────────────
+
+    @Test
+    fun `the first withheld keyframe asks at once`() {
+        assertTrue(DashLogic.withheldAskDue(nowMs = 0, lastAskMs = null))
+        assertTrue(DashLogic.withheldAskDue(nowMs = 12_345, lastAskMs = null))
+    }
+
+    @Test
+    fun `a withheld keyframe within 2 s of the last ask does not ask again, from 2 s it does`() {
+        assertFalse(DashLogic.withheldAskDue(nowMs = 10_250, lastAskMs = 10_000))
+        assertFalse(DashLogic.withheldAskDue(nowMs = 11_999, lastAskMs = 10_000))
+        assertTrue(DashLogic.withheldAskDue(nowMs = 12_000, lastAskMs = 10_000))
+        assertTrue(DashLogic.withheldAskDue(nowMs = 30_000, lastAskMs = 10_000))
+    }
+
     @Test
     fun `frameIntervalsMsForFps never divides by zero or goes negative for a non-positive fps`() {
         val (active0, idle0) = DashLogic.frameIntervalsMsForFps(0)

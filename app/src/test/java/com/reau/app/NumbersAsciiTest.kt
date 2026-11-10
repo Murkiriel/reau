@@ -56,7 +56,7 @@ class NumbersAsciiTest {
     @Test
     fun `numbers formatted outside the screens name their Locale`() {
         val main = File(root(), "app/src/main/java/com/reau/app")
-        val editions = listOf("completa", "lite", "debug").map { File(root(), "app/src/$it/java/com/reau/app") }
+        val editions = listOf("debug").map { File(root(), "app/src/$it/java/com/reau/app") }
         // The screens (ui) show numbers in the rider's own language on purpose; the protobuf code is generated. Everything else
         // is walked (not a list of folders, which left new ones, like util, out of the guard).
         // Relative to each root, so a project that sits under a folder called "ui" or "proto" is still scanned.

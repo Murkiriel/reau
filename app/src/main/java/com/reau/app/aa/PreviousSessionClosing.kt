@@ -57,7 +57,7 @@ object PreviousSessionClosing {
     /**
      * Whether the round of unanswered handshakes that says [next] is the one where the wait for the previous session to
      * close ran out: the round before said [AaLinkState.CLOSING_PREVIOUS] ([previous]) and this one says
-     * [AaLinkState.UNRESPONSIVE]. The moment the one restart of the server becomes due (see [ServerPolicy]).
+     * [AaLinkState.UNRESPONSIVE]. The moment the rider is told to restart the server by hand.
      */
     fun windowEnded(previous: AaLinkState?, next: AaLinkState): Boolean =
         previous == AaLinkState.CLOSING_PREVIOUS && next == AaLinkState.UNRESPONSIVE

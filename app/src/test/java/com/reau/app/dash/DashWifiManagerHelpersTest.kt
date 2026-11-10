@@ -100,12 +100,36 @@ class DashWifiManagerHelpersTest {
     fun `the scan line says when the scan cannot be read or is empty`() {
         assertEquals("scan unreadable", scanEvidence(null, "RE_", true, now))
         assertEquals("scan empty", scanEvidence(emptyList(), "RE_", true, now))
+        assertEquals("scan empty [x]", scanEvidence(emptyList(), "RE_", true, now) { " [x]" })
+        assertEquals("scan unreadable [x]", scanEvidence(null, "RE_", true, now) { " [x]" })
+        val withNetworks = scanEvidence(listOf(ScanSeen("Home", -50, 2412, now)), "RE_", true, now) { error("a list with networks reads no state") }
+        assertEquals("scan of 1 networks, the dash not among them (newest result 0 s old)", withNetworks)
+    }
+
+    @Test
+    fun `the state that explains an empty list says the location type, the permission, the system switch and the importance`() {
+        assertEquals(
+            " [location type=on, permission=given, system location=on, process importance 125 (foreground service)]",
+            emptyScanState(locationType = true, permission = true, systemLocationOn = true, importance = 125),
+        )
+        assertEquals(
+            " [location type=off, permission=missing, system location=off, process importance 400 (cached)]",
+            emptyScanState(locationType = false, permission = false, systemLocationOn = false, importance = 400),
+        )
+        assertEquals(
+            " [location type=off, permission=given, system location=unknown, process importance 77]",
+            emptyScanState(locationType = false, permission = true, systemLocationOn = null, importance = 77),
+        )
+        assertEquals(
+            "scan empty [location type=off, permission=given, system location=on, process importance 125 (foreground service)]",
+            scanEvidence(emptyList(), "RE_", true, now) { emptyScanState(false, true, true, 125) },
+        )
     }
 
     @Test
     fun `the scan line says the dash is not among the networks seen`() {
         val seen = listOf(ScanSeen("Home", -50, 2412, now), ScanSeen("Cafe", -70, 5180, now))
-        assertEquals("scan of 2 networks, the dash not among them", scanEvidence(seen, "RE_", true, now))
+        assertEquals("scan of 2 networks, the dash not among them (newest result 0 s old)", scanEvidence(seen, "RE_", true, now))
     }
 
     @Test
@@ -115,7 +139,7 @@ class DashWifiManagerHelpersTest {
             ScanSeen("RE_1234ABCD", -61, 2437, now - 95_000_000L),
         )
         assertEquals(
-            "scan of 2 networks, the dash: 'RE_****CD' -61 dBm 2437 MHz seen 95 s ago",
+            "scan of 2 networks, the dash: 'RE_****CD' -61 dBm 2437 MHz seen 95 s ago (newest result 0 s old)",
             scanEvidence(seen, "RE_", true, now),
         )
         assertEquals("exact name: only that one", true, scanEvidence(seen, "RE_9999", false, now).contains("not among"))
@@ -124,7 +148,7 @@ class DashWifiManagerHelpersTest {
     @Test
     fun `a sighting stamped in the future never gives a negative age`() {
         val seen = listOf(ScanSeen("RE_1234ABCD", -61, 2437, now + 5_000_000L))
-        assertTrue(scanEvidence(seen, "RE_", true, now).endsWith("seen 0 s ago"))
+        assertTrue(scanEvidence(seen, "RE_", true, now).contains("seen 0 s ago"))
     }
 
     @Test

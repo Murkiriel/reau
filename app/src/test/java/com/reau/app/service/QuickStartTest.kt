@@ -31,13 +31,11 @@ class QuickStartTest {
     }
 
     @Test
-    fun `each edition's shortcut opens its own package, with the action the activity reads`() {
-        for ((flavor, id) in mapOf("completa" to "com.reau.app", "lite" to "com.reau.app.lite")) {
-            val xml = File(src, "$flavor/res/xml/shortcuts.xml").readText()
-            assertTrue("$flavor action", "android:action=\"${QuickStart.ACTION}\"" in xml)
-            assertTrue("$flavor package", "android:targetPackage=\"$id\"" in xml)
-            assertTrue("$flavor class", "android:targetClass=\"com.reau.app.MainActivity\"" in xml)
-        }
+    fun `the shortcut opens the app's package, with the action the activity reads`() {
+        val xml = File(src, "main/res/xml/shortcuts.xml").readText()
+        assertTrue("action", "android:action=\"${QuickStart.ACTION}\"" in xml)
+        assertTrue("package", "android:targetPackage=\"com.reau.app\"" in xml)
+        assertTrue("class", "android:targetClass=\"com.reau.app.MainActivity\"" in xml)
     }
 
     @Test

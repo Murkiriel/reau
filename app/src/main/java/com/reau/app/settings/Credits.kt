@@ -57,13 +57,12 @@ object Credits {
                     R.string.credit_role_headunit, "https://github.com/mikereidis/headunit"),
                 Entry("MOTO-HUB", "© 2026 Vincenzo Buonomano", AGPL,
                     R.string.credit_role_moto_hub, "https://github.com/vincenzobpt/MOTO-HUB", holderText = R.string.credit_holder_moto_hub),
-                // A fork of open-headunit for a car's screen; its own address is not known to this repository, so its line has no address
-                // to copy (the NOTICE says why). REau took one value and an order from it, no code.
+                // A fork of open-headunit for a car's screen (the NOTICE says what is known of it). REau took one value and an order from it, no code.
                 Entry("HeadQLink", "© Michael A. Reid and the open-headunit authors", AGPL,
-                    R.string.credit_role_headqlink, "", holderText = R.string.credit_holder_headqlink),
+                    R.string.credit_role_headqlink, "https://github.com/ryazrm/headqlink_devel", holderText = R.string.credit_holder_headqlink),
                 // Protocol facts only (GPL-2.0 does not combine with the AGPL-3.0, so no code is taken from it).
                 Entry("aa-proxy-rs", "© Mariusz Białończyk", GPL2,
-                    R.string.credit_role_aa_proxy_rs, "https://github.com/manio/aa-proxy-rs"),
+                    R.string.credit_role_aa_proxy_rs, "https://github.com/aa-proxy/aa-proxy-rs"),
             ),
         ),
         Group(
@@ -72,10 +71,11 @@ object Credits {
                 Entry("NorthStar", "© 2026 Aditya Dasika", APACHE,
                     R.string.credit_role_northstar,
                     "https://github.com/adityadasika21/NorthStar"),
+                // A private repository: an address that does not open for anyone else is not offered to copy (the NOTICE says so).
                 Entry("EstrelaAustral", "© 2026 Murkiriel", APACHE,
-                    R.string.credit_role_estrelaaustral, "https://github.com/Murkiriel/EstrelaAustral"),
+                    R.string.credit_role_estrelaaustral, ""),
                 Entry("better-dash", "© norbertFeron", APACHE,
-                    R.string.credit_role_better_dash, "https://github.com/norbertFeron/better-dash"),
+                    R.string.credit_role_better_dash, "https://github.com/OpenMotoDash/better-dash"),
                 Entry("recon-dash", "© MinotaurG", AGPL,
                     R.string.credit_role_recon_dash, "https://github.com/MinotaurG/recon-dash"),
                 Entry("open-dash", "© 2026 Subtle Sayak", APACHE,
@@ -115,7 +115,7 @@ object Credits {
                 // CC BY 4.0 asks for the credit; the free API asks for "Weather data by Open-Meteo.com" with a link.
                 Entry("Open-Meteo", "© Open-Meteo.com", "CC-BY-4.0", R.string.credit_role_open_meteo, "https://open-meteo.com"),
                 // MIT asks for the notice to travel with the code: the licence text is in assets/web/jmuxer.LICENSE, inside the APK.
-                Entry("JMuxer", "© 2018 Samir Das", MIT, R.string.credit_role_jmuxer, "https://github.com/samirkumardas/jmuxer"),
+                Entry("JMuxer", "© 2018 Samir Das", MIT, R.string.credit_role_jmuxer, "https://github.com/webstream-labs/jmuxer"),
             ),
         ),
     )

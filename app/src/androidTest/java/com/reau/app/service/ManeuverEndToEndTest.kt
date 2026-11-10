@@ -87,11 +87,16 @@ class ManeuverEndToEndTest {
 
     private fun send(message: Pair<Int, ByteArray>) = androidAuto.send(Channel.ID_NAV, message.first, message.second)
 
-    /** Every nav packet the dash got: its glyph TLV (05 02) and the four that follow it. */
+    /**
+     * Every nav packet the dash got: its glyph TLV (05 02) and the four that follow it (distance, unit, total, total unit). The maneuver after
+     * the next (05 03) now goes between the glyph and the distance, 0xFF when there is none: it is left out here, the tests below are about the first.
+     */
     private fun navPackets(): List<List<Tlv>> {
         val all = dash.receivedSinceHandshake()
-        return all.indices.filter { all[it].type == 0x05 && all[it].sub == 0x02 && it + 4 < all.size && all[it + 1].sub == 0x04 }
-            .map { all.subList(it, it + 5) }
+        return all.indices.filter { i ->
+            all[i].type == 0x05 && all[i].sub == 0x02 && i + 5 < all.size &&
+                (all[i + 1].sub == 0x04 || (all[i + 1].sub == 0x03 && all[i + 2].sub == 0x04))
+        }.map { all.subList(it, it + 6).filter { tlv -> tlv.sub != 0x03 }.take(5) }
     }
 
     /** The glyph bytes of the dash's maneuver bubble, in every packet that carries one (nav packets and route cards). */

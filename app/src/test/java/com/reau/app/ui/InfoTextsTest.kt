@@ -31,13 +31,13 @@ class InfoTextsTest {
         Regex("""R\.string\.(info_ring_data_\w+_info)""").findAll(uiSource).forEach { add(it.groupValues[1]) }
     }
 
-    private val resourceFiles = listOf("main", "completa", "lite").flatMap { set ->
+    private val resourceFiles = listOf("main").flatMap { set ->
         listOf("values", "values-pt", "values-es").flatMap { folder ->
             File(src, "$set/res/$folder").listFiles { f -> f.name.startsWith("strings") && f.extension == "xml" }.orEmpty().toList()
         }
     }
 
-    /** Every (file, name, text) of an info text with something in it (the Lite edition blanks the ones about the accessibility). */
+    /** Every (file, name, text) of an info text with something in it. */
     private val texts: List<Triple<File, String, String>> = resourceFiles.flatMap { file ->
         Regex("""<string name="([^"]+)"[^>]*>(.*?)</string>""", RegexOption.DOT_MATCHES_ALL).findAll(file.readText())
             .filter { it.groupValues[1] in infoNames && it.groupValues[2].isNotBlank() }
@@ -51,7 +51,7 @@ class InfoTextsTest {
     @Test
     fun `the screens have their info texts and the test finds them`() {
         // A guard: if the way the texts are found stopped working, the rule below would pass for nothing.
-        assertTrue("${infoNames.size} info texts", infoNames.size >= 45)
+        assertTrue("${infoNames.size} info texts", infoNames.size >= 44)
         val inEnglish = texts.filter { it.first.path.contains("/values/") }.map { it.second }.toSet()
         assertEquals("not in the English texts: ${infoNames - inEnglish}", emptySet<String>(), infoNames - inEnglish)
         for (name in listOf("bike_range_info", "info_ring_info", "weather_info", "use_location", "dash_music", "web_view_long", "profiles_info")) {

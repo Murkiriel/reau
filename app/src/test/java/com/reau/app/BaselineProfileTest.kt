@@ -21,7 +21,7 @@ class BaselineProfileTest {
 
     @Test
     fun `every class or package a rule names is in the source`() {
-        val sources = listOf("app/src/main/java", "app/src/completa/java", "app/src/lite/java").map { File(root(), it) }.filter { it.isDirectory }
+        val sources = listOf("app/src/main/java").map { File(root(), it) }.filter { it.isDirectory }
         assertTrue("no source folder", sources.isNotEmpty())
         for (rule in rules) {
             val path = rule.substringAfter('L').substringBefore(';').substringBefore("->").removeSuffix("**").removeSuffix("/")

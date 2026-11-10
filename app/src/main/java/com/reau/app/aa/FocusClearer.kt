@@ -3,7 +3,8 @@ package com.reau.app.aa
 /**
  * Clears the blue focus border Android Auto leaves on the screen after the joystick: Android Auto draws its focus
  * once keys or the wheel come, and only a touch takes it away. [idleMs] after the last joystick input sent to
- * Android Auto, one touch ([TAP]), cancelled at once, does, once per quiet spell.
+ * Android Auto, one touch ([TAP]), cancelled at once, does, once per quiet spell. Only on the navigation's screen: in the
+ * app menu it is the suspected cause of a wheel step focusing an app without the list scrolling to it (touch mode, then a new focus).
  */
 class FocusClearer(private val idleMs: Long = IDLE_MS) {
     private var lastInputMs: Long? = null
@@ -14,11 +15,14 @@ class FocusClearer(private val idleMs: Long = IDLE_MS) {
         lastInputMs = nowMs
     }
 
-    /** Whether to touch now: the last input is [idleMs] old or more, and was not touched for yet. */
+    /**
+     * Whether to touch now: the last input is [idleMs] old or more, and was not touched for yet, and [onNavigation] (the screen
+     * shown is the navigation's). On another screen the quiet spell is kept, not spent: the touch comes when the navigation is back.
+     */
     @Synchronized
-    fun tapDue(nowMs: Long): Boolean {
+    fun tapDue(nowMs: Long, onNavigation: Boolean): Boolean {
         val last = lastInputMs ?: return false
-        if (nowMs - last < idleMs) return false
+        if (nowMs - last < idleMs || !onNavigation) return false
         lastInputMs = null
         return true
     }

@@ -20,7 +20,7 @@ object AaVideo {
  * [media] announces the music status channel: Android Auto then sends what is playing. [phone] announces the
  * phone status channel: Android Auto then sends the calls, with the caller. [protocolMinor] is the protocol
  * version asked in the handshake, 1.[protocolMinor] (1.7 behind a test switch, else 1.2). [versionRequests] is how many times that request
- * may be sent while no answer comes ([VERSION_REQUESTS]; fewer only in the transport's tests).
+ * may be sent while no answer comes ([VERSION_REQUESTS]; more only in the transport's tests).
  */
 data class AaConfig(
     val density: Int = 160,
@@ -38,7 +38,14 @@ data class AaConfig(
     val versionRequests: Int = VERSION_REQUESTS,
 ) {
     companion object {
-        /** The version request is sent up to this many times, 2 s apart, before the handshake gives up. */
-        const val VERSION_REQUESTS = 3
+        /**
+         * The version request is sent once, and the handshake waits its whole budget for the answer. REau talks to Android Auto's
+         * head unit server over a socket: a socket delivers a request or drops the link, so a resend there reaches the server
+         * only as a duplicate, and open-headunit measured (commit 68c2bbb5, on Android Auto 18.0) that a duplicate leaves the
+         * server answering nobody until it is stopped and started again. It was three (2 s apart) until 30/10/2026; in 659
+         * handshakes of the ride logs (Android Auto 17.8 and 17.9) a resend never rescued one, and three slow answers (6 to 9 s)
+         * came to all three requests at once.
+         */
+        const val VERSION_REQUESTS = 1
     }
 }

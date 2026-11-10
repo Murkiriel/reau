@@ -9,8 +9,8 @@ import org.junit.Test
 /**
  * The permissions page: a button listing every permission and why REau uses it.
  * Every permission the manifest asks for has its own explanation; one the build adds that REau does not know (a
- * library's) still shows, with the library text, after the known ones; the special accesses (accessibility, battery)
- * come first, since they are the ones the rider switches by hand.
+ * library's) still shows, with the library text, after the known ones; the special access (the battery exemption)
+ * comes first, since it is the one the rider switches by hand.
  */
 class AppPermissionsTest {
     private val manifest = File("src/main/AndroidManifest.xml").readText()
@@ -37,7 +37,7 @@ class AppPermissionsTest {
     }
 
     @Test
-    fun `the list puts the special accesses first, then the known ones in the catalog's order, then the rest`() {
+    fun `the list puts the special access first, then the known ones in the catalog's order, then the rest`() {
         val requested = listOf(
             "com.reau.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
             "android.permission.RECORD_AUDIO",
@@ -46,22 +46,20 @@ class AppPermissionsTest {
         val rows = AppPermissions.rows(
             requested = requested,
             granted = { it == "android.permission.INTERNET" },
-            accessibilityOn = false,
             batteryExempt = true,
         )
         assertEquals(
             listOf(
-                AppPermissions.ACCESSIBILITY, AppPermissions.BATTERY,
+                AppPermissions.BATTERY,
                 // the ones that depend on the rider before the ones Android grants at install
                 "android.permission.RECORD_AUDIO", "android.permission.INTERNET",
                 "com.reau.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
             ),
             rows.map { it.explained.permission },
         )
-        assertFalse("accessibility off", rows[0].granted)
-        assertTrue("battery exempt", rows[1].granted)
-        assertFalse("microphone not granted", rows[2].granted)
-        assertTrue("internet granted", rows[3].granted)
+        assertTrue("battery exempt", rows[0].granted)
+        assertFalse("microphone not granted", rows[1].granted)
+        assertTrue("internet granted", rows[2].granted)
     }
 
     @Test
@@ -72,21 +70,17 @@ class AppPermissionsTest {
                 "android.permission.INTERNET", "android.permission.INTERNET",
             ),
             granted = { false },
-            accessibilityOn = true,
             batteryExempt = false,
         )
-        assertEquals(5, rows.size)
+        assertEquals(4, rows.size)
         assertEquals(rows.size, rows.map { it.explained.permission }.toSet().size)
     }
 
     @Test
-    fun `accessibility switched on that Android does not run is told as stuck, and only then`() {
-        fun first(on: Boolean, stuck: Boolean) =
-            AppPermissions.rows(emptyList(), { false }, accessibilityOn = on, batteryExempt = false, accessibilityStuck = stuck).first()
-        assertTrue("on in the settings, not running", first(on = false, stuck = true).stuck)
-        assertFalse("running", first(on = true, stuck = true).stuck)
-        assertFalse("off", first(on = false, stuck = false).stuck)
-        assertFalse("battery is never stuck", AppPermissions.rows(emptyList(), { false }, false, false, accessibilityStuck = true)[1].stuck)
+    fun `a permission the catalog does not know is a library's, in any state`() {
+        val rows = AppPermissions.rows(declared, { true }, batteryExempt = false)
+        assertEquals(emptyList<String>(), rows.map { it.explained.permission }.filter { it.startsWith("special:") && it != AppPermissions.BATTERY })
+        assertEquals(AppPermissions.Kind.LIBRARY, AppPermissions.explain("special:unknown").kind)
     }
 
     @Test
@@ -94,25 +88,6 @@ class AppPermissionsTest {
         assertEquals(AppPermissions.Kind.INSTALL, AppPermissions.explain("android.permission.INTERNET").kind)
         assertEquals(AppPermissions.Kind.ASKED, AppPermissions.explain("android.permission.RECORD_AUDIO").kind)
         assertEquals(AppPermissions.Kind.ASKED, AppPermissions.explain("android.permission.POST_NOTIFICATIONS").kind)
-        assertEquals(AppPermissions.Kind.SPECIAL, AppPermissions.explain(AppPermissions.ACCESSIBILITY).kind)
-    }
-
-    // On a clean install, Android 13+ blocked the accessibility switch of an APK installed from a
-    // file ("Configuração restrita") until "Permitir configurações restritas" in REau's app info.
-
-    @Test
-    fun `restricted settings are said on Android 13 and newer for an app not from the Play Store`() {
-        assertTrue(AppPermissions.restrictedSettings(sdk = 34, installer = "com.google.android.packageinstaller"))
-        assertTrue(AppPermissions.restrictedSettings(sdk = 33, installer = null))
-        assertFalse("from the Play Store", AppPermissions.restrictedSettings(sdk = 34, installer = "com.android.vending"))
-        assertFalse("before Android 13", AppPermissions.restrictedSettings(sdk = 32, installer = null))
-    }
-
-    @Test
-    fun `the accessibility row is restricted only while it is off`() {
-        fun row(on: Boolean) = AppPermissions.rows(emptyList(), { false }, accessibilityOn = on, batteryExempt = false, accessibilityRestricted = true).first()
-        assertTrue(row(on = false).restricted)
-        assertFalse(row(on = true).restricted)
-        assertFalse("battery is never restricted", AppPermissions.rows(emptyList(), { false }, false, false, accessibilityRestricted = true)[1].restricted)
+        assertEquals(AppPermissions.Kind.SPECIAL, AppPermissions.explain(AppPermissions.BATTERY).kind)
     }
 }

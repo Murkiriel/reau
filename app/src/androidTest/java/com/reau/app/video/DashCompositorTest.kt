@@ -140,6 +140,36 @@ class DashCompositorTest {
         assertShows(stopAndDecode(c).last(), mapping)
     }
 
+    /**
+     * The compositor tells how long it has been inside a frame ([DashCompositor.busyMs]), which the Android Auto decoder reads before it
+     * is called stalled. Between frames it is 0; while one is drawn it is above 0: a poll from another thread, thousands of times over a
+     * second of moving pictures, must see it above 0 at least once. (A draw on the emulator takes several milliseconds.)
+     */
+    @Test
+    fun theCompositorSaysItIsBusyWhileItDrawsAFrameAndZeroBetweenThem() {
+        val c = running()
+        assertEquals("between frames, before the first one", 0L, c.busyMs())
+        val surface = checkNotNull(c.inputSurface)
+        val until = SystemClock.elapsedRealtime() + 1_500
+        val source = thread {
+            var i = 0
+            while (SystemClock.elapsedRealtime() < until) {
+                runCatching { TestPattern.drawOn(surface, tint = if (i++ % 2 == 0) Color.RED else Color.BLUE) }
+                Thread.sleep(15)
+            }
+        }
+        var most = 0L
+        var polls = 0
+        while (SystemClock.elapsedRealtime() < until) {
+            most = maxOf(most, c.busyMs())
+            polls++
+        }
+        source.join()
+        assertTrue("busyMs never rose above 0 in $polls polls: the frame is not bracketed", most > 0L)
+        assertTrue("and it is not a figure that only grows (the longest frame took $most ms)", most < 1_000L)
+        assertTrue("log: $log", awaitTrue { c.busyMs() == 0L })
+    }
+
     /** One source pixel per dash pixel, taken from the top left corner: catches a flipped or mirrored window. */
     @Test
     fun aWindowFromACornerShowsThatCorner() {
@@ -569,7 +599,7 @@ class DashCompositorTest {
 
     /**
      * The picture's look is told about every half second, with the rows the right way up and reduced by the average of each block (what [PictureLook]'s net was
-     * trained on): a picture lit in its top half and one lit in its bottom half are two different screens to it (the first an app, the second a map: see
+     * trained on): a picture dark in its top half and one dark in its bottom half are two different screens to it (the first a map, the second nothing sure: see
      * `PictureLookTest`), and swap if the copy comes upside down; a black one is unsure.
      */
     @Test
@@ -578,13 +608,10 @@ class DashCompositorTest {
         val looks = CopyOnWriteArrayList<PictureLook.Kind>()
         c.onLook = { looks += it }
         val surface = checkNotNull(c.inputSurface)
-        // The picture the net reads as a map when it stands as it is (a gradient, 64x40 values in blocks of the 800x480) and not as one turned over.
+        // The picture the net reads as a map when it stands as it is (dark over white, `PictureLookTest`'s "dark over white", 0.93) and as nothing sure when it is
+        // turned over (white over dark, 0.72).
         fun gradient(turned: Boolean): android.graphics.Bitmap {
-            val pixels = IntArray(800 * 480) { i ->
-                val row = (i / 800) * 40 / 480
-                val v = (((i % 800) * 64 / 800) * 7 + (if (turned) 39 - row else row) * 3) % 256
-                Color.rgb(v, v, v)
-            }
+            val pixels = IntArray(800 * 480) { i -> if (((i / 800) < 240) != turned) Color.BLACK else Color.WHITE }
             return android.graphics.Bitmap.createBitmap(pixels, 800, 480, android.graphics.Bitmap.Config.ARGB_8888)
         }
         fun show(picture: android.graphics.Bitmap?) {

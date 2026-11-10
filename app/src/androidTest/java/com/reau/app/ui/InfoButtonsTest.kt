@@ -87,7 +87,7 @@ class InfoButtonsTest {
         o("fps", "fps_locked"), o("maneuver_fps_profile", "maneuver_fps_profile_locked"), o("speed_fps_profile", "speed_fps_profile_locked"),
         o("card_now"),
         o("ride_log"), o("record_video"), o("record_sessions"), o("detailed_log"), o("log_keep"), o("no_dash_stop"),
-    ) + if (com.reau.app.Edition.hasAccessibility) listOf(o("aa_server_auto")) else emptyList() // the full edition's server switch
+    )
 
     private val settingsWithout = listOf(
         o("language"), o("dash_caller"), o("open_joystick"),
@@ -243,7 +243,6 @@ class InfoButtonsTest {
         val rows = AppPermissions.rows(
             requested = listOf("android.permission.INTERNET", "android.permission.RECORD_AUDIO"),
             granted = { it == "android.permission.INTERNET" },
-            accessibilityOn = false,
             batteryExempt = true,
         )
         compose.setContent { PermissionsScreen(rows, PermissionsActions(), sdk = 34) }

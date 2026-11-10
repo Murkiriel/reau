@@ -6,8 +6,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.reau.app.aa.AaConfig
 import com.reau.app.aa.AaReceiver
-import com.reau.app.aa.AaScreenRule
-import com.reau.app.aa.AaScreens
+import com.reau.app.aa.AaScreen
+import com.reau.app.aa.ScreenShown
 import com.reau.app.aa.AapCards
 import com.reau.app.aa.Channel
 import com.reau.app.aa.FakeAndroidAutoPeer
@@ -25,8 +25,8 @@ import org.junit.runner.RunWith
 /**
  * The app's name never came right, so the dash's title is now REau, always. Before, inside the
  * service: with Android Auto's media screen shown and the music app its playback status names, the dash's route card
- * says that app; with the menu shown, REau. The screen shown is fed to the process' watcher as the accessibility
- * service feeds it on the phone.
+ * says that app; with the menu shown, REau. The screen shown is fed to the process' watcher as the picture's looks
+ * would feed it on the phone.
  */
 @RunWith(AndroidJUnit4::class)
 class AppNameEndToEndTest {
@@ -68,21 +68,13 @@ class AppNameEndToEndTest {
     private fun titles(): List<String> = dash.receivedSinceHandshake()
         .filter { it.type == 0x05 && it.sub == 0x01 }.map { String(it.value, Charsets.UTF_8).trimEnd('\u0000') }
 
-    /** Android Auto shows the display of [service] (one of its own), held long enough to count. */
-    private fun shown(id: Int, service: String) {
-        val display = AaScreenRule.Display(id, "GhostActivityDisplay:ComponentInfo{com.google.android.projection.gearhead/x.$service}", true)
-        val now = SystemClock.elapsedRealtime()
-        AaScreens.watch.update(listOf(display), now)
-        AaScreens.watch.update(listOf(display), now + AaScreens.HOLD_MS)
-    }
-
     /**
      * The app's name never came right, neither on the dash nor in the notification; the dash says
      * REau, whatever Android Auto shows or plays.
      */
     @Test
     fun theDashsTitleIsAlwaysREau() {
-        shown(77, "TemplateService")
+        ScreenShown.put(AaScreen.APPS)
         ProjectionService.sidesFactory = { ctx, report ->
             LiveSides(
                 ctx, report,
@@ -100,7 +92,7 @@ class AppNameEndToEndTest {
         val status = MediaPlayback.MediaPlaybackStatus.newBuilder().setState(MediaPlayback.MediaPlaybackStatus.State.PLAYING)
             .setMediaSource("Spotify").buildPartial().toByteArray()
         androidAuto.send(Channel.ID_MPB, AapCards.MEDIA_PLAYBACK_STATUS, status)
-        shown(78, "GmmCarProjectionService")
+        ScreenShown.put(AaScreen.NAV)
         Thread.sleep(TITLE_WAIT_MS)
         assertTrue("titles at the dash: ${titles().takeLast(8)}", titles().isNotEmpty() && titles().all { it == "REau" })
     }

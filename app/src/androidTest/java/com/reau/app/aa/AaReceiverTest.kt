@@ -261,46 +261,10 @@ class AaReceiverTest {
 
     // ── a session ──────────────────────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Every input sent to Android Auto asks for its screen to be read again (the
-     * focus may move with no window event, as when Waze is picked in the menu); the phone's own call
-     * commands are not Android Auto inputs and ask nothing.
-     */
-    @Test
-    fun anInputSentToAndroidAutoAsksForItsScreenToBeReadAgain() {
-        val calls = CopyOnWriteArrayList<String>()
-        AaScreens.rereader = object : AaScreens.Rereader {
-            override fun inputSent() { calls += "input" }
-            override fun projection(on: Boolean) { calls += "projection $on" }
-        }
-        try {
-            val port = freePort()
-            peerOn(port)
-            val r = receiverOn(port)
-            r.sendInput(AaCommand.Key(23))
-            assertTrue("no session, nothing sent, nothing asked: $calls", calls.isEmpty())
-            r.start()
-            awaitState(AaLinkState.ACTIVE)
-            r.sendInput(AaCommand.Key(23))
-            await("a re-read asked after the key") { calls == listOf("input") }
-            r.sendInput(AaCommand.AnswerCall)
-            Thread.sleep(200)
-            assertEquals(listOf("input"), calls)
-        } finally {
-            AaScreens.rereader = null
-        }
-    }
-
     /** 21/10/2026: back to Waze by a tap on the phone's screen, the menu's fit stayed (only the select was said to leave the menu). */
     @Test
     fun aTapOnThePhoneInTheMenuSaysTheMenuWasLeftButADragDoesNot() {
-        val menu = listOf(AaScreenRule.Display(8, "GhostActivityDisplay:ComponentInfo{x/GhAppLauncherService}", true))
-        fun inTheMenu() {
-            AaScreens.watch.reset()
-            AaScreens.watch.update(menu, nowMs = 1_000)
-            AaScreens.watch.update(menu, nowMs = 1_500)
-            assertEquals(AaScreen.MENU, AaScreens.watch.screen.value)
-        }
+        fun inTheMenu() = ScreenShown.put(AaScreen.MENU)
         val port = freePort()
         peerOn(port)
         val r = receiverOn(port)
@@ -365,6 +329,52 @@ class AaReceiverTest {
 
         receiver!!.stop()
         assertTrue("the session's decoder is closed with it, got $log", log.any { "Decoder stopped: session over" in it })
+        // The socket is let go before the decoder's release (a codec that hangs there must not hold the link open).
+        val linkClosed = log.indexOfFirst { "AaReceiver: the link is closed" in it }
+        val decoderStopped = log.indexOfFirst { "Decoder stopped: session over" in it }
+        assertTrue("the link is closed first, got $log", linkClosed in 0 until decoderStopped)
+    }
+
+    /**
+     * The compositor the receiver is given reaches the decoder of its session: while it is stuck inside a frame, a decoder that stops
+     * giving pictures is not restarted; the moment it is free the stall is called.
+     */
+    @Test
+    fun aStallOfTheSessionsDecoderIsExcusedWhileTheCompositorGivenToTheReceiverIsStuck() {
+        val busy = java.util.concurrent.atomic.AtomicLong(5_000)
+        val port = freePort()
+        val peer = peerOn(port)
+        AaReceiver(context, config, reader.surface, { states += it }, AaReceiver.Options(port, quick, downstreamBusyMs = { busy.get() }))
+            .also { receiver = it }.start()
+        awaitState(AaLinkState.ACTIVE)
+
+        val units = TestH264Source.encode(frames = 3)
+        peer.send(Channel.ID_VID, Media.MsgType.MEDIA_MESSAGE_START_VALUE, Media.Start.newBuilder().setSessionId(3).setConfigurationIndex(0).build().toByteArray())
+        peer.send(Channel.ID_VID, type = 1, body = units.single { it.isConfig }.data)
+        for (frame in units.filter { !it.isConfig }) {
+            val body = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8) + frame.data
+            if (frame.isKey) peer.sendInPieces(Channel.ID_VID, type = 0, body = body, pieces = 3) else peer.send(Channel.ID_VID, type = 0, body = body)
+        }
+        repeat(4) { assertEquals(Media.MsgType.MEDIA_MESSAGE_ACK_VALUE, next(peer, "acknowledgement ${it + 1}").type) }
+        await("a picture on the surface") { lastPicture.get() != null }
+
+        val filler = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 1, 0x0C, 0xFF.toByte(), 0xFF.toByte(), 0x80.toByte())
+        fun fillersUntil(deadline: Long, done: () -> Boolean) {
+            while (!done() && System.currentTimeMillis() < deadline) {
+                peer.send(Channel.ID_VID, type = 0, body = filler)
+                Thread.sleep(50)
+                while (true) {
+                    val received = peer.receive(1_000) ?: break
+                    if (received.type == Media.MsgType.MEDIA_MESSAGE_ACK_VALUE) break
+                }
+            }
+        }
+        fillersUntil(System.currentTimeMillis() + 5_000) { false } // the stall is called after 3 s
+        assertTrue("the decoder was restarted while the compositor was stuck, got $log", log.none { "Decoder stall detected" in it })
+
+        busy.set(0)
+        fillersUntil(System.currentTimeMillis() + 10_000) { log.any { "Decoder stall detected" in it } }
+        assertTrue("the excused stall must be called once the compositor is free, got $log", log.any { "Decoder stall detected" in it })
     }
 
     @Test

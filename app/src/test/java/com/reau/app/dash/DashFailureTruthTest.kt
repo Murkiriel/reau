@@ -74,6 +74,16 @@ class DashFailureTruthTest {
     }
 
     @Test
+    fun `a dash that answered says to check its screen type, one that stayed silent does not`() {
+        val silent = DashSession.authTimeoutReason(heardFromDash = false, ssid = "RE_AB12_345678")
+        assertFalse(silent, "Screen type > Digital" in silent)
+        for (keySeen in listOf(true, false)) {
+            val reason = DashSession.authTimeoutReason(heardFromDash = true, ssid = "RE_AB12_345678", keySeen = keySeen)
+            assertTrue("keySeen=$keySeen: $reason", "Appearance > Screen type > Digital" in reason)
+        }
+    }
+
+    @Test
     fun `a dash that answered and did not accept points at the SSID`() {
         // The name masked (DashNameInLogsTest).
         val reason = DashSession.authTimeoutReason(heardFromDash = true, ssid = "RE_AB12_345678")
@@ -142,5 +152,56 @@ class DashFailureTruthTest {
         assertTrue(reason, "10 s mark (09 06 55) came 10 s after the first burst" in reason)
         val none = DashSession.authTimeoutReason(heardFromDash = true, ssid = "RE_AB12_345678", keySeen = false, resends = 4)
         assertFalse(none, "10 s mark" in none)
+    }
+
+    // ── a weak link is not a wrong name (05/11/2026 07:13:21: -80 dBm, 3 packets in 15 s, and "Check SSID" for a dash that was on and right) ──
+
+    @Test
+    fun `a dash that answered over a weak signal is not blamed on the name, and the text says the signal and the packets`() {
+        val reason = DashSession.authTimeoutReason(
+            heardFromDash = true, ssid = "RE_AB12_345678", keySeen = true, rssiDbm = -80, packets = 3, waitedMs = 15_000,
+        )
+        assertTrue(reason, "weak" in reason && "-80 dBm, 3 packets in 15 s" in reason)
+        assertTrue(reason, "too far" in reason)
+        assertFalse(reason, "SSID" in reason || "Check" in reason || "Digital" in reason)
+    }
+
+    @Test
+    fun `a weak link is told whether the key came or not`() {
+        for (keySeen in listOf(true, false)) {
+            val reason = DashSession.authTimeoutReason(
+                heardFromDash = true, ssid = "RE_AB12_345678", keySeen = keySeen, rssiDbm = -78, packets = 40,
+            )
+            assertTrue("keySeen=$keySeen: $reason", "link is weak (-78 dBm)" in reason)
+            assertFalse("keySeen=$keySeen: $reason", "SSID" in reason || "Digital" in reason || "never sent its key" in reason)
+        }
+    }
+
+    @Test
+    fun `too few packets alone make the link weak, with the signal unknown`() {
+        val reason = DashSession.authTimeoutReason(heardFromDash = true, ssid = "RE_AB12_345678", rssiDbm = null, packets = 3, waitedMs = 15_000)
+        assertTrue(reason, "link is weak (3 packets in 15 s)" in reason)
+        assertFalse(reason, "dBm" in reason)
+    }
+
+    @Test
+    fun `the weak signal is minus 75 dBm or under, and fewer than ten packets`() {
+        assertTrue(DashSession.weakLink(-75, 100))
+        assertTrue(DashSession.weakLink(-90, 100))
+        assertFalse(DashSession.weakLink(-74, 100))
+        assertFalse(DashSession.weakLink(null, 100))
+        assertTrue(DashSession.weakLink(-60, 9))
+        assertFalse(DashSession.weakLink(-60, 10))
+        assertEquals(-75, DashSession.WEAK_SIGNAL_DBM)
+        assertEquals(10, DashSession.FEW_PACKETS)
+    }
+
+    @Test
+    fun `a good link that did not accept keeps pointing at the name, and a dash that never answered is not a weak link`() {
+        val good = DashSession.authTimeoutReason(heardFromDash = true, ssid = "RE_AB12_345678", rssiDbm = -52, packets = 60)
+        assertTrue(good, "Check SSID matches 'RE_****78'" in good)
+        val silent = DashSession.authTimeoutReason(heardFromDash = false, ssid = "RE_AB12_345678", rssiDbm = -85, packets = 0)
+        assertTrue(silent, "not a single packet" in silent)
+        assertFalse(silent, "weak" in silent)
     }
 }

@@ -6,8 +6,10 @@ package com.reau.app.stream
  * compositor's next tick (125 ms at 4 fps) is most of what the rider feels after a joystick touch. Only the pace changes: the encoder is
  * built once for the full rate and is never replaced for this, as with the REDUCED tier the other way round.
  *
- * The encoder places a keyframe every `encoderFps × keyframeSec` frames, so at 6 fps they come every 0.67 s instead of every second: more
- * bits in the menu, bounded by the constant bitrate; the `kbps` of the windows at `target=6` is what to watch on the dash.
+ * The encoder places a keyframe every `encoderFps × keyframeSec` frames, so at 6 fps (hint 4) they came every 0.67 s instead of every
+ * second (1.49 a second in the logs of 31/10 and 01/11/2026). Since plan 22 the encoder is asked for a longer interval
+ * ([DashLogic.encoderKeyframeSec], 2 s = 8 frames on a hint of 4) and the governor asks for the keyframe by the clock at every pace
+ * ([DashLogic.paceSyncNeeded]): one a second at 4, 6 and 2 fps. The `idr=` of the windows at `target=6` is what to watch on the dash.
  *
  * It always runs ([com.reau.app.settings.REauSettings.lightScreenFps]; it is no longer a setting).
  *

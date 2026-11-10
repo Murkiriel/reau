@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Rect
 import android.net.Network
 import android.os.PowerManager
+import android.os.StatFs
 import androidx.core.net.toUri
 import com.reau.app.R
 import com.reau.app.aa.AaConfig
@@ -22,6 +23,7 @@ import com.reau.app.aa.NavGuidance
 import com.reau.app.card.CardPainter
 import com.reau.app.dash.DashPairing
 import com.reau.app.dash.DashPorts
+import com.reau.app.dash.DashReadings
 import com.reau.app.dash.DashSession
 import com.reau.app.dash.DashSocket
 import com.reau.app.dash.DashWifiManager
@@ -92,8 +94,6 @@ internal class LiveSides(
         val calls: Calls = Calls(),
         /** The rider's settings these sides were built from: what a change while running is told apart from. */
         val settings: REauSettings? = null,
-        /** Android Auto's head unit server switched on and off by itself (behind its switch). */
-        val server: AaServerHooks = AaServerHooks.None,
         /** How long after the joystick Android Auto's blue focus is touched away (shorter in a test). */
         val focusIdleMs: Long = com.reau.app.aa.FocusClearer.IDLE_MS,
         /** What the dash's info ring says now (null: no ring); asked every second, behind the rider's switch. */
@@ -149,18 +149,22 @@ internal class LiveSides(
                 com.reau.app.web.WebSwitch.atStart(SettingsStore.open(context)) { RideDiagnostics.log("projection", it) }
                 val settings = SettingsStore.open(context).load()
                 val folder: File? = context.filesDir // for privacy: internal storage (AppFolders)
-                val recording = folder?.takeIf { settings.recordSessions }?.let { AaReceiver.Recording(File(it, "sessions")) }
+                val recording = folder?.takeIf { settings.recordSessions }?.let {
+                    // The ring is the build's (100 MB; in a debug build up to 768 MB), less when the phone has little free space.
+                    val ring = com.reau.app.data.RecordingsSpace.ringBytes(runCatching { StatFs(it.path).availableBytes }.getOrDefault(0L))
+                    AaReceiver.Recording(File(it, "sessions"), ring)
+                }
                 // Gemini (behind its switch): the voice from the headset or the phone.
                 val voice: (() -> VoiceSource)? = { PhoneVoice(context) { RideDiagnostics.log("aa", it) } }
                     .takeIf { settings.gemini }
                 return Setup(
+                    // The experiment is read at each connection, so a switch changed while the projection runs counts from the next one.
+                    dashSocket = { DashSocket(it, markInDebug = SettingsStore.open(context).load().experimentDebugDscp) },
                     aaConfig = settings.aaConfig,
                     aaOptions = AaReceiver.Options(
-                        // The Lite edition with Android Auto 17.3 or older: it dials in, asked by a broadcast. With a newer
-                        // one the receiver dials the developer server, which the rider switches on by hand (no accessibility).
-                        callIn = if (com.reau.app.Edition.lite &&
-                            com.reau.app.aa.AndroidAuto.dialsIn(com.reau.app.aa.AndroidAuto.installedVersion(context))
-                        ) {
+                        // Android Auto 17.3 or older: it dials in, asked by a broadcast. With a newer one the receiver dials the
+                        // developer server, which the rider switches on by hand.
+                        callIn = if (com.reau.app.aa.AndroidAuto.dialsIn(com.reau.app.aa.AndroidAuto.installedVersion(context))) {
                             AaReceiver.CallIn { com.reau.app.aa.AaCallsIn.poke(context) { RideDiagnostics.log("aa", it) } }
                         } else {
                             null
@@ -177,10 +181,12 @@ internal class LiveSides(
                     video = VideoLoop.Settings(
                         ceilingFps = settings.fpsCeiling,
                         clockSlowPercent = settings.clockSlowPercent,
-                        bitrateBps = settings.streamBitrateBps,
+                        bitrateBps = settings.effectiveStreamBitrateBps,
                         bitrateMode = settings.bitrateMode,
                         keyframeSec = settings.keyframeSec,
                         lightScreenFps = REauSettings.lightScreenFps(),
+                        rtpPacing = settings.experimentRtpPacing,
+                        adaptiveBitrate = settings.experimentAdaptiveBitrate,
                         recordFrames = if (settings.recordVideo && folder != null) RECORD_FRAMES else 0,
                         recordDir = folder?.let { File(it, "video") },
                         recordRolling = true,
@@ -193,7 +199,6 @@ internal class LiveSides(
                     thermalStatus = { phoneThermalStatus(context) },
                     calls = phoneCalls(context),
                     settings = settings,
-                    server = AaServerStarter.hooks(context),
                     phoneStatus = PhoneStatusReader(context)::read,
                     weather = { com.reau.app.weather.WeatherKeeper.forDash() },
                     infoRing = { rotation ->
@@ -265,7 +270,12 @@ internal class LiveSides(
                             PhonePlace.mayScan(context) && wifi.seenInLastScan(wanted, isPrefix)
                     },
                 ).apply {
+                    onBindResult = wifi::bindResult
                     wifi.onNetworkAvailable = { bikeNetworkAvailable() }
+                    // A dash that stays in the scan and refuses every join (its Wi-Fi hung): the rider is told what clears it.
+                    wifi.onDashStuck = { stuck ->
+                        if (stuck) ProjectionNotification.showDashStuck(context) else ProjectionNotification.clearDashStuck(context)
+                    }
                     // A reconnection the manager has under way is joined, not replaced.
                     joining = WifiDashLinkUp.Joining({ wifi.reconnectUnderWay() }, log = { RideDiagnostics.log("wifi", it) })
                 }
@@ -295,14 +305,19 @@ internal class LiveSides(
     // The phone's real state in the heartbeat while the rider's switch is on; `tuned` is read at each beat.
     private val session = DashSession(
         scope, socketFactory = setup.dashSocket, linkProbe = com.reau.app.dash.PhoneLinkProbe(context)::read,
-        phoneStatusProvider = { if (tuned?.dashPhoneStatus == true) setup.phoneStatus() else null },
+        phoneStatusProvider = {
+            if (tuned?.dashPhoneStatus == true) setup.phoneStatus()?.let { PhoneStatusReader.withLocationRule(it, tuned?.useLocation == true) } else null
+        },
         weatherProvider = { if (tuned?.dashWeather == true) setup.weather() else null },
         readings = setup.readings,
+        // The experiment is read at each try, from the live settings ([tuned]): a switch changed while the projection runs counts from the next one.
+        bindRetry = { tuned?.experimentWifiBind == true },
     )
     private val linkUp = setup.linkUp(context, scope).also { up ->
         up.onBikeNetwork { report(ProjectionEvent.BikeNetworkAvailable) }
         com.reau.app.dash.DashSighting.listener = { report(ProjectionEvent.DashSighted) }
         up.onFirstJoin { report(ProjectionEvent.DashFirstJoin(it)) }
+        session.onBindResult = { network, refused -> up.onBindResult?.invoke(network, refused) }
     }
     // The album's picture for the dash's music card (behind its switch), converted once per picture.
     private val albumArt = com.reau.app.dash.AlbumArt()
@@ -311,6 +326,19 @@ internal class LiveSides(
 
     // The bike's speed for the stream's log, from Android Auto's route.
     private val navSpeed = com.reau.app.stream.NavSpeed()
+
+    // The distances to the dash in miles and feet or in metres: what the dash says it is set to, else the phone's region; said in the log when it changes.
+    private var navImperialSaid: Boolean? = null
+    private fun navImperial(): Boolean {
+        val panel = DashReadings.settings.value.distance
+        val region = java.util.Locale.getDefault().country
+        val imperial = com.reau.app.dash.nav.NavUnits.imperial(panel, region)
+        if (imperial != navImperialSaid) {
+            navImperialSaid = imperial
+            RideDiagnostics.log("dash", com.reau.app.dash.nav.NavUnits.line(imperial, panel, region))
+        }
+        return imperial
+    }
 
     // The latest guidance snapshot, for the maneuver distance (navSpeed above already reads the same feed).
     @Volatile private var guidanceNow: NavGuidance = NavGuidance.INACTIVE
@@ -382,7 +410,7 @@ internal class LiveSides(
             val guidance: (com.reau.app.aa.NavGuidance) -> Unit = {
                 guidanceNow = it
                 navSpeed.onGuidance(it, android.os.SystemClock.elapsedRealtime())
-                session.showGuidance(it, noNetwork = noNetwork.without())
+                session.showGuidance(it, noNetwork = noNetwork.without(), imperial = navImperial())
             }
             var options = if (setup.aaConfig.navigation) setup.aaOptions.copy(onNavigation = guidance) else setup.aaOptions
             // Behind their switches: the song and the ringing call go to the dash's own cards.
@@ -403,6 +431,8 @@ internal class LiveSides(
             // when they are announced, and the phone's speaker is only made with the first sound that is to play on it.
             // Android Auto's session open with no picture: the screen and the notification say so (the dash is black).
             options = options.copy(onVideoSilent = { silent -> report(ProjectionEvent.AndroidAutoVideo(silent)) })
+            // The decoder draws into the compositor: when the compositor is the one stuck, the decoder's silence is not its own fault.
+            options = options.copy(downstreamBusyMs = compositor::busyMs)
             options = options.copy(onAudio = { pcm ->
                 if (soundHeard.add(pcm.stream)) RideDiagnostics.log("audio", "the first sound of ${pcm.stream} arrived: ${pcm.data.size} bytes")
                 val now = tuned
@@ -413,7 +443,6 @@ internal class LiveSides(
                 AaReceiver(context, setup.aaConfig, it, { state ->
                     if (state == AaLinkState.ACTIVE) live.applyPendingFit()
                     report(ProjectionEvent.AndroidAutoChanged(state))
-                    setup.server.linkChanged(state)
                     web?.androidAutoChanged(state == AaLinkState.ACTIVE)
                 }, options)
             }
@@ -533,7 +562,8 @@ internal class LiveSides(
         }
         // Behind its switch, and only with Android Auto told of a touch screen.
         if (setup.card == null && setup.aaConfig.touch && setup.settings?.clearAaFocus == true) {
-            clearFocusWhenIdle(scope, focus, setup.focusIdleMs) { receiver?.sendInput(it) }
+            val onNavigation = { com.reau.app.aa.AaScreens.watch.screen.value == com.reau.app.aa.AaScreen.NAV }
+            clearFocusWhenIdle(scope, focus, setup.focusIdleMs, onNavigation) { receiver?.sendInput(it) }
         }
     }
 
@@ -546,13 +576,15 @@ internal class LiveSides(
         compositor.setButtonText(shown)
     }
 
+    // This projection's number at AaDialNow: its end never clears the dial of a newer one.
+    private var dialNumber = 0
+
     override fun startAndroidAuto() {
         val card = setup.card
         if (card != null) return showCard(card)
         val running = receiver ?: return
-        setup.server.started { running.dialSoon() }
+        dialNumber = AaDialNow.started { running.dialSoon() }
         running.start()
-        // While Android Auto's side runs, its screen is read again every second (AaScreenRereads).
         com.reau.app.aa.AaScreens.projection(true)
     }
 
@@ -560,12 +592,13 @@ internal class LiveSides(
         val running = receiver ?: return
         com.reau.app.aa.AaScreens.projection(false)
         running.stop()
-        // After the receiver: the server's end would drop a session still going.
-        setup.server.stopped()
+        AaDialNow.stopped(dialNumber)
     }
 
     /** The picture's fit changed in the settings; the compositor takes a new mapping while running. */
     override val bikeNetwork: Network? get() = linkUp.bikeNetwork
+
+    override fun freezeRecording(mark: Int): Boolean = receiver?.freezeRecording(mark) ?: false
 
     override val dashVisible: Boolean get() = linkUp.dashVisible
 
@@ -723,6 +756,7 @@ internal class LiveSides(
                 "dash session" to { session.disconnect() },
                 "link up" to { linkUp.stop() },
                 "sighting" to { com.reau.app.dash.DashSighting.listener = null },
+                "image gap" to { com.reau.app.dash.ImageGap.clock.forget() },
                 "scope" to { scope.cancel() },
                 "compositor" to { compositor.release() },
             ),
@@ -834,8 +868,9 @@ internal class LiveSides(
         fun newStream(settings: REauSettings) {
             videoSettings = videoSettings.copy(
                 ceilingFps = settings.fpsCeiling, clockSlowPercent = settings.clockSlowPercent,
-                bitrateBps = settings.streamBitrateBps, bitrateMode = settings.bitrateMode, keyframeSec = settings.keyframeSec,
+                bitrateBps = settings.effectiveStreamBitrateBps, bitrateMode = settings.bitrateMode, keyframeSec = settings.keyframeSec,
                 lightScreenFps = REauSettings.lightScreenFps(),
+                rtpPacing = settings.experimentRtpPacing, adaptiveBitrate = settings.experimentAdaptiveBitrate,
             )
             val running = loop ?: return
             running.stop()
@@ -851,6 +886,7 @@ internal class LiveSides(
         fun newLoop(): VideoLoop? {
             val dash = object : VideoLoop.Dash {
                 override fun sendRtp(packet: ByteArray) = session.sendRtp(packet)
+                override fun keyframeSent(bytes: Int, packets: Int) = session.keyframeSent(bytes, packets)
                 override val firstFrameConfirmed: Boolean get() = session.firstFrameConfirmed
                 override val decodedFrameCount: Long get() = session.decodedFrameCount
             }
@@ -872,14 +908,21 @@ internal class LiveSides(
 
 /**
  * The quiet spell after the joystick is checked a few times per [idleMs] (at most every second); once it passed,
- * the touch ([com.reau.app.aa.FocusClearer.TAP]) goes to Android Auto through [send], one log line each time.
+ * and the screen shown is the navigation's ([onNavigation]: the one the picture's net and the other readings agree on), the touch
+ * ([com.reau.app.aa.FocusClearer.TAP]) goes to Android Auto through [send], one log line each time.
  */
-private fun clearFocusWhenIdle(scope: CoroutineScope, focus: com.reau.app.aa.FocusClearer, idleMs: Long, send: (AaCommand) -> Unit) {
+private fun clearFocusWhenIdle(
+    scope: CoroutineScope,
+    focus: com.reau.app.aa.FocusClearer,
+    idleMs: Long,
+    onNavigation: () -> Boolean,
+    send: (AaCommand) -> Unit,
+) {
     val tick = (idleMs / FOCUS_CHECKS).coerceIn(FOCUS_TICK_MIN_MS, FOCUS_TICK_MAX_MS)
     scope.launch {
         while (isActive) {
             delay(tick)
-            if (focus.tapDue(android.os.SystemClock.elapsedRealtime())) {
+            if (focus.tapDue(android.os.SystemClock.elapsedRealtime(), onNavigation())) {
                 com.reau.app.aa.FocusClearer.TAP.forEach(send)
                 RideDiagnostics.log("aa", "focus: a touch cancelled at once, ${idleMs / FOCUS_LOG_S} s after the joystick")
             }
@@ -919,8 +962,8 @@ private fun phoneOnline(context: Context): Boolean = runCatching {
 }.getOrDefault(true)
 
 /** Android Auto's guidance on the dash's own nav bubble; none hides the bubble again. */
-private fun DashSession.showGuidance(guidance: NavGuidance, noNetwork: Boolean) {
-    val nav = AaManeuvers.toDash(guidance, noNetwork)
+private fun DashSession.showGuidance(guidance: NavGuidance, noNetwork: Boolean, imperial: Boolean) {
+    val nav = AaManeuvers.toDash(guidance, noNetwork, imperial = imperial)
     if (nav == null) {
         clearNavInfo()
     } else {

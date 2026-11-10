@@ -14,14 +14,19 @@
     <string name="notif_title_server_off">Android Auto server off</string>
     <string name="notif_text_server_off">Turn on \"Start head unit server\" in Android Auto’s developer settings</string>
     <string name="notif_title_unresponsive">Android Auto stuck</string>
-    <string name="notif_text_unresponsive">It accepts connections but doesn’t respond: force stop Android Auto</string>
-    <string name="notif_text_unresponsive_by_hand">It accepts connections but doesn’t respond: stop and start its head unit server in Android Auto’s ⋮ menu</string>
+    <string name="notif_text_unresponsive">It accepts connections but doesn’t respond: stop and start its head unit server in Android Auto’s ⋮ menu</string>
     <string name="notif_title_closing_previous">Android Auto closing the previous session</string>
     <string name="notif_text_closing_previous">It takes up to a minute; REau tries again on its own</string>
     <string name="notif_title_no_video">Android Auto has no picture</string>
     <string name="notif_text_no_video">The dash stays black: force stop Android Auto</string>
     <string name="notif_title_dash_lost">Dash lost</string>
     <string name="notif_text_dash_lost">The connection to the dash dropped. REau comes back by itself; if it takes over a minute with the motorcycle on, turn it off and on with the key</string>
+    <string name="notif_alert_channel_name">Dash alerts</string>
+    <string name="notif_alert_channel_desc">Warns with sound and vibration when the dash or the phone needs something from you, such as turning the ignition off and on, or the phone being too hot</string>
+    <string name="notif_title_dash_stuck">The dash’s Wi-Fi is stuck</string>
+    <string name="notif_text_dash_stuck">The dash is on but not accepting the connection. Turn the motorcycle’s ignition off and on again; REau reconnects by itself</string>
+    <string name="notif_title_phone_hot">Phone is hot</string>
+    <string name="notif_text_phone_hot">The phone is hot (%1$d °C). Take it out of the sun or a closed pocket, or unplug the charger, so it does not slow down</string>
     <string name="notif_title_no_dash_stopped">Projection turned off</string>
     <plurals name="notif_text_no_dash_stopped">
         <item quantity="one">The dash was gone for %1$d minute, so REau stopped. Turn it on again when the bike is on</item>
@@ -72,7 +77,7 @@
     <string name="action_start">Turn on</string>
     <string name="action_stop">Turn off</string>
     <string name="action_settings">Settings</string>
-    <string name="server_warning">Android Auto isn’t accepting the connection. In its settings: tap \"Version\" about ten times to unlock developer settings, then, in the ⋮ menu, tap \"Start head unit server\". After you restart the phone, you need to turn it on again.</string>
+    <string name="server_warning">Android Auto isn’t accepting the connection. Turn its head unit server on by hand: in Android Auto’s settings, tap \"Version\" about ten times to unlock developer settings, then, in the ⋮ menu, tap \"Start head unit server\". REau connects by itself as soon as it is on. The server turns off when the session ends (when you tap Turn off, for example), and after you restart the phone: turn it on again every time.</string>
     <string name="aa_screen_title">Android Auto screen</string>
     <string name="battery_not_exempt">Android may pause REau while the screen is off to save battery. Exclude REau from battery optimization so the projection doesn’t drop.</string>
     <string name="action_battery_exemption">Exclude REau from optimization</string>
@@ -100,7 +105,7 @@
     <!-- The settings screen (ui/SettingsScreen). -->
     <string name="settings_title">Settings</string>
     <string name="action_back">Back</string>
-    <string name="applies_next_time">With the projection on, settings tagged LIVE apply right away, and so do the Weather switch, the joystick page, the network server screen and the Android Auto screen. Density and margins apply too, but they restart Android Auto and the picture freezes for a few seconds. Every other setting applies the next time you turn on.</string>
+    <string name="applies_next_time">With the projection on, settings tagged LIVE apply right away, and so do the Weather switch, the joystick page, the network server screen and the Android Auto screen. Density applies too, but it restarts Android Auto and the picture freezes for a few seconds. Every other setting applies the next time you turn on.</string>
     <string name="section_fit">Fit to the dome</string>
     <string name="fit_crop">Center crop</string>
     <string name="label_crop">Crop size</string>
@@ -139,10 +144,9 @@
     <string name="headline_android_auto_unresponsive">Android Auto isn’t responding</string>
     <string name="headline_android_auto_image_stale">Android Auto: picture stuck</string>
     <string name="headline_android_auto_no_video">Android Auto: no picture</string>
-    <string name="aa_no_video_warning">Android Auto is connected but isn’t sending a picture, and the dash stays black. Force stop it (Settings › Apps › Android Auto › Force stop); if REau says the server is off, tap Try again.</string>
-    <string name="aa_unresponsive_warning">Android Auto accepts the connection but doesn’t respond. Force stop it (Settings › Apps › Android Auto › Force stop); REau tries again by itself.</string>
-    <string name="aa_unresponsive_by_hand_warning">Android Auto accepts the connection but doesn’t respond. In Android Auto’s developer settings, tap ⋮ and choose \"Stop head unit server\", then ⋮ and \"Start head unit server\"; REau tries again by itself.</string>
-    <string name="aa_other_edition_warning">%1$s is also installed on this phone and may be using Android Auto: its head unit server takes only one session at a time. If it is on, turn it off (tap Turn off in it), wait about a minute and REau connects by itself.</string>
+    <string name="aa_no_video_warning">Android Auto is connected but isn’t sending a picture, and the dash stays black. Force stop it (Settings › Apps › Android Auto › Force stop), then turn REau off and on again. With Android Auto 17.4 or newer, also check that its head unit server is on.</string>
+    <string name="aa_unresponsive_warning">Android Auto accepts the connection but doesn’t respond. In Android Auto’s developer settings, tap ⋮ and choose \"Stop head unit server\", then ⋮ and \"Start head unit server\"; REau tries again by itself.</string>
+    <string name="aa_other_edition_warning">The old REau app, the one with the seal on its icon, is still installed on this phone and may be using Android Auto: its head unit server takes only one session at a time. This app replaces it, so you can uninstall it. If it is on, turn it off (tap Turn off in it), wait about a minute and REau connects by itself.</string>
     <string name="joystick_title">Dash joystick</string>
     <string name="joystick_intro">Choose what each joystick tap does. Applies right away, even while the projection is on.</string>
     <string name="joystick_music_on">The dash shows the song that plays (music card): the media mode has a music control.</string>
@@ -167,37 +171,6 @@
     <string name="joystick_action_zoom_in">Zoom in</string>
     <string name="joystick_action_zoom_out">Zoom out</string>
     <!-- The instrument cluster display experiment -->
-    <!-- Android Auto's head unit server switched on and off by the accessibility service -->
-    <string name="aa_server_auto">Starts and stops the Android Auto server by itself using Accessibility, with Android Auto developer mode on (10 taps on \"Version\"); some apps, such as banking ones, may refuse to open.</string>
-    <string name="aa_server_accessibility_connected">REau accessibility: on</string>
-    <string name="aa_server_accessibility_enabled">REau accessibility: on, but not connected yet (turn it off and on again in Accessibility if it stays this way)</string>
-    <string name="aa_server_accessibility_off">To turn the server on automatically, enable REau in Accessibility; Android 13 or newer may first need \"Allow restricted settings\" in the app’s ⋮ menu, and Advanced Protection can block it.</string>
-    <string name="action_open_accessibility">Open Accessibility</string>
-    <string name="accessibility_ask_title">Allow Accessibility?</string>
-    <string name="accessibility_ask_text">REau uses Accessibility to turn the Android Auto server on automatically; some apps, like banking ones, may refuse to open while it is allowed, and you can turn it off in Android’s settings.</string>
-    <string name="accessibility_ask_confirm">Continue</string>
-    <string name="action_retry_aa_server">Try again</string>
-    <string name="aa_server_cover">Turning on the Android Auto server…</string>
-    <string name="aa_server_cover_cancel">Cancel</string>
-    <string name="aa_server_cover_stopping">Turning off the Android Auto server…</string>
-    <string name="aa_server_cover_waiting">Waiting for the server to answer…</string>
-    <string name="aa_server_stopping">Turning off the Android Auto server…</string>
-    <string name="aa_server_working">Turning on the Android Auto server…</string>
-    <string name="aa_server_started">Android Auto server on.</string>
-    <string name="aa_server_service_off">To turn the server on automatically, enable REau in Accessibility.</string>
-    <string name="aa_server_locked">Unlock the phone and tap Try again: Android Auto settings won’t open with the screen locked.</string>
-    <string name="aa_server_not_installed">Android Auto settings weren’t found on this phone.</string>
-    <string name="aa_server_settings_did_not_open">Android Auto settings didn’t open.</string>
-    <string name="aa_server_unexpected_screen">Android Auto opened a different screen. Open Android Auto, deal with what it asks and try again.</string>
-    <string name="aa_server_menu_did_not_open">The Android Auto menu didn’t open in time. Try again or turn it on manually: ⋮ → Start head unit server.</string>
-    <string name="aa_server_developer_mode_off">Android Auto developer mode is off. Tap \"Open Android Auto settings\", scroll to the bottom, tap \"Version\" 10 times, confirm, then come back and tap Try again.</string>
-    <string name="aa_server_unknown_menu">This version of Android Auto changed the server menu. Turn it on manually: ⋮ → Start head unit server.</string>
-    <string name="aa_server_already_running">The Android Auto server is marked as on and didn’t respond. Tap Stop and then Start in the Android Auto menu, or force stop Android Auto.</string>
-    <string name="aa_server_not_up">Android Auto didn’t start the server. Try again.</string>
-    <string name="aa_server_interrupted">Server startup interrupted.</string>
-    <string name="aa_server_aa_gone">Android Auto stopped answering while REau read its screen. Try again.</string>
-    <string name="aa_server_stopped">Android Auto server off.</string>
-    <string name="aa_server_left_on">The Android Auto server was left on (the phone was locked or REau’s accessibility service was off). Turn it off from its notification, if you like.</string>
     <!-- The dash's bubble with no route, and the joystick in its map mode -->
     <string name="permissions_title">Permissions</string>
     <string name="permissions_intro">What leaves the phone goes to the dash, to your network only with the network server on, and to the internet only for weather and updates (more in \"REau and your data\").</string>
@@ -211,9 +184,6 @@
     <string name="permission_optional">Optional: its switch is off</string>
     <string name="permission_special_on">On</string>
     <string name="permission_special_off">Off</string>
-    <string name="permission_special_stuck">On, but stuck (Android says \"not working\"): turn it off and on again</string>
-    <string name="perm_accessibility_title">Accessibility (\"REau: Android Auto server\")</string>
-    <string name="perm_accessibility_why">Reads which screen Android Auto shows to fit the picture, and listens only to Android Auto, Google Maps and, with \"Answer calls\" on, WhatsApp, Telegram and Signal calls.</string>
     <string name="perm_battery_title">Exempt from battery optimization</string>
     <string name="perm_battery_why">Without this, Android may pause REau with the screen off and the projection drops. It isn’t a permission: it’s the list of apps Android lets run in the background.</string>
     <string name="perm_notifications_title">Notifications</string>
@@ -225,7 +195,7 @@
     <string name="perm_microphone_title">Microphone</string>
     <string name="perm_microphone_why">Carries your voice from the helmet’s Bluetooth headset (or the phone) to Android Auto for Gemini, with the \"Gemini\" switch on, and REau doesn’t store the audio.</string>
     <string name="perm_location_title">Location (approximate and precise)</string>
-    <string name="perm_location_why">Lets Android give REau the Wi-Fi list to find the dash’s name without reading your position, and with \"Use location\" on, the last position for the sun-based theme.</string>
+    <string name="perm_location_why">Lets Android give REau the Wi-Fi list to find the dash, even with the app behind another one, without reading your position; with \"Use location\" on, the last position for the sun-based theme.</string>
     <string name="perm_internet_title">Open network connections</string>
     <string name="perm_internet_why">Android requires it for any connection, but REau uses the internet only for the optional weather (Open-Meteo) and, when you tap it, the update check (GitHub).</string>
     <string name="perm_network_state_title">View networks</string>
@@ -241,7 +211,7 @@
     <string name="perm_foreground_device_title">Connected device service</string>
     <string name="perm_foreground_device_why">The service type Android has required for the projection since Android 14: the motorcycle’s dash is a connected device.</string>
     <string name="perm_foreground_location_title">Location service</string>
-    <string name="perm_foreground_location_why">The same service with the location type, only for the info ring’s GPS card: without it Android gives no position with the screen off.</string>
+    <string name="perm_foreground_location_why">The same service with the location type: without it, behind another app or with the screen off, Android gives REau no Wi-Fi list and no GPS position.</string>
     <string name="perm_foreground_mic_title">Microphone service</string>
     <string name="perm_foreground_mic_why">The same service with the microphone type, only for Gemini by joystick: without it Android delivers silence with the screen off.</string>
     <string name="perm_wake_lock_title">Keep the phone awake</string>
@@ -297,8 +267,8 @@
     <string name="credits_android_auto">Android Auto on the phone</string>
     <string name="credits_dash">Tripper Dash</string>
     <string name="credits_libraries">Libraries and fonts</string>
-    <string name="permissions_ask_all_note">Asks at once for the permissions Android prompts for; accessibility and battery have their own buttons on their rows. If Android doesn’t show the request (you declined before), use \"Open REau’s permissions in Android\".</string>
-    <string name="use_location">On by default, but it only works once Android’s location permission is granted. With the theme set by the sun, REau reads the last position Android already has when you open it, without turning on GPS, to know sunrise and sunset where you are; it stays on the phone, rounded to about 11 km, never goes to the log, and is forgotten when this is off. That permission also lets REau see Wi-Fi networks to find the dash, without reading your position.</string>
+    <string name="permissions_ask_all_note">Asks at once for the permissions Android prompts for; battery has its own button on its row. If Android doesn’t show the request (you declined before), use \"Open REau’s permissions in Android\".</string>
+    <string name="use_location">On by default, but it only works once Android’s location permission is granted. With the theme set by the sun, REau reads the last position Android already has when you open it, without turning on GPS, to know sunrise and sunset where you are; it stays on the phone, rounded to about 11 km, never goes to the log, and is forgotten when this is off. That permission also lets REau see Wi-Fi networks to find the dash, even behind another app, without reading your position; Android may show the location icon.</string>
     <string name="log_keep_days">Automatically deletes the log and recordings older than the chosen time (applies right away when you choose, and again when you open the app and with each new file). Past %1$d MB, the oldest logs go first whatever you choose; recordings have their own ceiling, %2$d MB.</string>
     <plurals name="log_keep_days_n">
         <item quantity="one">%1$d day</item>
@@ -345,8 +315,7 @@
     <string name="sub_card">Still image, no Android Auto</string>
     <string name="sub_server_off">The head unit server is missing</string>
     <string name="sub_closing_previous">It takes up to a minute; REau tries again on its own</string>
-    <string name="sub_unresponsive">Force stop it; REau tries again on its own</string>
-    <string name="sub_unresponsive_by_hand">Stop and start its server in the ⋮ menu; REau tries again on its own</string>
+    <string name="sub_unresponsive">Stop and start its server in the ⋮ menu; REau tries again on its own</string>
     <string name="sub_image_stale">The dash shows the last picture while the bike moves</string>
     <string name="stale_badge">PICTURE STUCK</string>
     <string name="sub_no_video">The dash is black: force stop Android Auto</string>
@@ -405,9 +374,17 @@
     <string name="group_map">Theme</string>
     <string name="group_on_dash">On the dash</string>
     <string name="group_joystick">Joystick</string>
-    <string name="group_android_auto">Android Auto</string>
     <string name="group_video_profiles">Video profiles</string>
     <string name="group_card">Wallpaper</string>
+    <string name="group_connection_experiments">Experimental connection</string>
+    <string name="exp_pacing_title">Space out the video</string>
+    <string name="exp_pacing_sub">Experimental: a 2 ms pause every 4 video packets, at most 400 a second</string>
+    <string name="exp_dscp_title">Mark Wi-Fi priority on debug builds</string>
+    <string name="exp_dscp_sub">Experimental: only changes the debug build (a release always marks). Counts from the next connection</string>
+    <string name="exp_bitrate_title">Lower, adaptive bitrate</string>
+    <string name="exp_bitrate_sub">Experimental: aims at 200 kbps and follows what the encoder really puts out</string>
+    <string name="exp_wifi_title">Wi-Fi and EPERM</string>
+    <string name="exp_wifi_sub">Experimental: low-latency Wi-Fi lock (Android 10+) and 5 more tries on the same network when Android refuses it (EPERM). Counts from the next connection</string>
     <string name="pairing_known_title">Known dash</string>
     <string name="pairing_known_info">This is the dash whose full Wi-Fi name REau already knows, which it needs to connect. \"Forget\" deletes that name, everything the dash has reported (the bike data below) and the network suggested to Android; after that, REau looks for the dash again (with REau open, the name shows up on its own) or you type the full name. Use it when you change motorcycle or dash.</string>
     <string name="pairing_unknown_title">No known dash</string>
@@ -438,9 +415,6 @@
     <string name="answer_title">Answer calls</string>
     <string name="gemini_title">Gemini</string>
     <string name="by_joystick_sub">By handlebar joystick</string>
-    <string name="server_title">Turn on the server automatically</string>
-    <string name="server_sub_off">Off: you turn it on manually</string>
-    <string name="server_sub_on">Turns on and off with the projection</string>
     <string name="fps_title">Frame rate cap</string>
     <string name="profiles_fps_sub">Profile A: 4. Profile B: %1$d. Fixed</string>
     <string name="profiles_info">REau uses two fixed video profiles for the dash: A, %1$d fps and %2$d kbps, the smoother picture, and B, half of that (%3$d fps and %4$d kbps), lighter on the Wi-Fi and the dash. The maneuver profile and the speed profile, just below, choose between them. These values can’t be changed.</string>
@@ -564,10 +538,10 @@
     <string name="ride_log_sub_on">Recording on the phone</string>
     <string name="ride_log_sub_off">Off: nothing is recorded</string>
     <string name="record_video_sub">For debugging</string>
-    <string name="record_video_info">Keeps on the phone a copy of the video sent to the dash, with the map, the route and the cards it shows, to investigate picture problems. It is off by default in the app you install to ride and on in the debug build; it stays in the app’s folder and only leaves if you use \"Share › With recordings\". Recordings add up to 200 MB (1 GB in the debug build), the oldest going first, and also go by the period in \"Automatically delete those older than\"; applies the next time you turn on.</string>
+    <string name="record_video_info">Keeps on the phone a copy of the video sent to the dash, with the map, the route and the cards it shows, to investigate picture problems. It is off by default in the app you install to ride and on in the debug build; it stays in the app’s folder and only leaves if you use \"Share › With recordings\". Recordings add up to 200 MB (1024 MB in the debug build), the oldest going first, and also go by the period in \"Automatically delete those older than\"; applies the next time you turn on.</string>
     <string name="record_sessions_title">Record Android Auto sessions</string>
     <string name="record_sessions_sub">Saves the map and the route</string>
-    <string name="record_sessions_info">Records everything Android Auto sends in one connection (map picture, route, song and caller data, messages), keeping the last 50 to 100 MB, about 3 to 15 minutes of ride. Off by default in the app you install to ride and on in the debug build, it reveals where you rode: it stays in the app’s folder and only leaves if you use \"Share › With recordings\". Recordings add up to 200 MB (1 GB in the debug build) and go by the period in \"Automatically delete those older than\"; applies the next time you turn on.</string>
+    <string name="record_sessions_info">Records everything Android Auto sends in one connection (picture, route, music, caller, messages), keeping the last 50 to 100 MB, 3 to 15 minutes of ride (768 MB in the debug build). Off by default in the app you install to ride and on in the debug build, it reveals where you rode: it stays in the app’s folder and only leaves if you use \"Share › With recordings\". Recordings add up to 200 MB (1024 MB in the debug build) and go by the period in \"Automatically delete those older than\"; applies the next time you turn on.</string>
     <string name="detailed_title">Detailed log</string>
     <string name="detailed_sub">Much larger file</string>
     <string name="share_title">Share</string>
@@ -651,9 +625,6 @@
     <!-- The redesign's permissions page. -->
     <string name="permissions_ask_all_n">Ask for the missing ones (%1$d)</string>
     <string name="permissions_count">%1$d/%2$d</string>
-    <string name="permission_special_stuck_short">Stopped</string>
-    <string name="permission_special_restricted">If Android says \"Restricted setting\" when you turn it on, tap \"Allow restricted settings\" below, then ⋮ in the corner and \"Allow restricted settings\", and come back to turn on accessibility.</string>
-    <string name="action_allow_restricted">Allow restricted settings</string>
 
     <!-- The redesign's "O REau e os seus dados". -->
     <string name="about_summary_internet">Uses the internet only for weather (on the dash or in the info ring), once the location is allowed, and to check for a new version when you tap.</string>
@@ -675,12 +646,6 @@
     </plurals>
     <string name="cd_share_logs">Share the logs</string>
 
-    <!-- The redesign's server cover. -->
-    <string name="cover_step_open">Opening Android Auto</string>
-    <string name="cover_step_menu">Developer settings</string>
-    <string name="cover_step_start">Start head unit server</string>
-    <string name="cover_step_stop">Stop head unit server</string>
-    <string name="cover_hint">Takes a few seconds. No need to tap anything.</string>
 
     <!-- Tela "Dados da moto": tudo o que o painel diz ao REau, só para ler. -->
     <string name="phone_status_title">Phone status</string>
@@ -838,7 +803,7 @@
     <string name="server_rule">While on, REau does not look for the dash.</string>
     <string name="web_view_wait_sub">On the home screen, tap Turn on first.</string>
     <string name="web_view_wait_value">Stopped</string>
-    <!-- Android Auto 17.3 or older, asked to dial in, never did (Lite edition) -->
+    <!-- Android Auto 17.3 or older, asked to dial in, never did (old apps) -->
     <string name="notif_title_not_calling">Android Auto didn’t call</string>
     <string name="notif_text_not_calling">Open Android Auto, finish its setup, then turn REau off and on again</string>
     <string name="link_not_calling">Didn’t call</string>
@@ -861,4 +826,8 @@
     <string name="update_button_check">Check now</string>
     <string name="update_button_open">See the release</string>
     <string name="update_info">Only when you tap, REau asks GitHub (api.github.com); GitHub sees the phone’s address, with no account. Nothing is downloaded or installed.</string>
+
+    <!-- A small line on the main screen while the old app with the seal on its icon (id ending in .lite) is still installed -->
+    <string name="old_app_note">The old REau app (the one with the seal on its icon) is still installed. It isn’t needed any more: you can uninstall it.</string>
+
 </resources>

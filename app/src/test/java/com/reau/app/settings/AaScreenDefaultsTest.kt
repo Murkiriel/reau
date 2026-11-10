@@ -37,7 +37,7 @@ class AaScreenDefaultsTest {
 
     private val expected: Map<String, Any?> = mapOf(
         "density" to 180, "marginW" to 0, "marginH" to 0,
-        "navFit" to FitParams(Fit.CROP, 74, 0, 62, 0, 0, 100, none),
+        "navFit" to FitParams(Fit.CROP, 74, 90, 62, 0, 0, 100, none),
         "appsFit" to FitParams(Fit.WHOLE_VISIBLE, 64, -34, 54, 20, 0, 100, none),
         "menuFit" to FitParams(Fit.WHOLE_VISIBLE, 90, 32, 20, 20, 0, 100, none),
         "menuFitKept" to FitParams(Fit.WHOLE_VISIBLE, 90, 32, 20, 20, 0, 100, none),
@@ -45,7 +45,7 @@ class AaScreenDefaultsTest {
         "statsOverlay" to false, "statsX" to 160, "statsY" to 44, "statsSize" to 22,
         "buttonOverlay" to false, "buttonX" to 170, "buttonY" to 96, "buttonSize" to 32,
         "maneuverRing" to false,
-        "infoRing" to true, "infoRingData" to 2047, "infoRingCarousel" to true, "infoRingSeconds" to 7, "infoRingInPlace" to false,
+        "infoRing" to false, "infoRingData" to 2047, "infoRingCarousel" to true, "infoRingSeconds" to 7, "infoRingInPlace" to false,
         "dashWeather" to true, "useLocation" to true,
     )
 

@@ -68,4 +68,49 @@ class DecoderStartGuardTest {
         guard.worked()
         assertTrue("a start that worked asks for it again", guard.lowLatency)
     }
+
+    @Test
+    fun `a decoder that started and stalled once is still the hardware one, twice it is the software one`() {
+        assertFalse("the first stall does not say it", guard.stalled())
+        assertFalse(guard.useSoftware)
+        assertTrue("the second says it, once", guard.stalled())
+        assertTrue(guard.useSoftware)
+        assertFalse("a third is no news", guard.stalled())
+        assertTrue(guard.useSoftware)
+        assertEquals(DecoderStartGuard.STALLS_BEFORE_SOFTWARE, 2)
+    }
+
+    @Test
+    fun `a start that works forgives the failures but not the stalls`() {
+        guard.stalled()
+        guard.stalled()
+        guard.failed(0L)
+        guard.worked()
+        assertEquals(0, guard.failuresInARow)
+        assertTrue("the restart that follows each stall starts well; it must not clear the count", guard.useSoftware)
+    }
+
+    @Test
+    fun `a new surface forgives the stalls as well`() {
+        guard.stalled()
+        guard.stalled()
+        guard.reset()
+        assertFalse(guard.useSoftware)
+        assertFalse("and counts from the beginning", guard.stalled())
+        assertFalse(guard.useSoftware)
+    }
+
+    @Test
+    fun `start failures and stalls are counted apart`() {
+        guard.failed(0L)
+        guard.stalled()
+        assertFalse("one failure and one stall make no software decoder", guard.useSoftware)
+        guard.stalled()
+        assertTrue(guard.useSoftware)
+        guard.reset()
+        guard.stalled()
+        guard.failed(0L)
+        guard.failed(1_000L)
+        assertTrue("two failures in a row, whatever the stalls", guard.useSoftware)
+    }
 }

@@ -105,16 +105,13 @@ jobs:
       # assinado com a chave de debug que o próprio Android Gradle Plugin cria no runner (não há keystore nem segredo
       # no repositório; sem a chave do projeto o build só assina assim com -PreauDebugSigned=true); o APK não é
       # publicado nem guardado, só inspecionado.
-      - name: Montar os APKs release (as duas edições)
-        run: ./gradlew --console=plain --max-workers=2 -PreauDebugSigned=true :app:assembleCompletaRelease :app:assembleLiteRelease
+      - name: Montar o APK release
+        run: ./gradlew --console=plain --max-workers=2 -PreauDebugSigned=true :app:assembleRelease
 
       # Sai com 1 se aparecer permissão, biblioteca, .so ou host que a linha de base não tem, ou se o APK não tiver a forma de
       # release (depurável, classe de debug ou do Compose tooling/test, componente fora da lista de apk_audit.py, sem perfil de base).
-      - name: Auditar o APK da edição completa
-        run: python3 -B scripts/apk_audit.py app/build/outputs/apk/completa/release/app-completa-release.apk
-
-      - name: Auditar o APK da edição lite
-        run: python3 -B scripts/apk_audit.py app/build/outputs/apk/lite/release/app-lite-release.apk
+      - name: Auditar o APK
+        run: python3 -B scripts/apk_audit.py app/build/outputs/apk/release/app-release.apk
 
   python:
     name: Testes do Python

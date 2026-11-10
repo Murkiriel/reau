@@ -1,6 +1,7 @@
 package com.reau.app.stream
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -114,6 +115,23 @@ class RtpOutputTest {
         assertEquals("the count starts again", RtpOutput.Counts(0, 0), output.takeCounts())
     }
 
+    @Test
+    fun `each keyframe that goes out is told with its bytes and its packets, the other frames and the held ones are not`() {
+        val told = mutableListOf<Pair<Int, Int>>()
+        val tellingOutput = RtpOutput(onKeyframe = { size, count -> told += size to count }) { packets += it }.also { it.switchTo(encoder) }
+        tellingOutput.onEncoded(encoder, pFrame(1), isKey = false, ptsMs = 0) // held back
+        tellingOutput.onEncoded(encoder, config, isKey = false, ptsMs = 0)
+        tellingOutput.onEncoded(encoder, idr, isKey = true, ptsMs = 62)
+        tellingOutput.onEncoded(encoder, pFrame(2), isKey = false, ptsMs = 124)
+        val big = bytes(0, 0, 0, 1, 0x65) + ByteArray(3_000) { 0x55 }
+        tellingOutput.onEncoded(encoder, big, isKey = true, ptsMs = 186)
+
+        assertEquals(2, told.size)
+        assertEquals(idr.size to 1, told[0])
+        assertEquals(big.size, told[1].first)
+        assertTrue("a keyframe too large for one packet is told with its packets: ${told[1]}", told[1].second >= 3)
+    }
+
     // ── the tap (the recording of what is sent) ────────────────────────────────────────────────────────────
 
     @Test
@@ -163,6 +181,37 @@ class RtpOutputTest {
         output.onEncoded(encoder, idr, isKey = true, ptsMs = 124)
         assertEquals(1, packets.size)
         assertEquals(1, output.idrWithheld)
+    }
+
+    // ── a withheld keyframe asks for a new one ─────────────────────────────────────────────────────────────────
+
+    @Test
+    fun `a keyframe withheld for lack of parameter sets wants a new keyframe, once`() {
+        assertFalse("nothing was withheld yet", output.takeKeyframeWanted())
+
+        output.onEncoded(encoder, idr, isKey = true, ptsMs = 0)
+        assertEquals(1, output.idrWithheld)
+        assertTrue("the dash waits for a picture: a keyframe is wanted now", output.takeKeyframeWanted())
+        assertFalse("taken: the answer starts again", output.takeKeyframeWanted())
+    }
+
+    @Test
+    fun `a keyframe that went out, or frames held back before one, want nothing`() {
+        output.onEncoded(encoder, pFrame(1), isKey = false, ptsMs = 0)
+        output.onEncoded(encoder, config, isKey = false, ptsMs = 0)
+        output.onEncoded(encoder, idr, isKey = true, ptsMs = 0)
+        output.holdUntilKeyframe()
+        output.onEncoded(encoder, pFrame(2), isKey = false, ptsMs = 62)
+
+        assertEquals(0, output.idrWithheld)
+        assertFalse(output.takeKeyframeWanted())
+    }
+
+    @Test
+    fun `a new encoder forgets the keyframe the old one left wanted`() {
+        output.onEncoded(encoder, idr, isKey = true, ptsMs = 0)
+        output.switchTo(Any())
+        assertFalse(output.takeKeyframeWanted())
     }
 
     // ── the keyframe as a burst: how big, in bytes and in packets ───────────────────────────────────────────

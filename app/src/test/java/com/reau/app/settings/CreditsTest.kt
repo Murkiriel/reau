@@ -12,7 +12,7 @@ class CreditsTest {
     private val all = Credits.groups.flatMap { it.entries }
 
     /** The one line with no address to copy: HeadQLink's repository is not known here (the NOTICE says so). */
-    private val NO_ADDRESS = "HeadQLink"
+    private val NO_ADDRESS = "EstrelaAustral"
 
     @Test
     fun `the three groups, in order`() {
@@ -64,10 +64,22 @@ class CreditsTest {
     fun `each line has a holder, a role and an address to copy`() {
         for (e in all) {
             assertTrue(e.name, e.role != 0)
-            // HeadQLink's repository address is not known to this repository: its line has none (NOTICE says so); every other has one.
+            // EstrelaAustral is a private repository: its line has no address to copy (the NOTICE says so); every other has one.
             assertTrue(e.name, e.url.startsWith("https://") || (e.name == NO_ADDRESS && e.url.isEmpty()))
         }
         assertTrue("every line names a holder", all.none { it.holder.isBlank() })
+    }
+
+    /** Checked with `gh` on 30/10/2026: these projects moved, and the old address only redirects. The new one is the one given. */
+    @Test
+    fun `the addresses given are the projects' current ones, not the ones that redirect`() {
+        val urls = all.associate { it.name to it.url }
+        assertEquals("https://github.com/aa-proxy/aa-proxy-rs", urls["aa-proxy-rs"])
+        assertEquals("https://github.com/OpenMotoDash/better-dash", urls["better-dash"])
+        assertEquals("https://github.com/webstream-labs/jmuxer", urls["JMuxer"])
+        assertEquals("https://github.com/ryazrm/headqlink_devel", urls["HeadQLink"])
+        val notice = java.io.File("../NOTICE").readText()
+        assertTrue("the NOTICE says EstrelaAustral's repository is private", "a private repository" in notice.substringAfter("EstrelaAustral (Apache License 2.0)"))
     }
 
     @Test

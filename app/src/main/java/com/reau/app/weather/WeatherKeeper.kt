@@ -27,7 +27,7 @@ import kotlin.math.roundToInt
 /**
  * The weather for the dash, from Open-Meteo (free, no key, no account).
  *
- * Only while the rider's switch "Clima no painel" or the info ring is on (both are on by default) and "Usar a localização" has given a place. What leaves the phone:
+ * Only while the rider's switch "Clima no painel" or the info ring is on (the first is on by default, the ring is off) and "Usar a localização" has given a place. What leaves the phone:
  * the request, with the place rounded to a tenth of a degree (about 11 km), to api.open-meteo.com; the answer is kept on
  * the phone ([Snapshot]). Never in the ride log: no place, no temperature of the place, only that an update happened or why not.
  */

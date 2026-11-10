@@ -90,4 +90,11 @@ class VideoDecoderRulesTest {
         assertTrue(VideoDecoder.restartAfterErrors(3))
         assertTrue(VideoDecoder.restartAfterErrors(4))
     }
+
+    @Test
+    fun `a codec that starts after dropped pictures is mid-chain unless it starts on a keyframe`() {
+        assertFalse("nothing was dropped: the first picture starts the codec", VideoDecoder.startedMidChain(dropped = 0, startsOnKeyframe = false))
+        assertTrue(VideoDecoder.startedMidChain(dropped = 3, startsOnKeyframe = false))
+        assertFalse("it starts on a keyframe: nothing is missing", VideoDecoder.startedMidChain(dropped = 3, startsOnKeyframe = true))
+    }
 }

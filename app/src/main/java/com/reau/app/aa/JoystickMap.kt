@@ -34,7 +34,7 @@ sealed class AaCommand {
  * Which control: the dash tells its mode by the codes it sends. In its media mode the sides come as next and previous
  * track (0x09 right, 0x0A left), up and down as volume (0x06, 0x07) and the middle as play/pause (0x05); in its map
  * mode the sides come as zoom (0x13 right, 0x14 left: a capture on the bike and better-dash), the middle as
- * IN (0x18) and down as 0x15 (better-dash reads it so; confirmed on the bike on 28/10/2026). 0x0B comes once as
+ * IN (0x18) and down as 0x15 (better-dash reads it so; proven on the bike on 28/10/2026, in the ride log). 0x0B comes once as
  * the dash connects and is no button: ignored. Back (0x12) is not on the page: back, and twice within
  * [DOUBLE_BACK_MS] home, as before.
  *

@@ -34,7 +34,8 @@ notice below instead of a header in each file.
 EstrelaAustral (Apache License 2.0)
   Copyright 2026 Murkiriel, on a base from NorthStar
   (Copyright 2026 Aditya Dasika, Apache License 2.0).
-  https://github.com/Murkiriel/EstrelaAustral
+  https://github.com/Murkiriel/EstrelaAustral (a private repository: the
+  address does not open for anyone but its owner)
   Parts of REau are copied or adapted from EstrelaAustral: the build setup (the
   Gradle version catalog entries, the detekt tasks and config/detekt/detekt.yml),
   the ride log (data/RideDiagnostics.kt), the dash link (the
@@ -164,6 +165,10 @@ open-headunit (GNU Affero General Public License v3.0)
   - The fix that policy belongs to (open-headunit commit 489df5de, "keep a
     retried version request's late answers out of TLS") is applied to the
     copied aa/AapSslContext.kt and aa/AapTransport.kt; their headers say so.
+  - The version request goes once over the socket (open-headunit commit 68c2bbb5,
+    "send one version request over TCP"): REau took the value, not the code
+    (AaConfig.VERSION_REQUESTS = 1; open-headunit keeps three for USB, which REau
+    does not have).
   - aa/VideoFragmentAssembler.kt with VideoFragmentAssemblerTest and
     aa/VideoRecoveryPolicy.kt with VideoRecoveryPolicyTest, copied from
     app/src/main/java/com/andrerinas/openheadunit/decoder/video/ and its test
@@ -186,8 +191,12 @@ headunit-revived (GNU Affero General Public License v3.0)
   headunit-revived: https://github.com/andreknieriem/headunit-revived
   Original work Copyright (C) 2011-2015 Michael A. Reid (the original
   "headunit", https://github.com/mikereidis/headunit) and the authors of
-  "headunit-reloaded" and "headunit-revived" (andreknieriem), and their
-  respective contributors. All of them license it under the AGPL-3.0. The copied files keep the
+  "headunit-revived" (andreknieriem; the project is now called open-headunit,
+  https://github.com/andreknieriem/open-headunit, and the old address
+  redirects to it), and their respective contributors. All of them license it
+  under the AGPL-3.0. ("headunit-reloaded" is a separate, closed-source
+  product that shares an origin with the line above; no code of it is here.)
+  The copied files keep the
   "Ported from headunit-revived (AGPLv3)" headers they came with.
   The protobuf classes in aa/proto/ are generated code. Their .proto sources
   are in app/src/main/proto/ (common, control, input, media, playback,
@@ -206,8 +215,10 @@ MOTO-HUB (GNU Affero General Public License v3.0 only)
   - Navigation status channel: aa/AapNavigationStatus.kt (the class
     AapControlNavigation) and aa/NavGuidance.kt (its Snapshot) are copied from
     apps/android/app/src/main/java/io/motohub/android/aa/AapNavigationStatus.kt,
-    commit 725a541, which itself follows headunit-revived's
-    aap/AapNavigation.kt. Changes: package; the guidance goes to a function
+    commit 725a541 (the file first appeared in MOTO-HUB in commit 11546d2 and has
+    not changed since 7a0df32, which gave it its header; MOTO-HUB rewrote its
+    history on 2026-08-08, so these are the addresses of today), which itself
+    follows headunit-revived's aap/AapNavigation.kt. Changes: package; the guidance goes to a function
     given to the class instead of MOTO-HUB's process-wide object; detekt
     suppressions. The navigation status service in aa/ServiceDiscoveryResponse.kt
     (channel 10, image codes only, one update a second) follows MOTO-HUB's
@@ -216,12 +227,15 @@ MOTO-HUB (GNU Affero General Public License v3.0 only)
 
 NorthStar (Apache License 2.0)
   Copyright 2026 Aditya Dasika. https://github.com/adityadasika21/NorthStar
-  The first implementation of the dash protocol, on which EstrelaAustral was
-  built. It reaches REau through the EstrelaAustral files listed above, which
-  carry the same Apache-2.0 notice.
+  An implementation of the dash protocol that builds on better-dash (below, which
+  is the older of the two) and on which EstrelaAustral was built. Its repository
+  is archived and its source was removed on 2026-07-08, so the license text no
+  longer shows there. It reaches REau through the EstrelaAustral files listed
+  above, which carry the same Apache-2.0 notice.
 
 better-dash (Apache License 2.0)
-  Copyright norbertFeron. https://github.com/norbertFeron/better-dash
+  Copyright norbertFeron. https://github.com/OpenMotoDash/better-dash (the
+  repository moved there from github.com/norbertFeron/better-dash, which redirects).
   Two kinds of use, both marked in the files. As a reference: the K1G packet
   layouts (dash/protocol/K1GPacket.kt, DashCommands.kt) are interoperability
   facts that were cross-checked against it and against traffic observed on a
@@ -241,28 +255,58 @@ better-dash (Apache License 2.0)
   0x15, was confirmed on the bike on 28/10/2026).
 
 recon-dash (GNU Affero General Public License v3.0)
-  Copyright MinotaurG. https://github.com/MinotaurG/recon-dash
-  The pausing of sends when the network drops and the dash telemetry. They
-  come into REau through the EstrelaAustral files above, whose notice records
-  ports of recon-dash; the files have no header of their own for it. REau is
-  AGPL-3.0 as well.
+  https://github.com/MinotaurG/recon-dash (MinotaurG is the owner's name on
+  GitHub; the repository carries no copyright line besides the license text).
+  No file of REau was found to be copied from it: compared with it, every line
+  of REau's dash/ that it shares is also in NorthStar's code, which is where it
+  comes from (checked 2026-11-03). Two things were taken from it, through the
+  EstrelaAustral files above, whose notice records them as ports; the files have
+  no header of their own for it:
+  - The idea of stopping the sends when the network drops, and the numbers behind
+    it (its DashSocket.kt counts "34k+ RTP + 5k+ TX ENETUNREACH" in one ride).
+    dash/DashSocket.kt does it its own way (it stops after five failed sends in
+    a row and probes every twentieth); recon-dash gates the sends with a link
+    flag. No code is taken.
+  - The shape of the record of one telemetry packet from the dash
+    (dash/protocol/TelemetryEvent.kt follows its TelemetryPacket: time, type,
+    sub, raw bytes, decrypted bytes). The code that reads the packets is
+    NorthStar's.
+  Its dash/ folder is itself derived from OpenDash (its docs say so) and has no
+  NOTICE of its own; the OpenDash entry below says what REau has from there.
+  REau is AGPL-3.0 as well.
 
 open-dash (Apache License 2.0)
   Copyright 2026 Subtle Sayak and contributors. https://github.com/subtlesayak/open-dash
-  The project says it descends from NorthStar and better-dash (both above).
-  The dash output sequence comes from it through the EstrelaAustral files above,
-  from a version published before the project's source baseline of 2026-09-21,
-  which no longer carries the dash pairing, authentication, projection and
-  streaming code. The fork this notice used to cite (kapiljhajhria/open-dash)
-  is no longer online. The license and the holder are recorded as the
-  project's own NOTICE states them.
+  The project says it descends from NorthStar and better-dash (both above). It
+  comes to REau through the EstrelaAustral files above, from versions published
+  before the project's source baseline of 2026-09-21, which no longer carries the
+  dash pairing, authentication, projection and streaming code (what could be
+  checked in 2026-11-03 is in forks that kept that code, with the same NOTICE).
+  The fork this notice used to cite (kapiljhajhria/open-dash) is no longer online.
+  Two parts of REau are adapted from OpenDash, and are not in NorthStar:
+  - dash/DashWifiManager.kt: the search for the dash network the system has
+    already joined and the reading of its SSID (findAlreadyConnectedDashNetwork,
+    readActiveWifiSsid, the exact-name-or-prefix match and the masking of the SSID
+    in logs), and the fallback that looks for it again, for Android 11 and
+    earlier (startAndroid11SsidPolling). Changed: the rules are functions that
+    take their values, and the requests are checked before the fallback acts.
+  - The exit sequence of the dash: dash/protocol/DashCommands.kt (exitBack,
+    exitProjectionIdle, exitSessionBoundary) and its use in dash/DashSession.kt.
+    OpenDash's documentation describes the same three packets and says it took
+    them from NorthStar's capture notes. The packets are bytes of the dash
+    protocol; the functions are REau's own.
+  What OpenDash and REau both have of the packet layer, the authentication, the
+  sockets, the video and the session comes from NorthStar, not from OpenDash.
+  The license and the holder are recorded as the project's own NOTICE states
+  them: "Copyright 2026 Subtle Sayak and contributors".
 
 HeadQLink (GNU Affero General Public License v3.0)
-  A fork of open-headunit (above) for a car's screen. Its holder and its
-  repository address are not known to this repository: the copy kept for
-  reference (README, LICENSE and COPYRIGHT file) names none of its own and keeps
-  open-headunit's and Michael A. Reid's notices. Add them here when known.
-  The app's Credits screen lists it (with those holders and no address to copy).
+  https://github.com/ryazrm/headqlink_devel (GitHub user ryazrm; checked
+  2026-10-30). A fork of open-headunit (above) that brings Android Auto to a
+  car's screen (the Leapmotor C10, over the car's own mirroring link). It names
+  no copyright holder of its own: its COPYRIGHT file is Michael A. Reid's and its
+  notices are open-headunit's, and its commits are mostly open-headunit's
+  authors'. The app's Credits screen lists it with those holders.
   What REau took is one value and an order, and no code: the 1.5 s between
   "stop" and "start" when Android Auto's head unit server is restarted
   (aa/ServerMenuRun.kt, RESTART_PAUSE_MS; HeadQLink's
@@ -270,7 +314,8 @@ HeadQLink (GNU Affero General Public License v3.0)
 
 aa-proxy-rs (GNU General Public License v2.0)
   Copyright Mariusz Białończyk (as the project's Cargo.toml names the author).
-  https://github.com/manio/aa-proxy-rs
+  https://github.com/aa-proxy/aa-proxy-rs (the repository moved there from
+  github.com/manio/aa-proxy-rs, which redirects)
   Protocol facts read from its src/protos/protos.proto, no code copied: the
   layout of the PhoneStatus message (calls = 1; phone_state = 1,
   caller_number = 3, caller_id = 4), its call states (IN_CALL 1, ON_HOLD 2,
@@ -343,8 +388,11 @@ Conscrypt (Apache License 2.0)
   began as a fork of OpenSSL).
 
 JMuxer (MIT License)
-  Copyright (c) 2018 Samir Das. https://github.com/samirkumardas/jmuxer
-  app/src/main/assets/web/jmuxer.min.js is the library's own minified build,
+  Copyright (c) 2018 Samir Das. https://github.com/webstream-labs/jmuxer (the
+  repository moved there from github.com/samirkumardas/jmuxer, which redirects).
+  app/src/main/assets/web/jmuxer.min.js is the library's own minified build
+  (byte for byte the dist/jmuxer.min.js of the npm versions 2.1.1, 2.1.2 and
+  2.1.3, checked 2026-10-30; 2.1.4 differs),
   unmodified, put inside the page that the web server (package web)
   gives to the browsers: it turns the H.264 stream into video the
   browser plays. The licence text travels beside it, in

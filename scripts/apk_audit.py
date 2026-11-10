@@ -6,6 +6,8 @@ Olha o que o APK traz de fato, não o código-fonte:
   - bibliotecas empacotadas (META-INF/*.version e *.properties da raiz, que cada biblioteca do Google/AndroidX deixa);
   - bibliotecas nativas (lib/<abi>/*.so);
   - hosts de URLs escritas nos .dex (o app e todas as bibliotecas).
+Confere também (28 a 30/10/2026, plano 20) que as bibliotecas nativas de arm64-v8a e x86_64 carregam num aparelho com páginas de 16 KB
+(scripts/elf_16kb_check.py): vale para o APK de debug também, e uma biblioteca que não passa conta como problema como a forma de release.
 Marca em destaque o que lembra rastreio, anúncio, cobrança ou atualizador (Firebase, Crashlytics, ads, billing...).
 
 Confere também a "forma de release" do APK (28/10/2026), que não vem da linha de base e sim do código deste script: o APK
@@ -19,7 +21,7 @@ antes de instalar) ou se a forma de release falhar; 0 se nada mudou; 2 se faltou
 conferida e aceita entra na linha de base com --gravar (que se recusa a gravar um APK de forma errada).
 
 Uso (da raiz do repo):
-    python scripts/apk_audit.py app/build/outputs/apk/completa/debug/app-completa-debug.apk
+    python scripts/apk_audit.py app/build/outputs/apk/debug/app-debug.apk
     python scripts/apk_audit.py <apk> --gravar        # aceita o APK atual como nova linha de base
     python scripts/apk_audit.py <apk de debug> --apk-debug   # sem a conferência da forma de release
 O SDK vem de $ANDROID_HOME ou do sdk.dir do local.properties; o Java do apksigner, de $JAVA_HOME ou do PATH.
@@ -36,6 +38,8 @@ import struct
 import subprocess
 import sys
 import zipfile
+
+import elf_16kb_check
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASELINE = os.path.join(ROOT, "scripts", "apk_audit_baseline.json")
@@ -85,7 +89,7 @@ def permissions(aapt2: str, apk: str) -> list[str]:
     for line in out.splitlines():
         m = re.search(r"name='([^']+)'", line)
         if line.strip().startswith("uses-permission") and m:
-            # The Lite edition (id com.reau.app.lite) names its own permission after that id: the same one.
+            # The old Lite edition (id com.reau.app.lite, until 0.2.0) named its own permission after that id: the same one. Kept so an old APK can still be audited.
             found.add(m.group(1).replace("com.reau.app.lite.", "com.reau.app."))
     return sorted(found)
 
@@ -115,8 +119,9 @@ def scan_zip(apk: str) -> tuple[list[str], list[str], list[str]]:
 
 
 # --- A forma de release (28/10/2026) -----------------------------------------------------------------------------------
-# Os componentes que o manifesto do APK de produção declara, lidos dos manifestos reais das duas edições. Os mesmos nomes de
-# classe nas duas (só o applicationId muda). Exportados: a tela inicial (ícone), o bloco das Configurações rápidas e o
+# Os componentes que o manifesto do APK de produção declara, lidos do manifesto real do app único (0.3.0; até 0.2.0 eram duas
+# edições com os mesmos nomes de classe). Desde 03/11/2026 o app não tem serviço de acessibilidade: um APK que ainda o declare falha aqui
+# ("componente fora da lista"). Exportados: a tela inicial (ícone), o bloco das Configurações rápidas e o
 # receptor do perfil de base (protegido pela permissão DUMP, só o shell chega nele). Os outros nunca são exportados.
 EXPORTED_COMPONENTS = frozenset({
     "com.reau.app.MainActivity",
@@ -124,7 +129,6 @@ EXPORTED_COMPONENTS = frozenset({
     "androidx.profileinstaller.ProfileInstallReceiver",
 })
 UNEXPORTED_COMPONENTS = frozenset({
-    "com.reau.app.service.AaServerAccessibilityService",  # só na edição Completa
     "com.reau.app.service.ProjectionService",
     "androidx.core.content.FileProvider",
     "androidx.startup.InitializationProvider",
@@ -257,6 +261,22 @@ def release_shape(manifest: str, classes: list[str], entries: list[str]) -> list
     return problems
 
 
+def native_16kb(apk: str) -> list[str]:
+    """As bibliotecas nativas do APK que não carregam com páginas de 16 KB (vazio quando todas carregam ou não há nenhuma)."""
+    found = []
+    try:
+        libs = elf_16kb_check.libraries(apk)
+    except (zipfile.BadZipFile, OSError) as e:
+        return [f"não deu para ler as bibliotecas nativas: {e}"]
+    for name, data in libs:
+        try:
+            issues = elf_16kb_check.problems(elf_16kb_check.program_headers(data))
+        except (ValueError, struct.error) as e:
+            issues = [f"cabeçalho ilegível ({e})"]
+        found += [f"{name.split('!', 1)[-1]}: {issue}" for issue in issues]
+    return found
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("apk")
@@ -297,6 +317,14 @@ def main() -> int:
         else:
             print("Forma de release certa: não depurável, sem classe de debug, componentes só os da lista, perfil de base presente.")
 
+    pages = native_16kb(args.apk)
+    if pages:
+        print("\nBIBLIOTECA NATIVA QUE NÃO CARREGA COM PÁGINAS DE 16 KB:")
+        for problem in pages:
+            print(f"  x {problem}")
+    else:
+        print("Bibliotecas nativas (arm64-v8a, x86_64) carregam com páginas de 16 KB.")
+
     flagged = [f"{k}: {v}" for k, vs in current.items() for v in vs if SUSPICIOUS.search(v)]
     if flagged:
         print("\nPara olhar (rastreio, anúncio, cobrança, atualizador):")
@@ -304,8 +332,8 @@ def main() -> int:
             print(f"  ! {f}")
 
     if args.gravar:
-        if shape:
-            print("\nNada gravado: o APK não tem a forma de release.")
+        if shape or pages:
+            print("\nNada gravado: o APK não tem a forma de release ou tem biblioteca nativa que não carrega com 16 KB.")
             return 1
         with open(BASELINE, "w", encoding="utf-8", newline="\n") as fh:
             json.dump(current, fh, indent=2, ensure_ascii=False)
@@ -329,7 +357,7 @@ def main() -> int:
                 print(f"  + {k}: {v}")
         return 1
     print("\nNada novo em relação à linha de base.")
-    return 1 if shape else 0
+    return 1 if shape or pages else 0
 
 
 if __name__ == "__main__":

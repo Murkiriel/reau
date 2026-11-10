@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- The accessibility service's texts: only the full edition has the service. -->
-<resources>
-    <string name="aa_server_accessibility_label">REau: servidor de Android Auto</string>
-    <string name="aa_server_accessibility_description">REau usa la accesibilidad para abrir los ajustes de Android Auto y tocar ⋮ → \"Iniciar servidor de unidad principal\" cuando enciendes la proyección y el servidor está apagado, y \"Detener servidor de unidad principal\" cuando la proyección termina (desde el botón de la notificación del servidor, o desde el mismo menú). Escucha a Android Auto y, con el interruptor \"Contestar llamadas\" activado, las notificaciones de llamadas de WhatsApp, WhatsApp Business, Telegram y Signal (solo el tipo y los botones, nunca quién llama), para el registro; no lee ni toca nada en otras apps. Funciona solo con el interruptor \"Encender el servidor automáticamente\" activado en los Ajustes de REau.</string>
-</resources>

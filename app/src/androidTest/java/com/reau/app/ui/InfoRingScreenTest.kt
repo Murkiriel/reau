@@ -29,7 +29,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The switch of the dash's info ring is on the "Tela do Android Auto" (on by default; this test starts it off), over the one of the FPS and bitrate text;
+ * The switch of the dash's info ring is on the "Tela do Android Auto" (off by default; this test starts it off), over the one of the FPS and bitrate text;
  * on, with "Usar a localização" off, a line says what it needs.
  */
 @RunWith(AndroidJUnit4::class)

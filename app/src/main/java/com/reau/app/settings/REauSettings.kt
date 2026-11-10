@@ -62,7 +62,7 @@ data class FitParams(
 /**
  * The rider's settings, read when the projection starts. The defaults (AppDefaultsTest): Android Auto (always
  * 800×480, [com.reau.app.aa.AaVideo]) at density 180 with no margins, the apps cropped to 64%, the navigation to 74% and the app menu to 90%
- * in their own places (the owner's own phone, 28/10/2026), the dash's cards, the weather and the info ring on (the maneuver ring off), the joystick's
+ * in their own places (the owner's own phone, 28/10/2026), the dash's cards and the weather on (the info ring and the maneuver ring off), the joystick's
  * calls and Gemini on, Android Auto's server and the bike's Wi-Fi by themselves; the debug recordings and the detailed log on in a debug build and
  * off in a release. [cardImage] is the picture the card mode
  * sends (a content URI the rider picked, or the measuring grid built in, [DEFAULT_CARD]); null sends the legibility
@@ -146,8 +146,7 @@ data class REauSettings(
     val noDashStopMinutes: Int = DEFAULT_NO_DASH_STOP_MINUTES,
     /**
      * The joystick answers and ends calls; on by default, but it does nothing until the phone permissions are given (they are asked
-     * on the permissions page, or when the rider switches it on again after turning it off). With it on, the accessibility service
-     * (full edition) also hears the call notifications of WhatsApp, Telegram and Signal.
+     * on the permissions page, or when the rider switches it on again after turning it off).
      */
     val answerCalls: Boolean = true,
     /** Touch Android Auto from the phone's "Tela do Android Auto" (announced next start). */
@@ -165,11 +164,6 @@ data class REauSettings(
     val gemini: Boolean = true,
     /** The joystick page's choices, as [com.reau.app.aa.JoystickBindings.encode] writes them; a new install starts with [DEFAULT_JOYSTICK]. */
     val joystick: String = DEFAULT_JOYSTICK,
-    /**
-     * REau's accessibility service switches Android Auto's head unit
-     * server on when the projection finds it off, and off when the projection ends; on by default (the Lite edition has no such service).
-     */
-    val aaServerAuto: Boolean = true,
     /**
      * A minute after the joystick, one touch takes Android Auto's blue focus
      * away ([com.reau.app.aa.FocusClearer]); on by default. Taken at the next start.
@@ -226,10 +220,11 @@ data class REauSettings(
     val dashWeather: Boolean = true,
     /**
      * The info ring on the dash's video, on the right where the dash draws nothing (rain, wind, storms, UV, air quality, the sun and
-     * the day's temperatures, [com.reau.app.weather.InfoRing]). On by default (28/10/2026), with nothing to show until the location is known: it asks the
-     * internet for the weather, as "Clima no painel" does, which it does not need on: the ring asks for the weather by itself.
+     * the day's temperatures, [com.reau.app.weather.InfoRing]). Off by default (30/10/2026; it was on from 28/10/2026): on Waze it covers the
+     * speed limit and the speed, which the owner knows and accepts, so it is the rider's to switch on. On, it has nothing to show until the location is
+     * known: it asks the internet for the weather, as "Clima no painel" does, which it does not need on: the ring asks for the weather by itself.
      */
-    val infoRing: Boolean = true,
+    val infoRing: Boolean = false,
     /** With the info ring: which of its data it may say (bits of [com.reau.app.weather.RingData]; all of them at first). */
     val infoRingData: Int = com.reau.app.weather.RingData.ALL,
     /** With the info ring: it turns from one page to the next every [infoRingSeconds] (on), or stays on the most urgent one (off). */
@@ -250,7 +245,26 @@ data class REauSettings(
      * announced to Android Auto ([audioSinks]).
      */
     val webAudio: WebAudioMode = WebAudioMode.PHONE,
+    /**
+     * The four experimental switches of the connection ("Conexão experimental" in Settings), all off by default and none of them touched by
+     * [sanitized]: with them off the app does exactly what it did before them. Each is logged with the settings in use ([SettingsInUse]).
+     * [experimentRtpPacing]: the video's RTP packets leave a little apart ([com.reau.app.stream.RtpPacing]) instead of in a burst.
+     * [experimentDebugDscp]: a debug build marks the dash's sockets for Wi-Fi priority too (a release always does, [com.reau.app.dash.DashSocket.priorityMarks]).
+     * [experimentAdaptiveBitrate]: the normal stream asks for 200 kbps and follows what the encoder really puts out ([com.reau.app.stream.BitrateAdapter]).
+     * [experimentWifiBind]: the Wi-Fi lock for low latency (Android 10 and later) and, when Android refuses to bind a socket to the dash's
+     * network (EPERM), a few more tries on the same network before it is let go ([com.reau.app.dash.BindRetry]).
+     */
+    val experimentRtpPacing: Boolean = false,
+    val experimentDebugDscp: Boolean = false,
+    val experimentAdaptiveBitrate: Boolean = false,
+    val experimentWifiBind: Boolean = false,
 ) {
+    /**
+     * The bitrate the stream is built for and asked for while pictures keep coming: the profile's ([streamBitrateBps], 400 kbps) or, with
+     * [experimentAdaptiveBitrate], [DashConfig.EXPERIMENT_TARGET_BPS]. [sanitized] keeps [streamBitrateBps] fixed; this is where the experiment lowers it.
+     */
+    val effectiveStreamBitrateBps: Int get() = if (experimentAdaptiveBitrate) DashConfig.EXPERIMENT_TARGET_BPS else streamBitrateBps
+
     /** The stats text as the compositor takes it: never on a release build, whatever a phone saved (its switch is a debug build's only). */
     val overlay: StatsOverlay get() = StatsOverlay(statsOverlay && com.reau.app.BuildConfig.DEBUG, statsX, statsY, statsSize)
 
@@ -493,8 +507,11 @@ data class REauSettings(
         /** The field of the menu fit kept while off: not said in the change lines, [menuFit] is. */
         private const val KEPT_MENU_FIT = "menuFitKept"
 
-        /** The navigation apps' default fit: where Waze's and Google Maps' own fit starts (the owner's phone's, 25/10/2026). */
-        val DEFAULT_NAV_FIT = FitParams(Fit.CROP, DEFAULT_CROP, 0, 62, 0, 0)
+        /**
+         * The navigation apps' default fit: where Waze's and Google Maps' own fit starts (the owner's phone's: 25/10/2026, and 30/10/2026 with the
+         * window's left at 90, which is what the phone ended up with after the rider's own adjusting; read from its settings, not from this code).
+         */
+        val DEFAULT_NAV_FIT = FitParams(Fit.CROP, DEFAULT_CROP, 90, 62, 0, 0)
 
         /** The default app menu fit (the owner's phone's, 25/10/2026). */
         val DEFAULT_MENU_FIT = FitParams(Fit.WHOLE_VISIBLE, 90, 32, 20, 20, 0)
@@ -677,7 +694,6 @@ class SettingsStore(private val prefs: SharedPreferences) {
                 val saved = prefs.contains(KEY_JOYSTICK)
                 if (!saved || prefs.getBoolean(KEY_JOYSTICK_ONE_TAP, false)) it else com.reau.app.aa.JoystickBindings.withoutMapChoices(it)
             },
-            aaServerAuto = prefs.getBoolean(KEY_AA_SERVER_AUTO, defaults.aaServerAuto),
             clearAaFocus = prefs.getBoolean(KEY_CLEAR_AA_FOCUS, defaults.clearAaFocus),
             dashMask = prefs.getBoolean(KEY_DASH_MASK, defaults.dashMask),
             statsOverlay = prefs.getBoolean(KEY_STATS_OVERLAY, defaults.statsOverlay),
@@ -702,6 +718,10 @@ class SettingsStore(private val prefs: SharedPreferences) {
             webView = prefs.getBoolean(KEY_WEB_VIEW, defaults.webView),
             webTouch = prefs.getBoolean(KEY_WEB_TOUCH, defaults.webTouch),
             webAudio = WebAudioMode.entries.firstOrNull { it.name == prefs.getString(KEY_WEB_AUDIO, null) } ?: defaults.webAudio,
+            experimentRtpPacing = prefs.getBoolean(KEY_EXPERIMENT_RTP_PACING, defaults.experimentRtpPacing),
+            experimentDebugDscp = prefs.getBoolean(KEY_EXPERIMENT_DEBUG_DSCP, defaults.experimentDebugDscp),
+            experimentAdaptiveBitrate = prefs.getBoolean(KEY_EXPERIMENT_ADAPTIVE_BITRATE, defaults.experimentAdaptiveBitrate),
+            experimentWifiBind = prefs.getBoolean(KEY_EXPERIMENT_WIFI_BIND, defaults.experimentWifiBind),
         ).sanitized()
     }
 
@@ -767,7 +787,6 @@ class SettingsStore(private val prefs: SharedPreferences) {
             putBoolean(KEY_AA_NEW_PROTOCOL, s.aaNewProtocol)
             putString(KEY_JOYSTICK, s.joystick)
             putBoolean(KEY_JOYSTICK_ONE_TAP, true)
-            putBoolean(KEY_AA_SERVER_AUTO, s.aaServerAuto)
             // The ring-hiding switches went (hiding the ring never worked on the dash); their old keys go with them.
             remove(KEY_HIDE_RING_MEDIA)
             remove(KEY_RING_ALWAYS_OFF)
@@ -793,6 +812,10 @@ class SettingsStore(private val prefs: SharedPreferences) {
             putBoolean(KEY_WEB_VIEW, s.webView)
             putBoolean(KEY_WEB_TOUCH, s.webTouch)
             putString(KEY_WEB_AUDIO, s.webAudio.name)
+            putBoolean(KEY_EXPERIMENT_RTP_PACING, s.experimentRtpPacing)
+            putBoolean(KEY_EXPERIMENT_DEBUG_DSCP, s.experimentDebugDscp)
+            putBoolean(KEY_EXPERIMENT_ADAPTIVE_BITRATE, s.experimentAdaptiveBitrate)
+            putBoolean(KEY_EXPERIMENT_WIFI_BIND, s.experimentWifiBind)
         }
     }
 
@@ -894,13 +917,16 @@ class SettingsStore(private val prefs: SharedPreferences) {
         private const val KEY_WEB_TOUCH = "web_touch"
         private const val KEY_WEB_AUDIO = "web_audio"
         private const val KEY_GEMINI = "gemini"
+        private const val KEY_EXPERIMENT_RTP_PACING = "experiment_rtp_pacing"
+        private const val KEY_EXPERIMENT_DEBUG_DSCP = "experiment_debug_dscp"
+        private const val KEY_EXPERIMENT_ADAPTIVE_BITRATE = "experiment_adaptive_bitrate"
+        private const val KEY_EXPERIMENT_WIFI_BIND = "experiment_wifi_bind"
         private const val OLD_KEY_AA_SLOW_PACE = "aa_slow_pace"
         private const val OLD_KEY_AA_SLOW_PACE_FPS = "aa_slow_pace_fps"
         private const val KEY_AA_NEW_PROTOCOL = "aa_new_protocol"
         private const val KEY_JOYSTICK = "joystick"
         private const val KEY_JOYSTICK_ONE_TAP = "joystick_one_tap"
         private const val OLD_KEY_CLUSTER = "cluster"
-        private const val KEY_AA_SERVER_AUTO = "aa_server_auto"
         private const val KEY_HIDE_RING_MEDIA = "hide_ring_media"
         private const val KEY_RING_ALWAYS_OFF = "ring_always_off"
         private const val KEY_CLEAR_AA_FOCUS = "clear_aa_focus"

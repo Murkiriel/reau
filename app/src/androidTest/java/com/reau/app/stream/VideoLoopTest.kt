@@ -291,6 +291,42 @@ class VideoLoopTest {
     }
 
     /**
+     * A keyframe the output withheld (no SPS/PPS before it) is asked for again by the poll, and by no more than one ask every two
+     * seconds; the flag a throttled poll leaves behind is not kept for a later one. The withheld keyframe is made by hand: a new
+     * stream's output, taken from the real encoder before it has heard a parameter set (tried again when the encoder was first).
+     */
+    @Test
+    fun aKeyframeTheOutputWithheldIsAskedForAgainByThePollAtMostEveryTwoSeconds() {
+        val l = newLoop()
+        startSource()
+        val fake = Any()
+        val idr = byteArrayOf(0, 0, 0, 1, 0x65, 1, 2, 3)
+        fun withhold(out: RtpOutput) = out.onEncoded(fake, idr, true, 0)
+        var out: RtpOutput? = null
+        for (attempt in 1..20) {
+            assertTrue(l.start())
+            val candidate = checkNotNull(l.outputForTest)
+            candidate.switchTo(fake)
+            withhold(candidate)
+            if (candidate.idrWithheld > 0) {
+                out = candidate
+                break
+            }
+            l.stop()
+        }
+        val output = checkNotNull(out) { "no stream whose output had not heard a parameter set yet in 20 tries" }
+        fun asks() = log.count { "keyframe withheld for lack of SPS/PPS" in it }
+
+        awaitThat("the first ask") { asks() == 1 }
+        withhold(output)
+        Thread.sleep(2_600)
+        assertEquals("a second withheld keyframe within two seconds of the ask is not asked for, nor kept for a later poll: $log", 1, asks())
+
+        withhold(output)
+        awaitThat("the ask after two seconds") { asks() == 2 }
+    }
+
+    /**
      * Many restarts in a row, with a live source. On an encoder that holds a frame or two (hardware ones do), a
      * restart catches a frame already inside it, which comes out after the restart and before the keyframe; it
      * must never reach the dash. On the emulator this does NOT prove the loop holds its output: the software
@@ -349,7 +385,7 @@ class VideoLoopTest {
         while (log.none { it.startsWith("video fps target=4") && "full=true" in it } && System.currentTimeMillis() < deadline) Thread.sleep(200)
         stopSource()
 
-        assertTrue("got $log", log.any { "video loop start: 4 fps (ceiling 4), keyframe 1s fixed, 200 kbps (200 chosen) CBR" in it })
+        assertTrue("got $log", log.any { "video loop start: 4 fps (ceiling 4), keyframe 1s fixed (encoder asked 1 (every 4 frames at the hint), pace up to 4 fps), 200 kbps (200 chosen) CBR" in it })
         val line = log.first { it.startsWith("video fps target=4") && "full=true" in it }
         assertTrue(line, "speed~72km/h(max 72) wifi=-60dBm/52Mbps(worst)" in line)
         assertTrue(line, " kf=1s " in line)

@@ -93,4 +93,12 @@ class LiveTuningTest {
         )
         assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(detailedLog = true, answerCalls = !before.answerCalls)))
     }
+
+    @Test
+    fun `the video experiments restart the stream and the connection ones do nothing live`() {
+        assertEquals(setOf(Step.NEW_STREAM), LiveTuning.steps(before, before.copy(experimentRtpPacing = true)))
+        assertEquals(setOf(Step.NEW_STREAM), LiveTuning.steps(before, before.copy(experimentAdaptiveBitrate = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentDebugDscp = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentWifiBind = true)))
+    }
 }

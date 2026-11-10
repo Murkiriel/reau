@@ -55,17 +55,17 @@ object AndroidAuto {
         }
     }
 
-    /** Android Auto's settings screen, where its developer menu is (the walk opens it by accessibility). */
+    /** Android Auto's settings screen, where its developer menu is. */
     fun settingsIntent(): Intent = Intent().setClassName(PACKAGE, SETTINGS_ACTIVITY).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
     /**
-     * Whether REau takes the rider to Android Auto's settings by itself, so "Start head unit server" is one tap away: only in the Lite edition (the full one switches the server on by accessibility), only while the server is off,
+     * Whether REau takes the rider to Android Auto's settings by itself, so "Start head unit server" is one tap away: only while the server is off,
      * only once for each projection, only with REau on screen (never pulled over another app) and only with Android Auto installed
      * (else the button leads to the store, which is not what a rider expects to be shown by itself).
      */
     fun opensSettingsByItself(
-        link: AaLinkState, alreadyOpened: Boolean, onScreen: Boolean, aaInstalled: Boolean, lite: Boolean = com.reau.app.Edition.lite,
-    ): Boolean = lite && link == AaLinkState.SERVER_OFF && !alreadyOpened && onScreen && aaInstalled
+        link: AaLinkState, alreadyOpened: Boolean, onScreen: Boolean, aaInstalled: Boolean,
+    ): Boolean = link == AaLinkState.SERVER_OFF && !alreadyOpened && onScreen && aaInstalled
 
     /** Whether [settingsIntent] opens anything on this phone. */
     fun settingsOpen(context: Context): Boolean = context.packageManager.resolveActivity(settingsIntent(), 0) != null

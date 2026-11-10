@@ -80,12 +80,39 @@ internal object DashLogic {
     internal const val IDLE_MIN_FRAME_MS = 250L
     internal const val IDLE_SYNC_EVERY_MS = 2_000L
 
+    /** The least time between two keyframes asked for because one was withheld (no SPS/PPS before it): an encoder that never gives the parameter sets must not be asked at every poll. */
+    internal const val WITHHELD_ASK_EVERY_MS = 2_000L
+
+    /** Whether a keyframe withheld at [nowMs] may ask for a new one: none was asked for yet ([lastAskMs] null), or [WITHHELD_ASK_EVERY_MS] has passed. */
+    internal fun withheldAskDue(nowMs: Long, lastAskMs: Long?): Boolean = lastAskMs == null || nowMs - lastAskMs >= WITHHELD_ASK_EVERY_MS
+
     /** Whether the loop must ask for keyframes itself while the map is still: the encoder
      *  places them every `hintFps × keyframeIntervalSec` FRAMES, so at the capped idle rate a high
      *  fps hint would space them further than [IDLE_SYNC_EVERY_MS] apart. 10% slack so interval
      *  rounding (6 fps idles at 334 ms → 2004 ms) doesn't trigger duplicate keyframes. */
     internal fun idleSyncNeeded(hintFps: Int, keyframeIntervalSec: Int, idleFrameMs: Long): Boolean =
         hintFps.toLong() * keyframeIntervalSec * idleFrameMs > IDLE_SYNC_EVERY_MS * 11 / 10
+
+    /**
+     * The `KEY_I_FRAME_INTERVAL` to ask the encoder for, in whole seconds. The encoder counts it in FRAMES at its own rate hint
+     * (`encoderFps × seconds`), but the stream can run faster than the hint (the light screens' pace, [gopFps]): then the same
+     * count of frames is a shorter time (4 frames at 6 fps are 0.67 s, not the rider's 1 s; measured 1.49 keyframes a second in the
+     * logs of 31/10 and 01/11/2026). When the pace can be faster, the encoder's own interval is made LONGER than the rider's at
+     * the fastest pace (`keyframeSec × gopFps / encoderFps`, and one more second when that is whole), so its own keyframes never come
+     * first, and [paceSyncNeeded] has the loop ask for each keyframe by the clock. A whole number, not the fraction (1.5 s) that the
+     * report of 03/11/2026 proposed: the Qualcomm encoder may round a fraction down, and then the 4-frame interval returns and no request
+     * can bring it back; a whole number is not rounded.
+     */
+    internal fun encoderKeyframeSec(keyframeSec: Int, gopFps: Int, encoderFps: Int): Int =
+        if (encoderFps <= 0 || gopFps <= encoderFps) keyframeSec else keyframeSec * gopFps / encoderFps + 1
+
+    /**
+     * Whether the loop must ask for the keyframes itself while the stream runs: the encoder's own count is right only when the
+     * pace is the one it counts for. Below it (REDUCED, a still map) the keyframes would come further apart than the rider's
+     * interval; and when the interval was lengthened for a faster pace ([gopFps] above [encoderFps], [encoderKeyframeSec]) the loop
+     * asks at the interval at every pace, 6 fps included. With the pace at the encoder's and nothing lengthened, the encoder's own do.
+     */
+    internal fun paceSyncNeeded(fps: Int, encoderFps: Int, gopFps: Int): Boolean = fps < encoderFps || gopFps > encoderFps
 
     /**
      * No frame gets less than this many bits — the share 1024 kbps gives

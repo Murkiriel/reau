@@ -33,7 +33,7 @@ jobs:
           java-version: "21"
           cache: gradle
 
-      # Roda os testes da edição Completa e escreve o relatório em app/build/reports/jacoco/ (html e xml).
+      # Roda os testes de unidade e escreve o relatório em app/build/reports/jacoco/ (html e xml).
       - name: Testes com cobertura
         run: ./gradlew --console=plain --max-workers=2 :app:jacocoTestReport
 
@@ -42,7 +42,7 @@ jobs:
           python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import xml.etree.ElementTree as ET
           raiz = ET.parse("app/build/reports/jacoco/jacoco.xml").getroot()
-          print("### Cobertura dos testes de unidade (edição Completa)")
+          print("### Cobertura dos testes de unidade")
           for c in raiz.findall("counter"):
               perdido, coberto = int(c.get("missed")), int(c.get("covered"))
               total = perdido + coberto

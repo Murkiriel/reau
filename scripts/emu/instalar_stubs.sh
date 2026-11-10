@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Instala os stubs de teste SO no emulador emulator-5580 (todas as chamadas levam -s; nunca toca o celular real).
+# Instala os stubs de teste SO no emulador emulator-5580, ou no que REAU_EMU_SERIAL nomear (so emuladores; todas as chamadas levam -s; nunca toca o celular real).
 # Hoje: o stub do Android Auto (com.google.android.projection.gearhead, versionName 1.2.551000-stub) que os testes
 # esperam. A imagem google_apis traz um stub proprio (1.2.531830-stub, em /product/priv-app), de outra versao e
 # assinado pelo Google; como e app de sistema, so se troca o arquivo na particao /product (overlayfs gravavel).
@@ -13,7 +13,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
-SERIAL=emulator-5580
+SERIAL="${REAU_EMU_SERIAL:-emulator-5580}"   # outro emulador (ex.: emulator-5584, o AVD de 16 KB): REAU_EMU_SERIAL=emulator-5584
+case "$SERIAL" in emulator-*) ;; *) echo "REAU_EMU_SERIAL=$SERIAL: so emuladores, nunca o celular" >&2; exit 1 ;; esac
 ADB="$ANDROID_HOME/platform-tools/adb"
 PKG=com.google.android.projection.gearhead
 WANT=1.2.551000-stub

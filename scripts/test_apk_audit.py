@@ -42,14 +42,33 @@ def fake_dex(types: list[str] | None = None, payload: bytes = b"") -> bytes:
             + b"".join(struct.pack("<I", i) for i in range(len(types))) + string_data + payload)
 
 
+def elf64(loads: list[tuple], relro: tuple | None = None) -> bytes:
+    """An ELF64 with just program headers: LOAD (offset, vaddr, filesz, memsz, align) and an optional GNU_RELRO (vaddr, memsz)."""
+    headers = [(1, off, va, fs, ms, al) for off, va, fs, ms, al in loads]
+    if relro:
+        headers.append((0x6474E552, relro[0], relro[0], relro[1], relro[1], 1))
+    out = bytearray(b"\x7fELF" + bytes([2, 1, 1]) + bytes(9))
+    out += bytes(0x40 - len(out))
+    struct.pack_into("<Q", out, 0x20, 0x40)
+    struct.pack_into("<HH", out, 0x36, 56, len(headers))
+    for p_type, offset, vaddr, filesz, memsz, align in headers:
+        out += struct.pack("<IIQQQQQQ", p_type, 4, offset, vaddr, vaddr, filesz, memsz, align)
+    return bytes(out)
+
+
+# A library that loads with 16 KB pages, and the shape of Conscrypt 2.5.3's arm64 one, which does not (RELRO ending at 0x203000, data after it).
+GOOD_SO = elf64([(0, 0, 0x10000, 0x10000, 0x4000)])
+BAD_SO = elf64([(0, 0, 0x1E8804, 0x1E8804, 0x4000), (0x1E8C20, 0x1ECC20, 0x184B0, 0x1A170, 0x4000)], relro=(0x1ECC20, 0x163E0))
+
+
 def make_apk(folder: str, dex: bytes = b"", extra: dict | None = None, types: list[str] | None = None,
-             profile: bool = True) -> str:
-    path = os.path.join(folder, "app.apk")
+             profile: bool = True, so: bytes = GOOD_SO, name: str = "app.apk") -> str:
+    path = os.path.join(folder, name)
     with zipfile.ZipFile(path, "w") as z:
         z.writestr("META-INF/androidx.core_core.version", "1.13.0")
         z.writestr("kotlin-tooling-metadata.properties", "x=1")
         z.writestr("res/raw/notes.properties", "not a library: not at the root")
-        z.writestr("lib/arm64-v8a/libexample.so", b"\x7fELF")
+        z.writestr("lib/arm64-v8a/libexample.so", so)
         z.writestr("classes.dex", fake_dex(types, dex))
         if profile:
             z.writestr(apk_audit.BASELINE_PROFILE, b"prof")
@@ -79,9 +98,8 @@ def xmltree(components: list[tuple], debuggable: bool = False, package: str = "c
     return "\n".join(lines) + "\n"
 
 
-# The components of the two real release manifests (28/10/2026): the Completa has the accessibility service, both have the rest.
+# The components of the real release manifest (the one app, 0.3.0): no accessibility service since 03/11/2026.
 RELEASE_COMPONENTS = [
-    ("service", "com.reau.app.service.AaServerAccessibilityService", False, True),
     ("activity", "com.reau.app.MainActivity", True, True),
     ("service", "com.reau.app.service.QuickStartTile", True, True),
     ("service", "com.reau.app.service.ProjectionService", False, False),
@@ -116,7 +134,7 @@ class ScanZipTest(unittest.TestCase):
 
 class PermissionsTest(unittest.TestCase):
 
-    def test_the_Lite_editions_own_permission_is_the_full_editions(self):
+    def test_the_old_Lite_editions_own_permission_is_still_read_as_the_apps(self):
         dump = "\n".join([
             "uses-permission: name='android.permission.INTERNET'",
             "uses-permission: name='com.reau.app.lite.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'",
@@ -199,6 +217,30 @@ class AgainstTheBaselineTest(unittest.TestCase):
         self.assertEqual(0, code)
         self.assertNotIn("FORMA DE RELEASE", out)
 
+    def test_a_native_library_that_does_not_load_with_16_kb_pages_exits_1_and_is_not_recorded(self):
+        self.run_main(self.apk, "--gravar")
+        bad = make_apk(self.tmp.name, dex=b"https://raw.githubusercontent.com/x", so=BAD_SO, name="bad.apk")
+        code, out = self.run_main(bad)
+        self.assertEqual(1, code)
+        self.assertIn("NÃO CARREGA COM PÁGINAS DE 16 KB", out)
+        self.assertIn("libexample.so", out)
+        before = os.path.getmtime(self.baseline)
+        code, out = self.run_main(bad, "--gravar")
+        self.assertEqual(1, code)
+        self.assertIn("Nada gravado", out)
+        self.assertEqual(before, os.path.getmtime(self.baseline))
+
+    def test_the_16_kb_check_also_applies_to_a_debug_apk(self):
+        self.run_main(self.apk, "--gravar")
+        bad = make_apk(self.tmp.name, dex=b"https://raw.githubusercontent.com/x", so=BAD_SO, name="bad.apk")
+        self.assertEqual(1, self.run_main(bad, "--apk-debug")[0])
+
+    def test_a_library_whose_header_cannot_be_read_is_a_problem_not_a_pass(self):
+        broken = make_apk(self.tmp.name, so=b"\x7fELF", name="broken.apk")
+        found = apk_audit.native_16kb(broken)
+        self.assertEqual(1, len(found), found)
+        self.assertIn("ilegível", found[0])
+
     def test_an_apk_that_cannot_be_read_for_its_shape_is_a_problem_not_a_pass(self):
         self.run_main(self.apk, "--gravar")
         self.manifest = "isto não é um manifesto\n"
@@ -266,8 +308,11 @@ class ReleaseShapeTest(unittest.TestCase):
     def test_the_real_release_shape_passes(self):
         self.assertEqual([], self.shape())
 
-    def test_the_Lite_edition_has_no_accessibility_service_and_passes(self):
-        self.assertEqual([], self.shape(components=[c for c in RELEASE_COMPONENTS if "Accessibility" not in c[1]]))
+    def test_an_apk_that_still_declares_the_accessibility_service_fails_exported_or_not(self):
+        # Removed on 03/11/2026 (it must not show in Android's Accessibility settings): the expected change of the component baseline is that it is gone.
+        for exported in (True, False):
+            problems = self.shape(components=RELEASE_COMPONENTS + [("service", "com.reau.app.service.AaServerAccessibilityService", exported, True)])
+            self.assertEqual(["componente fora da lista (service): com.reau.app.service.AaServerAccessibilityService"], problems)
 
     def test_a_debuggable_apk_fails(self):
         problems = self.shape(debuggable=True)
@@ -302,8 +347,7 @@ class ReleaseShapeTest(unittest.TestCase):
             self.assertEqual(["componente fora da lista (activity): com.reau.app.debug.CrashTestActivity"], problems)
 
     def test_a_listed_component_that_became_exported_fails(self):
-        for name in ("com.reau.app.service.ProjectionService", "androidx.core.content.FileProvider",
-                     "com.reau.app.service.AaServerAccessibilityService"):
+        for name in ("com.reau.app.service.ProjectionService", "androidx.core.content.FileProvider"):
             components = [(t, n, True if n == name else e, f) for t, n, e, f in RELEASE_COMPONENTS]
             self.assertEqual([f"componente exportado que não devia ser ({dict((c[1], c[0]) for c in components)[name]}): {name}"],
                              self.shape(components=components), name)

@@ -13,14 +13,19 @@
     <string name="notif_title_server_off">Android Auto sem servidor</string>
     <string name="notif_text_server_off">Ligue \"Iniciar servidor da unidade principal\" nas opções de desenvolvedor do Android Auto</string>
     <string name="notif_title_unresponsive">Android Auto parado</string>
-    <string name="notif_text_unresponsive">Ele aceita e não responde: force a parada do Android Auto</string>
-    <string name="notif_text_unresponsive_by_hand">Ele aceita e não responde: pare e inicie o servidor da unidade principal no menu ⋮ do Android Auto</string>
+    <string name="notif_text_unresponsive">Ele aceita e não responde: pare e inicie o servidor da unidade principal no menu ⋮ do Android Auto</string>
     <string name="notif_title_closing_previous">Android Auto fechando a sessão anterior</string>
     <string name="notif_text_closing_previous">Leva até um minuto; o REau tenta de novo sozinho</string>
     <string name="notif_title_no_video">Android Auto sem imagem</string>
     <string name="notif_text_no_video">O painel fica preto: force a parada do Android Auto</string>
     <string name="notif_title_dash_lost">Painel perdido</string>
     <string name="notif_text_dash_lost">A conexão com o painel caiu. O REau volta sozinho; se passar de 1 minuto com a moto ligada, desligue e ligue a moto pela chave</string>
+    <string name="notif_alert_channel_name">Avisos do painel</string>
+    <string name="notif_alert_channel_desc">Avisa com som e vibração quando o painel ou o celular precisa de algo seu, como desligar e ligar a ignição, ou o celular estar quente demais</string>
+    <string name="notif_title_dash_stuck">O Wi-Fi do painel travou</string>
+    <string name="notif_text_dash_stuck">O painel está ligado mas não aceita a conexão. Desligue e ligue a ignição da moto; o REau reconecta sozinho</string>
+    <string name="notif_title_phone_hot">O celular está quente</string>
+    <string name="notif_text_phone_hot">O celular está quente (%1$d °C). Tire-o do sol ou do bolso fechado, ou desligue o carregador, para ele não reduzir o desempenho</string>
     <string name="notif_title_no_dash_stopped">Projeção desligada</string>
     <plurals name="notif_text_no_dash_stopped">
         <item quantity="one">O painel ficou %1$d minuto fora do ar, então o REau parou. Ligue de novo quando a moto estiver ligada</item>
@@ -72,7 +77,7 @@
     <string name="action_start">Ligar</string>
     <string name="action_stop">Desligar</string>
     <string name="action_settings">Ajustes</string>
-    <string name="server_warning">O Android Auto não está aceitando a conexão. Nas configurações dele: toque em \"Versão\" umas dez vezes para liberar as opções de desenvolvedor, depois, no menu ⋮, toque em \"Iniciar servidor da unidade principal\". Depois de reiniciar o celular é preciso ligar de novo.</string>
+    <string name="server_warning">O Android Auto não está aceitando a conexão. Ligue o servidor da unidade principal à mão: nas configurações do Android Auto, toque em \"Versão\" umas dez vezes para liberar as opções de desenvolvedor, depois, no menu ⋮, toque em \"Iniciar servidor da unidade principal\". O REau conecta sozinho assim que ele estiver ligado. O servidor desliga quando a sessão termina (ao tocar em Desligar, por exemplo) e depois de reiniciar o celular: é preciso ligar de novo a cada vez.</string>
     <string name="aa_screen_title">Tela do Android Auto</string>
     <string name="battery_not_exempt">O Android pode pausar o REau com a tela apagada para economizar bateria. Deixe o REau fora da otimização de bateria para a projeção não cair.</string>
     <string name="action_battery_exemption">Deixar o REau fora da otimização</string>
@@ -100,7 +105,7 @@
     <!-- The settings screen (ui/SettingsScreen). -->
     <string name="settings_title">Ajustes</string>
     <string name="action_back">Voltar</string>
-    <string name="applies_next_time">Com a projeção ligada, os ajustes marcados com NA HORA valem na hora, e também a chave do Clima, a página do joystick, a tela do servidor de rede e a Tela do Android Auto. Densidade e margens também valem, mas reabrem o Android Auto e a imagem fica parada por alguns segundos. Todos os outros valem a partir da próxima vez que ligar.</string>
+    <string name="applies_next_time">Com a projeção ligada, os ajustes marcados com NA HORA valem na hora, e também a chave do Clima, a página do joystick, a tela do servidor de rede e a Tela do Android Auto. Densidade também vale, mas reabre o Android Auto e a imagem fica parada por alguns segundos. Todos os outros valem a partir da próxima vez que ligar.</string>
     <string name="section_fit">Encaixe na cúpula</string>
     <string name="fit_crop">Recorte do centro</string>
     <string name="label_crop">Tamanho do recorte</string>
@@ -139,10 +144,9 @@
     <string name="headline_android_auto_unresponsive">Android Auto não responde</string>
     <string name="headline_android_auto_image_stale">Android Auto: imagem parada</string>
     <string name="headline_android_auto_no_video">Android Auto sem imagem</string>
-    <string name="aa_no_video_warning">O Android Auto está conectado mas não manda imagem, e o painel fica preto. Force a parada dele (Configurações › Apps › Android Auto › Forçar parada); se o REau disser que o servidor está desligado, toque em Tentar de novo.</string>
-    <string name="aa_unresponsive_warning">O Android Auto aceita a conexão e não responde. Force a parada dele (Configurações › Apps › Android Auto › Forçar parada); o REau tenta de novo sozinho.</string>
-    <string name="aa_unresponsive_by_hand_warning">O Android Auto aceita a conexão e não responde. Nas opções de desenvolvedor do Android Auto, toque em ⋮ e escolha \"Parar servidor da unidade principal\", depois em ⋮ e \"Iniciar servidor da unidade principal\"; o REau tenta de novo sozinho.</string>
-    <string name="aa_other_edition_warning">O %1$s também está instalado neste celular e pode estar usando o Android Auto: o servidor da unidade principal dele aceita uma sessão por vez. Se ele estiver ligado, desligue-o (toque em Desligar nele), espere cerca de um minuto e o REau conecta sozinho.</string>
+    <string name="aa_no_video_warning">O Android Auto está conectado mas não manda imagem, e o painel fica preto. Force a parada dele (Configurações › Apps › Android Auto › Forçar parada), depois desligue e ligue o REau. Com o Android Auto 17.4 ou mais novo, confira também se o servidor da unidade principal dele está ligado.</string>
+    <string name="aa_unresponsive_warning">O Android Auto aceita a conexão e não responde. Nas opções de desenvolvedor do Android Auto, toque em ⋮ e escolha \"Parar servidor da unidade principal\", depois em ⋮ e \"Iniciar servidor da unidade principal\"; o REau tenta de novo sozinho.</string>
+    <string name="aa_other_edition_warning">O app REau antigo, o do ícone com selo, ainda está instalado neste celular e pode estar usando o Android Auto: o servidor da unidade principal dele aceita uma sessão por vez. Este app o substitui, então pode desinstalá-lo. Se ele estiver ligado, desligue-o (toque em Desligar nele), espere cerca de um minuto e o REau conecta sozinho.</string>
     <string name="joystick_title">Joystick do painel</string>
     <string name="joystick_intro">Escolha o que cada toque do joystick faz. Vale na hora, também com a projeção ligada.</string>
     <string name="joystick_music_on">O painel mostra a música que toca (cartão de música): o modo mídia tem um controle de música.</string>
@@ -167,37 +171,6 @@
     <string name="joystick_action_zoom_in">Aproximar</string>
     <string name="joystick_action_zoom_out">Afastar</string>
     <!-- The instrument cluster display experiment -->
-    <!-- Android Auto's head unit server switched on and off by the accessibility service -->
-    <string name="aa_server_auto">Liga e desliga o servidor do Android Auto sozinho pela Acessibilidade, com o modo desenvolvedor dele ligado (10 toques em \"Versão\"); alguns apps, como os de banco, podem se recusar a abrir.</string>
-    <string name="aa_server_accessibility_connected">Acessibilidade do REau: ativada</string>
-    <string name="aa_server_accessibility_enabled">Acessibilidade do REau: ativada, mas ainda não conectada (desligue e ligue de novo em Acessibilidade se continuar assim)</string>
-    <string name="aa_server_accessibility_off">Para ligar o servidor sozinho, ative o REau em Acessibilidade; o Android 13 ou mais novo pode pedir antes \"Permitir configurações restritas\" no ⋮ do app, e a Proteção Avançada pode bloqueá-lo.</string>
-    <string name="action_open_accessibility">Abrir Acessibilidade</string>
-    <string name="accessibility_ask_title">Liberar a Acessibilidade?</string>
-    <string name="accessibility_ask_text">O REau usa a Acessibilidade para ligar o servidor sozinho; alguns apps, como os de banco, podem se recusar a abrir enquanto ela estiver liberada, e você pode desligá-la nos ajustes do Android.</string>
-    <string name="accessibility_ask_confirm">Continuar</string>
-    <string name="action_retry_aa_server">Tentar de novo</string>
-    <string name="aa_server_cover">Ligando o servidor do Android Auto…</string>
-    <string name="aa_server_cover_cancel">Cancelar</string>
-    <string name="aa_server_cover_stopping">Desligando o servidor do Android Auto…</string>
-    <string name="aa_server_cover_waiting">Esperando o servidor responder…</string>
-    <string name="aa_server_stopping">Desligando o servidor do Android Auto…</string>
-    <string name="aa_server_working">Ligando o servidor do Android Auto…</string>
-    <string name="aa_server_started">Servidor do Android Auto ligado.</string>
-    <string name="aa_server_service_off">Para ligar o servidor sozinho, ative o REau em Acessibilidade.</string>
-    <string name="aa_server_locked">Desbloqueie o celular e toque em Tentar de novo: os ajustes do Android Auto não abrem com a tela bloqueada.</string>
-    <string name="aa_server_not_installed">Os ajustes do Android Auto não foram achados neste celular.</string>
-    <string name="aa_server_settings_did_not_open">Os ajustes do Android Auto não abriram.</string>
-    <string name="aa_server_unexpected_screen">O Android Auto abriu outra tela. Abra o Android Auto, resolva o que ele pede e tente de novo.</string>
-    <string name="aa_server_menu_did_not_open">O menu do Android Auto não abriu a tempo. Tente de novo ou ligue à mão: ⋮ → Iniciar servidor da unidade principal.</string>
-    <string name="aa_server_developer_mode_off">O modo desenvolvedor do Android Auto está desligado. Toque em \"Abrir as configurações do Android Auto\", role até o fim, toque 10 vezes em \"Versão\", confirme e volte para tocar em Tentar de novo.</string>
-    <string name="aa_server_unknown_menu">Esta versão do Android Auto mudou o menu do servidor. Ligue à mão: ⋮ → Iniciar servidor da unidade principal.</string>
-    <string name="aa_server_already_running">O servidor do Android Auto está marcado como ligado e não respondeu. Toque em Parar e em Iniciar no menu do Android Auto, ou force a parada do Android Auto.</string>
-    <string name="aa_server_not_up">O Android Auto não abriu o servidor. Tente de novo.</string>
-    <string name="aa_server_interrupted">Ligação do servidor interrompida.</string>
-    <string name="aa_server_aa_gone">O Android Auto parou de responder enquanto o REau lia a tela dele. Tente de novo.</string>
-    <string name="aa_server_stopped">Servidor do Android Auto desligado.</string>
-    <string name="aa_server_left_on">O servidor do Android Auto ficou ligado (o celular estava bloqueado ou a Acessibilidade do REau estava desligada). Desligue pela notificação dele, se quiser.</string>
     <!-- The dash's bubble with no route, and the joystick in its map mode -->
     <string name="permissions_title">Permissões</string>
     <string name="permissions_intro">O que sai do celular vai ao painel, à sua rede só com o servidor de rede e à internet só para clima e atualização (veja \"O REau e os seus dados\").</string>
@@ -211,9 +184,6 @@
     <string name="permission_optional">Opcional: a chave está desligada</string>
     <string name="permission_special_on">Ligado</string>
     <string name="permission_special_off">Desligado</string>
-    <string name="permission_special_stuck">Ligado, mas parado (o Android diz \"não está funcionando\"): desligue e ligue de novo</string>
-    <string name="perm_accessibility_title">Acessibilidade (\"REau: servidor do Android Auto\")</string>
-    <string name="perm_accessibility_why">Lê qual tela o Android Auto mostra para encaixar a imagem e ouve só o Android Auto, o Google Maps e, com \"Atender ligação\" ligada, as ligações do WhatsApp, Telegram e Signal.</string>
     <string name="perm_battery_title">Fora da otimização de bateria</string>
     <string name="perm_battery_why">Sem isso o Android pode pausar o REau com a tela apagada e a projeção cai. Não é uma permissão: é a lista de apps que ele deixa rodar em segundo plano.</string>
     <string name="perm_notifications_title">Notificações</string>
@@ -225,7 +195,7 @@
     <string name="perm_microphone_title">Microfone</string>
     <string name="perm_microphone_why">Leva a sua voz do fone Bluetooth do capacete (ou do celular) ao Android Auto para o Gemini, com a chave \"Gemini\" ligada, e o REau não guarda o áudio.</string>
     <string name="perm_location_title">Localização (aproximada e precisa)</string>
-    <string name="perm_location_why">Deixa o Android dar ao REau a lista de Wi-Fi para achar o painel sem ler a sua posição e, com \"Usar a localização\" ligada, a última posição para o tema pelo sol.</string>
+    <string name="perm_location_why">Deixa o REau ver a lista de Wi-Fi do Android para achar o painel, mesmo atrás de outro app, sem ler a posição; com \"Usar a localização\", a posição do tema pelo sol.</string>
     <string name="perm_internet_title">Abrir conexões de rede</string>
     <string name="perm_internet_why">O Android a exige para qualquer conexão, mas o REau só usa a internet para o clima opcional (Open-Meteo) e, quando você toca, para a verificação de atualização (GitHub).</string>
     <string name="perm_network_state_title">Ver as redes</string>
@@ -241,7 +211,7 @@
     <string name="perm_foreground_device_title">Serviço de dispositivo conectado</string>
     <string name="perm_foreground_device_why">O tipo do serviço da projeção que o Android exige desde o Android 14: o painel da moto é um dispositivo conectado.</string>
     <string name="perm_foreground_location_title">Serviço com localização</string>
-    <string name="perm_foreground_location_why">O mesmo serviço com o tipo localização, só para o card de GPS do anel de informações: sem ele o Android não dá a posição com a tela apagada.</string>
+    <string name="perm_foreground_location_why">O mesmo serviço com o tipo localização: sem ele, atrás de outro app ou com a tela apagada, o Android não dá ao REau a lista de Wi-Fi nem a posição do GPS.</string>
     <string name="perm_foreground_mic_title">Serviço com microfone</string>
     <string name="perm_foreground_mic_why">O mesmo serviço com o tipo microfone, só para o Gemini pelo joystick: sem ele o Android entrega silêncio com a tela apagada.</string>
     <string name="perm_wake_lock_title">Manter o celular acordado</string>
@@ -284,8 +254,8 @@
     <string name="credits_android_auto">Android Auto no celular</string>
     <string name="credits_dash">Painel Tripper</string>
     <string name="credits_libraries">Bibliotecas e fontes</string>
-    <string name="permissions_ask_all_note">Pede de uma vez as que o Android pergunta; acessibilidade e bateria têm o botão na própria linha. Se o Android não mostrar o pedido (você recusou antes), use \"Abrir as permissões do REau no Android\".</string>
-    <string name="use_location">Ligada por padrão, mas só funciona depois que a permissão de localização do Android é liberada. Com o tema pelo sol, o REau lê a última posição que o Android já tem quando você abre o REau, sem ligar o GPS, para saber o nascer e o pôr do sol onde você está; ela fica só no celular, arredondada a uns 11 km, nunca vai ao registro e é esquecida quando isto é desligado. Essa permissão também deixa o REau ver as redes Wi-Fi para achar o painel, sem ler a sua posição.</string>
+    <string name="permissions_ask_all_note">Pede de uma vez as que o Android pergunta; a bateria tem o botão na própria linha. Se o Android não mostrar o pedido (você recusou antes), use \"Abrir as permissões do REau no Android\".</string>
+    <string name="use_location">Ligada por padrão, mas só funciona com a permissão de localização do Android liberada. Com o tema pelo sol, o REau lê a última posição que o Android já tem ao abrir o REau, sem ligar o GPS, para saber o nascer e o pôr do sol onde você está; ela fica só no celular, arredondada a uns 11 km, nunca vai ao registro e é esquecida ao desligar isto. Ela também deixa o REau ver as redes Wi-Fi para achar o painel, mesmo atrás de outro app, sem ler a posição; o Android pode mostrar o ícone.</string>
     <string name="log_keep_days">Apaga sozinho o registro e as gravações mais velhos que o prazo escolhido (vale na hora ao escolher e, de novo, ao abrir o app e a cada arquivo novo). Passando de %1$d MB, os registros mais antigos saem primeiro, qualquer que seja o prazo; as gravações têm o teto delas, de %2$d MB.</string>
     <plurals name="log_keep_days_n">
         <item quantity="one">%1$d dia</item>
@@ -333,8 +303,7 @@
     <string name="sub_card">Imagem parada, sem Android Auto</string>
     <string name="sub_server_off">Falta o servidor do Android Auto</string>
     <string name="sub_closing_previous">Leva até um minuto; o REau tenta de novo sozinho</string>
-    <string name="sub_unresponsive">Force a parada dele; o REau tenta de novo sozinho</string>
-    <string name="sub_unresponsive_by_hand">Pare e inicie o servidor no menu ⋮; o REau tenta de novo sozinho</string>
+    <string name="sub_unresponsive">Pare e inicie o servidor no menu ⋮; o REau tenta de novo sozinho</string>
     <string name="sub_image_stale">O painel mostra a última imagem enquanto a moto anda</string>
     <string name="stale_badge">IMAGEM PARADA</string>
     <string name="sub_no_video">O painel fica preto: force a parada do Android Auto</string>
@@ -393,9 +362,17 @@
     <string name="group_map">Tema</string>
     <string name="group_on_dash">No painel</string>
     <string name="group_joystick">Joystick</string>
-    <string name="group_android_auto">Android Auto</string>
     <string name="group_video_profiles">Perfis de vídeo</string>
     <string name="group_card">Wallpaper</string>
+    <string name="group_connection_experiments">Conexão experimental</string>
+    <string name="exp_pacing_title">Espaçar o vídeo</string>
+    <string name="exp_pacing_sub">Experimental: pausa de 2 ms a cada 4 pacotes de vídeo, no máximo 400 por segundo</string>
+    <string name="exp_dscp_title">Marcar prioridade do Wi-Fi na debug</string>
+    <string name="exp_dscp_sub">Experimental: só muda a versão debug (a release sempre marca). Vale a partir da próxima conexão</string>
+    <string name="exp_bitrate_title">Bitrate menor e adaptativo</string>
+    <string name="exp_bitrate_sub">Experimental: mira 200 kbps e acompanha o que o codificador realmente gera</string>
+    <string name="exp_wifi_title">Wi-Fi e EPERM</string>
+    <string name="exp_wifi_sub">Experimental: trava de Wi-Fi de baixa latência (Android 10+) e mais 5 tentativas na mesma rede quando o Android recusa (EPERM). Vale a partir da próxima conexão</string>
     <string name="pairing_known_title">Painel conhecido</string>
     <string name="pairing_known_info">É o painel de que o REau já sabe o nome inteiro do Wi-Fi, que ele precisa para se conectar. \"Esquecer\" apaga esse nome, tudo o que o painel já disse (os \"Dados da moto\" abaixo) e a rede sugerida ao Android; depois, o REau procura o painel de novo (com o REau aberto, o nome aparece sozinho) ou você digita o nome inteiro. Use ao trocar de moto ou de painel.</string>
     <string name="pairing_unknown_title">Nenhum painel conhecido</string>
@@ -426,9 +403,6 @@
     <string name="answer_title">Atender ligação</string>
     <string name="gemini_title">Gemini</string>
     <string name="by_joystick_sub">Pelo joystick do guidão</string>
-    <string name="server_title">Ligar o servidor sozinho</string>
-    <string name="server_sub_off">Desligado: você liga à mão</string>
-    <string name="server_sub_on">Liga e desliga com a projeção</string>
     <string name="fps_title">Teto de quadros/s</string>
     <string name="profiles_fps_sub">Perfil A: 4. Perfil B: %1$d. Fixo</string>
     <string name="profiles_info">O REau usa dois perfis de vídeo fixos para o painel: o A, com %1$d fps e %2$d kbps, a imagem mais fluida, e o B, a metade disso (%3$d fps e %4$d kbps), mais leve para o Wi-Fi e para o painel. Quem escolhe entre eles são o perfil por manobra e o perfil por velocidade, logo abaixo. Esses valores não se mudam.</string>
@@ -552,10 +526,10 @@
     <string name="ride_log_sub_on">Gravando no celular</string>
     <string name="ride_log_sub_off">Desligado: nada é gravado</string>
     <string name="record_video_sub">Para depuração</string>
-    <string name="record_video_info">Guarda no celular uma cópia do vídeo que vai ao painel, com o mapa, a rota e os cartões que aparecem nele, para investigar defeitos de imagem. Vem desligada por padrão no app que você instala para andar e ligada na build de debug; fica na pasta do app e só sai se você usar \"Compartilhar › Com gravações\". As gravações somam no máximo 200 MB (1 GB na build de debug), saindo as mais antigas primeiro, e também saem pelo prazo de \"Apagar sozinho os mais velhos que\"; vale na próxima vez que ligar.</string>
+    <string name="record_video_info">Guarda no celular uma cópia do vídeo que vai ao painel, com o mapa, a rota e os cartões que aparecem nele, para investigar defeitos de imagem. Vem desligada por padrão no app que você instala para andar e ligada na build de debug; fica na pasta do app e só sai se você usar \"Compartilhar › Com gravações\". As gravações somam no máximo 200 MB (1024 MB na build de debug), saindo as mais antigas primeiro, e também saem pelo prazo de \"Apagar sozinho os mais velhos que\"; vale na próxima vez que ligar.</string>
     <string name="record_sessions_title">Gravar as sessões do Android Auto</string>
     <string name="record_sessions_sub">Guarda o mapa e o trajeto</string>
-    <string name="record_sessions_info">Grava tudo o que o Android Auto manda numa conexão (imagem do mapa, rota, música, quem liga, mensagens), guardando os últimos 50 a 100 MB, uns 3 a 15 minutos de trajeto. Desligada por padrão no app que você instala para andar e ligada na build de debug, revela por onde você andou: fica na pasta do app e só sai se você usar \"Compartilhar › Com gravações\". Somam no máximo 200 MB (1 GB na build de debug) e saem pelo prazo de \"Apagar sozinho os mais velhos que\"; vale na próxima vez que ligar.</string>
+    <string name="record_sessions_info">Grava tudo o que o Android Auto manda numa conexão (imagem, rota, música, quem liga, mensagens), guardando os últimos 50 a 100 MB, 3 a 15 minutos de trajeto (768 MB na build de debug). Desligada por padrão no app que você instala para andar e ligada na build de debug, revela por onde você andou: fica na pasta do app e só sai se você usar \"Compartilhar › Com gravações\". Somam no máximo 200 MB (1024 MB na build de debug) e saem pelo prazo de \"Apagar sozinho os mais velhos que\"; vale na próxima vez que ligar.</string>
     <string name="detailed_title">Registro detalhado</string>
     <string name="detailed_sub">Arquivo bem maior</string>
     <string name="share_title">Compartilhar</string>
@@ -639,9 +613,6 @@
     <!-- The redesign's permissions page. -->
     <string name="permissions_ask_all_n">Pedir as que faltam (%1$d)</string>
     <string name="permissions_count">%1$d/%2$d</string>
-    <string name="permission_special_stuck_short">Parado</string>
-    <string name="permission_special_restricted">Se o Android disser \"Configuração restrita\" ao ligar, toque em \"Liberar configurações restritas\" abaixo, no ⋮ do canto e em \"Permitir configurações restritas\", e volte para ligar a acessibilidade.</string>
-    <string name="action_allow_restricted">Liberar configurações restritas</string>
 
     <!-- The redesign's "O REau e os seus dados". -->
     <string name="about_summary_internet">Só usa a internet para o clima (no painel ou no anel de informações), depois que a localização é liberada, e para ver se há versão nova, quando você toca.</string>
@@ -664,12 +635,6 @@
     </plurals>
     <string name="cd_share_logs">Compartilhar os registros</string>
 
-    <!-- The redesign's server cover. -->
-    <string name="cover_step_open">Abrindo o Android Auto</string>
-    <string name="cover_step_menu">Menu de desenvolvedor</string>
-    <string name="cover_step_start">Iniciar servidor da unidade principal</string>
-    <string name="cover_step_stop">Parar servidor da unidade principal</string>
-    <string name="cover_hint">Leva alguns segundos. Não precisa tocar em nada.</string>
 
     <!-- Tela "Dados da moto": tudo o que o painel diz ao REau, só para ler. -->
     <string name="phone_status_title">Estado do celular</string>
@@ -827,7 +792,7 @@
     <string name="server_rule">Ligado, o REau não procura o painel.</string>
     <string name="web_view_wait_sub">Toque em Ligar na tela inicial primeiro.</string>
     <string name="web_view_wait_value">parado</string>
-    <!-- O Android Auto 17.3 ou mais antigo, chamado a ligar, não ligou (edição Lite) -->
+    <!-- O Android Auto 17.3 ou mais antigo, chamado a ligar, não ligou (apps antigos) -->
     <string name="notif_title_not_calling">O Android Auto não ligou</string>
     <string name="notif_text_not_calling">Abra o Android Auto, termine a configuração dele e desligue e ligue o REau</string>
     <string name="link_not_calling">Não ligou</string>
@@ -850,4 +815,8 @@
     <string name="update_button_check">Verificar agora</string>
     <string name="update_button_open">Ver a versão</string>
     <string name="update_info">O REau só pergunta ao GitHub (api.github.com) quando você toca; o GitHub vê o endereço do celular, sem conta. Nada é baixado nem instalado.</string>
+
+    <!-- A small line on the main screen while the old app with the seal on its icon (id ending in .lite) is still installed -->
+    <string name="old_app_note">O app REau antigo (o do ícone com selo) ainda está instalado. Não é mais necessário: pode desinstalá-lo.</string>
+
 </resources>

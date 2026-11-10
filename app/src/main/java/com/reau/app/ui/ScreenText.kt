@@ -2,8 +2,6 @@ package com.reau.app.ui
 
 import com.reau.app.R
 import com.reau.app.aa.AaLinkState
-import com.reau.app.aa.ServerResult
-import com.reau.app.service.AaServerStarter
 import com.reau.app.service.DashLink
 import com.reau.app.service.Headline
 import com.reau.app.service.Projection
@@ -49,43 +47,6 @@ object ScreenText {
         FrameFit.Problem.TOO_SMALL -> R.string.problem_too_small
         FrameFit.Problem.DISTORTED -> R.string.problem_distorted
         FrameFit.Problem.NOT_VISIBLE -> R.string.problem_not_visible
-    }
-
-    /** The cover over Android Auto's menu while a walk goes on: switching the server on or off. */
-    /** What the cover says while it holds Android Auto in front, waiting for the server to answer. */
-    fun coverWaiting(): Int = R.string.aa_server_cover_waiting
-
-    fun cover(mode: com.reau.app.aa.ServerMenuRun.Mode): Int =
-        if (mode == com.reau.app.aa.ServerMenuRun.Mode.STOP) R.string.aa_server_cover_stopping else R.string.aa_server_cover
-
-    /** How the last try with Android Auto's server went; null says nothing. */
-    @Suppress("CyclomaticComplexMethod") // a plain lookup, one branch per result
-    fun server(result: ServerResult): Int? = when (result) {
-        ServerResult.NONE -> null
-        ServerResult.WORKING -> R.string.aa_server_working
-        ServerResult.STOPPING -> R.string.aa_server_stopping
-        ServerResult.STARTED -> R.string.aa_server_started
-        ServerResult.SERVICE_OFF -> R.string.aa_server_service_off
-        ServerResult.LOCKED -> R.string.aa_server_locked
-        ServerResult.NOT_INSTALLED -> R.string.aa_server_not_installed
-        ServerResult.SETTINGS_DID_NOT_OPEN -> R.string.aa_server_settings_did_not_open
-        ServerResult.UNEXPECTED_SCREEN -> R.string.aa_server_unexpected_screen
-        ServerResult.MENU_DID_NOT_OPEN -> R.string.aa_server_menu_did_not_open
-        ServerResult.DEVELOPER_MODE_OFF -> R.string.aa_server_developer_mode_off
-        ServerResult.UNKNOWN_MENU -> R.string.aa_server_unknown_menu
-        ServerResult.ALREADY_RUNNING -> R.string.aa_server_already_running
-        ServerResult.NOT_UP -> R.string.aa_server_not_up
-        ServerResult.INTERRUPTED -> R.string.aa_server_interrupted
-        ServerResult.AA_GONE -> R.string.aa_server_aa_gone
-        ServerResult.STOPPED -> R.string.aa_server_stopped
-        ServerResult.LEFT_ON -> R.string.aa_server_left_on
-    }
-
-    /** Where REau's accessibility service stands. */
-    fun accessibility(state: AaServerStarter.Accessibility): Int = when (state) {
-        AaServerStarter.Accessibility.CONNECTED -> R.string.aa_server_accessibility_connected
-        AaServerStarter.Accessibility.ENABLED -> R.string.aa_server_accessibility_enabled
-        AaServerStarter.Accessibility.OFF -> R.string.aa_server_accessibility_off
     }
 
     /** The dash side of the bridge: a link that failed before any connection existed says "looking", not "dropped". */

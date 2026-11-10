@@ -30,7 +30,7 @@ Wi-Fi del tablero.
 - Envía también la música que suena (cuando la página del joystick tiene un control de música), las llamadas y el clima, para las tarjetas del tablero.
 - Usa el joystick del manillar para controlar Android Auto (mapa, menú, música, llamadas y Gemini, que viene activado y funciona cuando concedes el micrófono): mientras suena una llamada, la izquierda contesta y la derecha o el
   centro rechazan; durante una llamada, el centro cuelga y arriba y abajo cambian el volumen.
-- Un anillo de información sobre la imagen, a la derecha del tablero (viene activado, con un interruptor): lluvia, viento, tormentas, UV, calidad del aire, el sol, las temperaturas del día y la batería, la señal y el GPS del teléfono, una cosa a la vez. Necesita la ubicación e internet para el clima.
+- Un anillo de información sobre la imagen, a la derecha del tablero (viene apagado, con un interruptor): lluvia, viento, tormentas, UV, calidad del aire, el sol, las temperaturas del día y la batería, la señal y el GPS del teléfono, una cosa a la vez. Necesita la ubicación e internet para el clima.
 - Habla portugués, inglés y español: sigue el idioma del teléfono, y los ajustes tienen un selector.
 - Ajusta la calidad del video según la distancia a la próxima maniobra y la velocidad.
 - Se enciende con una pulsación larga en el ícono de REau ("Encender") o desde un mosaico de los Ajustes rápidos, para encenderlo en casa, antes del casco.
@@ -44,34 +44,22 @@ Wi-Fi del tablero.
 ## Requisitos
 
 - Un teléfono con Android 10 o más nuevo y **Android Auto** instalado.
-- El modo de desarrollador de Android Auto activado, con el "servidor de unidad principal". En la edición completa, REau abre esa pantalla y enciende el servidor por
-  sí sola cuando la accesibilidad de la app está activa; en la Lite, REau también abre esa pantalla (una vez cada vez que enciendes, con REau en pantalla) y tú enciendes el servidor a mano.
-- En Android 13 o más nuevo, para activar el servicio de accesibilidad (edición completa) primero hay que permitirlo en Ajustes › Apps › REau ›
-  ⋮ › "Permitir ajustes restringidos": Android lo pide a cualquier app instalada fuera de Play Store, incluido el APK
-  publicado.
+- El modo de desarrollador de Android Auto activado, con el "servidor de unidad principal". REau abre esa pantalla (una vez cada vez que enciendes, con REau en pantalla) y tú enciendes el servidor a mano: con Android Auto 17.4 o más nuevo se apaga al terminar la sesión, así que lo enciendes de nuevo cada vez; con 17.3 o anterior, REau le pide a Android Auto que se conecte y no hay nada que encender.
 - Un tablero compatible, con su Wi-Fi al alcance.
 
-## Dos ediciones
+## Instalar y actualizar
 
-- **Completa** (`com.reau.app`): la habitual. Usa un servicio de accesibilidad de Android para encender el servidor de Android Auto
-  por sí sola y saber desde Android Auto qué pantalla se muestra (para alternar entre el ajuste de navegación y el de las demás).
-- **Lite** (`com.reau.app.lite`, "REau Lite", **la recomendada**): **sin** servicio de accesibilidad. Con Android Auto 17.4 o más nuevo enciendes el servidor de unidad principal a mano (se apaga al terminar la sesión, así que lo enciendes de nuevo cada vez); con 17.3 o anterior, REau le pide a Android Auto que se conecte y no hay nada que encender.
-  Sabe qué pantalla se muestra por la propia imagen, para alternar el ajuste.
+Instala el APK publicado, `REau-0.3.0.apk` (applicationId `com.reau.app`, nombre "REau"). Es una sola app: REau sabe qué pantalla de Android Auto se muestra (mapa, menú, apps) por la propia imagen, con una red neuronal pequeña que corre en el teléfono.
 
-**Cuál usar: la Lite es la edición recomendada.** No pide ningún servicio de Accesibilidad, así que nunca obtiene un control amplio
-del teléfono y no choca con apps que se niegan a funcionar con la Accesibilidad activa (las bancarias, por ejemplo). El precio es un
-paso manual cada vez: enciendes tú el servidor de unidad principal de Android Auto. Elige la edición completa solo si quieres que REau haga
-ese paso sola y que sepa la pantalla desde Android Auto en lugar de por la imagen.
-
-Las dos se instalan juntas en el mismo teléfono, pero no deben funcionar a la vez (compiten por el tablero).
+¿Vienes de la antigua REau Lite (paquete `com.reau.app.lite`)? REau 0.3.0 es una app nueva para ti: rehaz los ajustes y el emparejamiento con el tablero y luego desinstala la Lite antigua (la app nueva muestra una línea discreta y, si Android Auto no responde, un aviso, mientras la Lite antigua siga instalada). ¿Vienes del REau anterior (paquete `com.reau.app`)? Solo actualiza encima: los ajustes y el emparejamiento se quedan. Dos instalaciones juntas compiten por el único servidor de Android Auto, que acepta una sesión a la vez.
 
 ## Compilación
 
 Con JDK 21 y el Android SDK instalados:
 
 ```
-./gradlew assembleRelease               # los dos APK: app/build/outputs/apk/completa/release/ y .../lite/release/
-./gradlew assembleCompletaRelease       # solo la edición completa (com.reau.app); assembleLiteRelease: solo la Lite
+./gradlew assembleRelease               # el APK: app/build/outputs/apk/release/
+./gradlew assembleDebug                 # el APK de debug: app/build/outputs/apk/debug/app-debug.apk
 ./gradlew :app:testDebugUnitTest        # pruebas unitarias
 ```
 
@@ -83,7 +71,7 @@ Hay un APK publicado en la página de Releases del proyecto; para compilar el tu
 
 REau no tiene cuenta, ni anuncios, ni recoge datos. La pantalla **"REau y tus datos"**, dentro de la app, dice qué se queda en el
 teléfono, qué sale y por qué. Lo que sale del teléfono va al tablero y, solo con el servidor de red opcional encendido, a otros
-dispositivos de tu red local; los únicos viajes a internet son el del clima (Open-Meteo, para el tablero o el anillo de información: viene activado, pero no pide nada hasta que concedas la ubicación, y tiene un interruptor) y el botón “Buscar actualizaciones” de los Ajustes, que solo consulta a GitHub cuando lo tocas.
+dispositivos de tu red local; los únicos viajes a internet son el del clima (Open-Meteo, para el tablero, que viene activado, o el anillo de información, que viene apagado: no pide nada hasta que concedas la ubicación, y cada uno tiene un interruptor) y el botón “Buscar actualizaciones” de los Ajustes, que solo consulta a GitHub cuando lo tocas. El permiso de ubicación también deja que Android entregue a REau la lista de redes Wi-Fi, para ver la del tablero, con la app detrás de otra (Android Auto, Waze) o con la pantalla apagada; REau no lee la posición para eso, y Android puede mostrar el ícono de ubicación durante la proyección.
 
 ## Seguridad
 

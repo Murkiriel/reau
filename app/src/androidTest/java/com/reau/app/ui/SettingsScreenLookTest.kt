@@ -32,9 +32,8 @@ class SettingsScreenLookTest {
 
     @Test
     fun theGroupsAreThereInTheirOrder() {
-        // The Android Auto group holds the full edition's server switch: the Lite has none.
-        val androidAuto = if (com.reau.app.Edition.hasAccessibility) listOf("group_android_auto") else emptyList()
-        for (tag in listOf("group_map", "group_on_dash", "group_joystick") + androidAuto + listOf("group_video_profiles", "group_card", "debug")) {
+        // No Android Auto group: the server switch it held is gone.
+        for (tag in listOf("group_map", "group_on_dash", "group_joystick") + listOf("group_video_profiles", "group_card", "debug")) {
             compose.onNodeWithTag(tag).performScrollTo()
         }
         compose.onNodeWithTag("open_credits").assertDoesNotExist() // the credits and the terms are under "O REau e os seus dados" now

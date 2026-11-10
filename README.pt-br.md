@@ -31,7 +31,7 @@ pela rede Wi-Fi do painel.
   cartões do painel.
 - Usa o joystick do guidão para comandar o Android Auto (mapa, menu, música, chamadas e Gemini, que vem ligado e passa a funcionar quando você libera o microfone): tocando, a esquerda atende e a
   direita ou o centro recusam; em ligação, o centro desliga e cima e baixo mudam o volume.
-- Um anel de informações sobre a imagem, à direita do painel (vem ligado, com uma chave): chuva, vento, tempestade, UV, qualidade do ar, o sol, as temperaturas do dia e a bateria, o sinal e o GPS do celular, uma coisa de cada vez. Precisa da localização e da internet para o clima.
+- Um anel de informações sobre a imagem, à direita do painel (vem desligado, com uma chave): chuva, vento, tempestade, UV, qualidade do ar, o sol, as temperaturas do dia e a bateria, o sinal e o GPS do celular, uma coisa de cada vez. Precisa da localização e da internet para o clima.
 - Fala português, inglês e espanhol: segue o idioma do celular, e há um seletor nos Ajustes.
 - Ajusta a qualidade do vídeo pela distância da próxima manobra e pela velocidade.
 - Liga com um toque longo no ícone do REau ("Ligar") ou por um bloco das Configurações rápidas, para ligar em casa, antes do capacete.
@@ -44,34 +44,22 @@ pela rede Wi-Fi do painel.
 ## Requisitos
 
 - Celular com Android 10 ou mais novo e o **Android Auto** instalado.
-- O modo de desenvolvedor do Android Auto ligado, com o "servidor da unidade principal". Na edição completa, o REau abre essa tela e
-  liga o servidor sozinho quando a acessibilidade do app está ativa; na Lite, o REau também abre essa tela (uma vez cada vez que você liga, com o REau na tela) e você liga o servidor à mão.
-- No Android 13 ou mais novo, para ligar o serviço de acessibilidade (edição completa) é preciso antes liberá-lo em
-  Configurações › Apps › REau › ⋮ › "Permitir configurações restritas": o Android pede isso de qualquer app instalado
-  de fora da Play Store, inclusive o APK publicado.
+- O modo de desenvolvedor do Android Auto ligado, com o "servidor da unidade principal". O REau abre essa tela (uma vez cada vez que você liga, com o REau na tela) e você liga o servidor à mão: com o Android Auto 17.4 ou mais novo ele desliga quando a sessão termina, então é preciso ligá-lo de novo a cada vez; com o 17.3 ou mais velho, o REau pede ao Android Auto que se conecte e não há nada para ligar.
 - Um painel compatível, com o Wi-Fi dele ao alcance.
 
-## Duas edições
+## Instalar e atualizar
 
-- **Completa** (`com.reau.app`): a de sempre. Usa um serviço de acessibilidade do Android para ligar o servidor do Android Auto
-  sozinha e para saber pelo Android Auto qual tela está aparecendo (para trocar entre o encaixe da navegação e o dos outros).
-- **Lite** (`com.reau.app.lite`, "REau Lite", **a recomendada**): **sem** serviço de acessibilidade. Com o Android Auto 17.4 ou mais novo, você liga o servidor da unidade principal à mão (ele desliga quando a sessão termina, então é preciso ligá-lo de novo a cada vez); com o 17.3 ou mais velho, o REau pede ao Android Auto que se conecte e não há nada para ligar.
-  Ela reconhece qual tela está aparecendo pela própria imagem, para trocar o encaixe.
+Instale o APK publicado, `REau-0.3.0.apk` (applicationId `com.reau.app`, nome "REau"). É um app único: o REau reconhece qual tela do Android Auto está aparecendo (mapa, menu, apps) pela própria imagem, com uma rede neural pequena que roda no celular.
 
-**Qual usar: a recomendada é a Lite.** Ela não pede o serviço de Acessibilidade: não ganha controle amplo do celular e não briga
-com apps que se recusam a rodar com a Acessibilidade ligada (os de banco, por exemplo). O preço é um passo manual a cada uso:
-ligar você mesmo o servidor da unidade principal do Android Auto. Escolha a edição completa só se quiser que o REau faça esse
-passo sozinho e saiba a tela pelo Android Auto em vez de pela imagem.
-
-As duas instalam juntas no mesmo celular, mas não devem rodar ao mesmo tempo (disputam o painel).
+Vem da antiga REau Lite (pacote `com.reau.app.lite`)? O REau 0.3.0 é um app novo para você: refaça os ajustes e o pareamento com o painel e depois desinstale a Lite antiga (o app novo mostra uma linha discreta e, se o Android Auto não responder, um aviso, enquanto a Lite antiga ainda estiver instalada). Vem do REau anterior (pacote `com.reau.app`)? É só atualizar por cima: ajustes e pareamento ficam. Duas instalações juntas disputam o único servidor do Android Auto, que aceita uma sessão por vez.
 
 ## Compilar
 
 Com o JDK 21 e o Android SDK instalados:
 
 ```
-./gradlew assembleRelease               # os dois APKs: app/build/outputs/apk/completa/release/ e .../lite/release/
-./gradlew assembleCompletaRelease       # só a edição completa (com.reau.app); assembleLiteRelease: só a Lite
+./gradlew assembleRelease               # o APK: app/build/outputs/apk/release/
+./gradlew assembleDebug                 # o APK de debug: app/build/outputs/apk/debug/app-debug.apk
 ./gradlew :app:testDebugUnitTest        # testes de unidade
 ```
 
@@ -83,7 +71,7 @@ Há um APK publicado na página de Releases do projeto; para compilar o seu em v
 
 O REau não tem conta, anúncio nem coleta de dados. A tela **"O REau e os seus dados"**, no próprio app, diz o que
 fica guardado no celular e o que sai dele, com o motivo. O que sai do celular vai para o painel e, só com o servidor de rede
-opcional ligado, para outros aparelhos da sua rede local; as únicas idas à internet são o clima (Open-Meteo, para o painel ou o anel de informações: vem ligado, mas não pede nada até você liberar a localização, e tem uma chave) e o botão “Verificar atualização” em Ajustes, que só pergunta ao GitHub quando você toca.
+opcional ligado, para outros aparelhos da sua rede local; as únicas idas à internet são o clima (Open-Meteo, para o painel, que vem ligado, ou o anel de informações, que vem desligado: não pede nada até você liberar a localização, e cada um tem uma chave) e o botão “Verificar atualização” em Ajustes, que só pergunta ao GitHub quando você toca. A permissão de localização também deixa o Android dar ao REau a lista de redes Wi-Fi, para ver a do painel, com o app atrás de outro (Android Auto, Waze) ou com a tela apagada; o REau não lê a posição para isso, e o Android pode mostrar o ícone de localização durante a projeção.
 
 ## Segurança
 

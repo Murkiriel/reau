@@ -16,15 +16,15 @@ fica sob a mesma licença. Se uma mudança trouxer código, dados ou fatos de ou
 Com o JDK 21 e o Android SDK instalados, a partir desta pasta:
 
 ```
-./gradlew :app:testCompletaDebugUnitTest :app:testLiteDebugUnitTest --console=plain
+./gradlew :app:testDebugUnitTest --console=plain
 ./gradlew :app:detekt :app:lintDebug --console=plain
 ```
 
-A primeira linha roda os testes de unidade das duas edições; a segunda roda a análise do código (detekt) e o lint.
+A primeira linha roda os testes de unidade; a segunda roda a análise do código (detekt) e o lint.
 Corrija o que eles apontarem no código que você escreveu e não acrescente nada ao baseline do detekt. Alguns testes leem
 arquivos do repositório (`docs/`, `NOTICE`, os READMEs, os changelogs, `app/src/main/res/`): o Gradle sabe que eles leem
-esses arquivos, então rodam de novo sozinhos quando um texto muda. Os testes instrumentados (`app/src/androidTest`, e
-`app/src/androidTestCompleta` para a edição completa) precisam de um emulador, como diz o README; os scripts estão em `scripts/emu/`.
+esses arquivos, então rodam de novo sozinhos quando um texto muda. Os testes instrumentados (`app/src/androidTest`) precisam de um
+emulador, como diz o README; os scripts estão em `scripts/emu/`.
 Os scripts em Python têm testes próprios (`python3 -B -m unittest discover -p "test_*.py"` dentro de `scripts/`, `scripts/registro/`,
 `scripts/dev/`, `scripts/emu/`, `scripts/icon/` e `bench/`; os dois últimos precisam do Pillow, fixado em `scripts/requirements.txt`), e a
 integração contínua também os roda.
@@ -43,7 +43,7 @@ Os leitores de bytes que vêm de fora (os pacotes do painel, os quadros WebSocke
 código que cada entrada alcança, defina a variável de ambiente (20 segundos por alvo; `JAZZER_MAX_DURATION` muda isso):
 
 ```
-JAZZER_FUZZ=1 ./gradlew :app:testCompletaDebugUnitTest --tests '*ParserFuzzTargets*' --console=plain
+JAZZER_FUZZ=1 ./gradlew :app:testDebugUnitTest --tests '*ParserFuzzTargets*' --console=plain
 ```
 
 A rodada deixa o corpus de trabalho em `app/.cifuzz-corpus/` e, se uma entrada quebrou um leitor, um arquivo `crash-<hash>` em `app/` (os dois
@@ -72,5 +72,5 @@ Um problema de segurança não se relata numa issue pública: siga o [SECURITY.m
 
 ## Relatar um erro
 
-Use o modelo de relato de erro: ele pede a versão e a edição do REau, a versão do Android Auto, o firmware do painel e o
+Use o modelo de relato de erro: ele pede a versão do REau, a versão do Android Auto, o firmware do painel e o
 celular, e diz onde o app compartilha os registros.
