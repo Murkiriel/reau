@@ -30,6 +30,8 @@ class AapTransport(
     private val protocolMinor: Int = Messages.MINOR_DEFAULT,
     /** How many times the version request may be sent; the last one waits out the whole budget. */
     private val versionRequests: Int = AaConfig.VERSION_REQUESTS,
+    /** How long the video focus stays away in a keyframe cycle, asked at each cycle ([FocusGap]): 100 ms unless the experimental switch is on. */
+    private val focusGapMs: () -> Long = { FocusGap.DEFAULT_MS },
 ) {
     val ssl: AapSsl = externalSsl ?: AapSslContext(SingleKeyKeyManager(context))
 
@@ -81,6 +83,7 @@ class AapTransport(
         get() = pollThread?.isAlive ?: false
 
     private val keyframeGate = KeyframeCycleGate()
+    private val focusTiming = FocusCycleTiming()
 
     /**
      * Whether the cycle must wait because the compositor the picture goes to is stuck (a keyframe is no use to a consumer that
@@ -107,6 +110,7 @@ class AapTransport(
 
     /** Once a second: lets out a keyframe request that had to wait. */
     internal fun keyframeTick() {
+        focusTiming.overdue(SystemClock.elapsedRealtime())?.let { AaLog.w("AapTransport: $it") }
         if (keyframeGate.takePending(SystemClock.elapsedRealtime(), keyframeBlocked())) {
             AaLog.i("AapTransport: the keyframe request that waited goes out")
             cycleVideoFocus()
@@ -117,12 +121,19 @@ class AapTransport(
         if (verdict == KeyframeCycleGate.Verdict.WAIT_BLOCKED) "the compositor is stuck" else "storm guard"
 
     private fun cycleVideoFocus() {
-        AaLog.w("AapTransport: Requesting recovery keyframe via focus cycle.")
+        val gapMs = focusGapMs()
+        AaLog.w("AapTransport: Requesting recovery keyframe via focus cycle.${FocusGap.words(gapMs)}")
+        focusTiming.cycled(SystemClock.elapsedRealtime(), gapMs)
         send(VideoFocusEvent(gain = false, unsolicited = false))
         // The gain goes out on the send thread, not the main one: a main thread held up (a slow frame, the cold start) would leave Android Auto without focus.
         sendHandler?.postDelayed({
             if (isAlive) send(VideoFocusEvent(gain = true, unsolicited = true))
-        }, FOCUS_GAIN_DELAY_MS)
+        }, gapMs)
+    }
+
+    /** A keyframe of Android Auto arrived: the first one after a focus cycle says how long it took ([FocusCycleTiming]). */
+    internal fun keyframeArrived() {
+        focusTiming.keyframe(SystemClock.elapsedRealtime())?.let { AaLog.i("AapTransport: $it") }
     }
 
     internal fun startSensor(type: Int) {
@@ -314,6 +325,7 @@ class AapTransport(
                     if (ret <= 0) break
                     if (ret >= 6 && buffer[0] == 0.toByte() && isVersionResponseType(buffer)) {
                         AaLog.i("Handshake: Version response received: ${Messages.versionAnswer(buffer, ret)} (ret=$ret, attempt=$attempt).")
+                        Messages.versionRefusal(buffer, ret)?.let { AaLog.w(Messages.versionRefusalLine(it, protocolMinor)) }
                         received = true
                         break
                     }
@@ -378,8 +390,6 @@ class AapTransport(
         internal const val BYE_WAIT_MS = 1_000L
         private const val BYE_PAUSE_ON_READ_THREAD_MS = 150L
 
-        /** How long after losing video focus Android Auto gets it back. */
-        private const val FOCUS_GAIN_DELAY_MS = 100L
         /** Sensors.SensorType.NIGHT value (see proto). */
         private const val SENSOR_NIGHT = 10
     }

@@ -1,5 +1,7 @@
 """Tests of the mutation tooling itself: the list is well formed and its snippets are still in the code (no Gradle needed), the slices
 split it exactly, and a file left mutated by a killed run is put back."""
+import contextlib
+import io
 import sys
 import tempfile
 import unittest
@@ -42,6 +44,63 @@ class FatiaTest(unittest.TestCase):
         self.assertEqual((None, False, []), mutacoes.parse([]))
         with self.assertRaises(SystemExit):
             mutacoes.parse(["--fatia", "7/6"])
+
+
+class RunTest(unittest.TestCase):
+    """mutate.run against a test command that is a small Python program: it reads the mutated file and decides how the "tests" end."""
+
+    def run_one(self, program, old="1 + 1", new="1 + 2", source="x = 1 + 1\n", timeout=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.py").write_text(source, encoding="utf-8")
+            keep = mutate.ROOT, mutate.PENDING, mutate.TIMEOUT_S
+            mutate.ROOT, mutate.PENDING = root, root / "build" / "pendentes"
+            if timeout is not None:
+                mutate.TIMEOUT_S = timeout
+            out = io.StringIO()
+            try:
+                with contextlib.redirect_stdout(out):
+                    caught = mutate.run([("uma", "a.py", old, new)], [sys.executable, "-c", program])
+            finally:
+                mutate.ROOT, mutate.PENDING, mutate.TIMEOUT_S = keep
+            pending = list((root / "build" / "pendentes").iterdir()) if (root / "build" / "pendentes").exists() else []
+            return caught, out.getvalue(), (root / "a.py").read_text(encoding="utf-8"), pending
+
+    def test_a_mutation_the_tests_fail_on_is_caught_and_the_file_is_put_back(self):
+        program = "import sys; sys.exit(1 if '1 + 2' in open('a.py').read() else 0)"
+        caught, said, after, pending = self.run_one(program)
+        self.assertEqual(1, caught)
+        self.assertIn("uma: PEGA", said)
+        self.assertEqual("x = 1 + 1\n", after)
+        self.assertEqual([], pending)
+
+    def test_a_mutation_the_tests_pass_with_is_not_caught(self):
+        caught, said, after, _ = self.run_one("print('VERDE')")
+        self.assertEqual(0, caught)
+        self.assertIn("uma: NÃO PEGA  VERDE", said)
+        self.assertEqual("x = 1 + 1\n", after)
+
+    def test_a_build_that_broke_is_not_a_caught_mutation(self):
+        caught, said, _, _ = self.run_one("import sys; print('NÃO COMPILOU'); sys.exit(1)")
+        self.assertEqual(0, caught)
+        self.assertIn("uma: NÃO COMPILOU", said)
+
+    def test_a_snippet_that_is_not_in_the_file_exactly_once_runs_nothing(self):
+        for source in ("x = 2\n", "x = 1 + 1\ny = 1 + 1\n"):
+            caught, said, after, _ = self.run_one("import sys; sys.exit(1)", source=source)
+            self.assertEqual(0, caught)
+            self.assertIn("uma: TRECHO NÃO ACHADO", said)
+            self.assertEqual(source, after)
+
+    def test_a_test_run_that_hangs_is_not_caught_and_the_file_is_put_back(self):
+        caught, said, after, pending = self.run_one("import time; time.sleep(30)", timeout=1)
+        self.assertEqual(0, caught)
+        self.assertIn("uma: NÃO TERMINOU em 1 s", said)
+        self.assertEqual("x = 1 + 1\n", after)
+        self.assertEqual([], pending)
+
+    def test_the_real_limit_is_a_quarter_of_an_hour(self):
+        self.assertEqual(900, mutate.TIMEOUT_S)
 
 
 class RecoverTest(unittest.TestCase):

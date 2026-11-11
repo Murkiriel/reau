@@ -48,11 +48,13 @@ fun PermissionRow(
     onAsk: (() -> Unit)?,
     tag: String,
     askTag: String = "${tag}_ask",
+    /** Not granted and not needed now (its function is switched off): nothing is missing, so it is not painted as an error. */
+    optional: Boolean = false,
 ) {
     var open by rememberSaveable(tag) { mutableStateOf(false) }
     val dark = LocalREauDark.current
     val colors = MaterialTheme.colorScheme
-    val tone = if (granted) StatusKind.OK.color() else StatusKind.ERROR.color()
+    val tone = permissionTone(granted, optional).color()
     Column(
         Modifier.fillMaxWidth().clickable(role = Role.Button) { open = !open }.padding(horizontal = 16.dp, vertical = 14.dp).testTag(tag),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -144,4 +146,14 @@ private fun Chevron(open: Boolean) {
         if (open) R.drawable.ic_ms_expand_less else R.drawable.ic_ms_expand_more, 22.dp, MaterialTheme.colorScheme.onSurfaceVariant,
         description = stringResource(if (open) R.string.cd_collapse else R.string.cd_expand),
     )
+}
+
+/**
+ * The tone of a permission's state: granted is fine; not granted is an error, unless it is [optional] (its function is switched off, so
+ * nothing is missing), which is the quiet tone of something off.
+ */
+internal fun permissionTone(granted: Boolean, optional: Boolean): StatusKind = when {
+    granted -> StatusKind.OK
+    optional -> StatusKind.IDLE
+    else -> StatusKind.ERROR
 }

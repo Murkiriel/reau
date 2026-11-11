@@ -124,6 +124,22 @@ class CreditsTest {
     }
 
     @Test
+    fun `the NOTICE credits the glyph scan with its licence and its required notice, and the glyph table says who measured it`() {
+        val notice = java.io.File("../NOTICE").readText()
+        val block = notice.substringAfter("): dash maneuver glyph bytes").substringBefore("recon-dash (GNU Affero")
+            .replace(Regex("\\s+"), " ")
+        assertTrue("the entry is there", block.length in 200..2_000)
+        assertTrue("the holder, as that licence's Required Notice asks", Regex("""Copyright \d{4} \S+""").containsMatchIn(block) && "Required Notice" in block)
+        assertTrue("the licence is named in the entry's title", Regex("""\n\S+ \([A-Za-z ]+License [0-9.]+\): dash maneuver glyph bytes\n""").containsMatchIn(notice))
+        assertTrue("the file", "dash/nav/DashManeuverGlyphs.kt" in block)
+        assertTrue("facts only", "no code, text or images of that project are in the repository or in the APK" in block)
+        val table = java.io.File("src/main/java/com/reau/app/dash/nav/DashManeuverGlyphs.kt").readText()
+        assertTrue("who measured", "Its author, not REau," in table)
+        assertTrue("what REau's own dash confirmed", "NOT yet confirmed on REau's own dash" in table)
+        assertTrue("the old claim is gone", "each visible glyph was checked by eye" !in table)
+    }
+
+    @Test
     fun `the NOTICE lists the weather among the parts copied or adapted from EstrelaAustral, with files that exist`() {
         val notice = java.io.File("../NOTICE").readText()
         val block = notice.substringAfter("EstrelaAustral (Apache License 2.0)").substringBefore("OpenCfMoto (GNU Affero")

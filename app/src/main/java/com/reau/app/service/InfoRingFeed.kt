@@ -22,6 +22,13 @@ object InfoRingFeed {
      */
     fun shown(switchOn: Boolean, dashRingVisible: Boolean): Boolean = switchOn && dashRingVisible
 
+    /**
+     * The ride log's line when making the ring's picture failed with [error], [failuresBefore] failures into this projection: the first one
+     * is told (the ring just vanished, with not a word, before), the others are not (the loop tries again every second).
+     */
+    fun failureLine(error: Throwable, failuresBefore: Int): String? =
+        if (failuresBefore == 0) "the info ring could not be made (${error.javaClass.simpleName}): it is off the video until it can; told once" else null
+
     /** The ring's switch and the dash's ring are looked at this often: a press of the dash's down button moves the turns. */
     const val POLL_MS = 50L
 

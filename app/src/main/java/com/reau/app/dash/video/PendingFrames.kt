@@ -26,6 +26,10 @@ internal class PendingFrames {
          */
         var latency: StageStats = StageStats.EMPTY
             internal set
+
+        /** Frames handed to the encoder since the previous call, whether or not they came out. Outside the fields for the same reason. */
+        var submitted: Int = 0
+            internal set
     }
 
     private val ptsMs = ArrayDeque<Long>()
@@ -34,6 +38,7 @@ internal class PendingFrames {
     private var frames = 0
     private var late = 0
     private var latencySumNs = 0L
+    private var submittedCount = 0
     private val latencies = StageClock()
 
     /** Presentation time of the last frame that came out (0 before the first). */
@@ -44,6 +49,7 @@ internal class PendingFrames {
     fun submitted(framePtsMs: Long, nowNs: Long) {
         ptsMs.addLast(framePtsMs)
         submittedNs.addLast(nowNs)
+        submittedCount++
     }
 
     /**
@@ -72,7 +78,8 @@ internal class PendingFrames {
     @Synchronized
     fun takeStats(): Stats = Stats(frames, late, latencySumNs).also {
         it.latency = latencies.take()
-        frames = 0; late = 0; latencySumNs = 0L
+        it.submitted = submittedCount
+        frames = 0; late = 0; latencySumNs = 0L; submittedCount = 0
     }
 
     companion object {

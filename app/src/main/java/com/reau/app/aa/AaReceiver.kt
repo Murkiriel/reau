@@ -126,6 +126,8 @@ internal class AaReceiver(
         val callIn: CallIn? = null,
         /** How long the compositor that [videoSurface] belongs to has been stuck inside one frame, 0 when it is not: the decoder's stall watch asks. */
         val downstreamBusyMs: () -> Long = { 0L },
+        /** How long the video focus stays away when a keyframe is asked for, read at each cycle ([FocusGap]). */
+        val focusGapMs: () -> Long = { FocusGap.DEFAULT_MS },
     )
 
     private val port = options.port
@@ -138,6 +140,7 @@ internal class AaReceiver(
     private val onMediaApp = options.onMediaApp
     private val onAudio = options.onAudio
     private val quickUnresponsive = options.quickUnresponsive
+    private val focusGapMs = options.focusGapMs
     private val onVideoSilent = options.onVideoSilent
     private val callIn = options.callIn
     private val downstreamBusyMs = options.downstreamBusyMs
@@ -515,7 +518,7 @@ internal class AaReceiver(
     private fun runSession(mine: Int, socket: Socket): Boolean {
         val config = this.config
         val link = SocketAccessoryConnection(socket)
-        val transport = AapTransport(context, protocolMinor = config.protocolMinor, versionRequests = config.versionRequests)
+        val transport = AapTransport(context, protocolMinor = config.protocolMinor, versionRequests = config.versionRequests, focusGapMs = focusGapMs)
         val ended = CountDownLatch(1)
         val clean = AtomicBoolean()
         transport.onQuit = { wasClean ->
@@ -525,6 +528,7 @@ internal class AaReceiver(
         // The session counted before the decoder, one aa-stats line every statsEveryMs.
         val stats = AaStats()
         transport.stats = stats
+        stats.onKeyframe = transport::keyframeArrived
         // No keyframe cycle while the compositor is stuck inside a frame (the cycle waits and goes out when it is free).
         transport.keyframeBlocked = { downstreamBusyMs() >= DecoderStallWatch.DOWNSTREAM_BUSY_MS }
         val sink = AaVideoSink(stats, compositorBusyMs = downstreamBusyMs) { transport.triggerFocusCycleRecovery() }

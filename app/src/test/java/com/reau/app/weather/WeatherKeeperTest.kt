@@ -41,6 +41,9 @@ class WeatherKeeperTest {
     @Test
     fun `no weather, no current reading, or one older than three hours is told to the dash as none`() {
         assertNull(WeatherKeeper.forDash(null, 2_000L))
+        // A temperature that is not a number (a broken answer) is no weather for the dash: rounding it threw.
+        assertNull(WeatherKeeper.forDash(snapshot(now(61, Double.NaN)), 2_000L))
+        assertNull(WeatherKeeper.forDash(snapshot(now(61, Double.POSITIVE_INFINITY)), 2_000L))
         assertNull(WeatherKeeper.forDash(snapshot(null), 2_000L))
         val usableUntil = 1_000L + WeatherKeeper.USABLE_MS
         assertEquals(DashCommands.Weather(24, 3), WeatherKeeper.forDash(snapshot(now(61)), usableUntil)?.copy())

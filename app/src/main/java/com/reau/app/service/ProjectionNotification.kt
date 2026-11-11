@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.SystemClock
 import com.reau.app.MainActivity
 import com.reau.app.R
@@ -107,6 +108,9 @@ object ProjectionNotification {
             .addAction(Notification.Action.Builder(null, context.getString(R.string.notif_action_mark), mark).build())
             .setSubText(subText)
             .apply {
+                // Android 12 and later may hold a foreground service's notification back for a moment after the service starts: this one is
+                // the rider's only sign that the projection is on, so it is asked to be shown at once.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
                 if (COLOR_BY_STATE) setColor(colorFor(headline))
                 if (CHRONOMETER && startedElapsed != null) {
                     setUsesChronometer(true)

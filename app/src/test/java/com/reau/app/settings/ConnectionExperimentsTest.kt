@@ -57,6 +57,41 @@ class ConnectionExperimentsTest {
     }
 
     @Test
+    fun `the four later ones are off by default, kept by sanitized, stored each on its own and said in the log`() {
+        val none = REauSettings()
+        assertFalse(none.experimentWifiBand || none.experimentStartGuard || none.experimentEncoderWatch || none.experimentFocusGap)
+        val later = REauSettings(experimentWifiBand = true, experimentStartGuard = true, experimentEncoderWatch = true, experimentFocusGap = true)
+        for (debug in listOf(true, false)) assertEquals(later.sanitized(debug), later.sanitized(debug).copy(
+            experimentWifiBand = true, experimentStartGuard = true, experimentEncoderWatch = true, experimentFocusGap = true,
+        ))
+        val store = SettingsStore(KeystoreBackedPrefsTest.FakePrefs())
+        val each = listOf<(REauSettings) -> Boolean>(
+            { it.experimentWifiBand }, { it.experimentStartGuard }, { it.experimentEncoderWatch }, { it.experimentFocusGap },
+        )
+        val ones = listOf(
+            REauSettings(experimentWifiBand = true), REauSettings(experimentStartGuard = true),
+            REauSettings(experimentEncoderWatch = true), REauSettings(experimentFocusGap = true),
+        )
+        for ((i, one) in ones.withIndex()) {
+            store.save(one)
+            assertEquals("switch $i alone", List(4) { it == i }, each.map { it(store.load()) })
+            assertFalse("the first four stay off", store.load().let { it.experimentRtpPacing || it.experimentDebugDscp || it.experimentAdaptiveBitrate || it.experimentWifiBind })
+        }
+        val line = SettingsInUse.line(later)
+        assertTrue(line, "experimentWifiBand=true experimentStartGuard=true experimentEncoderWatch=true experimentFocusGap=true" in line)
+        val said = SettingsInUse.experimentsLine(later)!!
+        for (part in listOf("2.4 GHz", "start guard", "mute encoder watch", "400 ms focus gap")) assertTrue("$part in: $said", part in said)
+        assertNull(SettingsInUse.experimentsLine(none))
+        // The ninth: day and night with memory.
+        assertFalse(none.experimentNightMemory)
+        store.save(REauSettings(experimentNightMemory = true))
+        assertTrue(store.load().experimentNightMemory)
+        assertFalse("alone", each.any { it(store.load()) })
+        assertTrue(REauSettings(experimentNightMemory = true).sanitized().experimentNightMemory)
+        assertTrue("day and night remembered" in SettingsInUse.experimentsLine(REauSettings(experimentNightMemory = true))!!)
+    }
+
+    @Test
     fun `a phone that never stored them reads them off`() {
         val prefs = KeystoreBackedPrefsTest.FakePrefs()
         prefs.edit().putInt("density", 200).apply()

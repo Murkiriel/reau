@@ -51,6 +51,28 @@ class AapMessageTest {
     }
 
     @Test
+    fun `a version answer with a status that is not 0 is a refusal, and the log line names the version and the status`() {
+        val accepted = bytes(0, 3, 0, 8, 0, 2, 0, 1, 0, 7, 0, 0)
+        val refused = bytes(0, 3, 0, 8, 0, 2, 0, 1, 0, 7, 0xFF, 0xFF)
+        val other = bytes(0, 3, 0, 8, 0, 2, 0, 1, 0, 7, 0, 1)
+        assertEquals(null, Messages.versionRefusal(accepted, accepted.size))
+        assertEquals(-1, Messages.versionRefusal(refused, refused.size))
+        assertEquals(1, Messages.versionRefusal(other, other.size))
+        assertEquals("a short answer carries no status", null, Messages.versionRefusal(refused, 10))
+        val line = Messages.versionRefusalLine(-1, 7)
+        assertEquals(true, line.contains("version request 1.7 with status -1"))
+        assertEquals(true, line.contains("did not accept the version"))
+    }
+
+    @Test
+    fun `the handshake writes the refusal and goes on as before`() {
+        val transport = java.io.File("src/main/java/com/reau/app/aa/AapTransport.kt").readText()
+        assertEquals(true, transport.contains("Messages.versionRefusal(buffer, ret)?.let { AaLog.w(Messages.versionRefusalLine(it, protocolMinor)) }"))
+        val after = transport.substringAfter("Messages.versionRefusal(buffer, ret)").substringBefore("Handshake: Ignoring unexpected message")
+        assertEquals("the answer still counts as received", true, after.contains("received = true"))
+    }
+
+    @Test
     fun `status OK after the TLS handshake is eight bytes`() {
         // channel 0, flags 3, length 4, type 4 (auth complete), then protobuf field 1 = 0.
         assertArrayEquals(bytes(0, 3, 0, 4, 0, 4, 8, 0), Messages.statusOk)

@@ -45,14 +45,17 @@ object AaManeuvers {
         put(4, DashManeuverGlyphs.FORK_RIGHT)
         put(25, DashManeuverGlyphs.FORK_LEFT)
         put(26, DashManeuverGlyphs.FORK_RIGHT)
-        // Turns (5..10), ramps on (13..18) and off (21..24): slight, normal, sharp, each left then right.
+        // Turns (5..10), ramps on (13..18) and the slight ramps off (21, 22): slight, normal, sharp, each left then right.
+        // The normal ramp off (23 left, 24 right) is the side road that leaves, not a turn: see below.
         val turns = listOf(
             DashManeuverGlyphs.SLIGHT_LEFT, DashManeuverGlyphs.SLIGHT_RIGHT, DashManeuverGlyphs.TURN_LEFT,
             DashManeuverGlyphs.TURN_RIGHT, DashManeuverGlyphs.SHARP_LEFT, DashManeuverGlyphs.SHARP_RIGHT,
         )
         turns.forEachIndexed { i, glyph -> put(5 + i, glyph) }
         turns.forEachIndexed { i, glyph -> put(13 + i, glyph) }
-        turns.take(4).forEachIndexed { i, glyph -> put(21 + i, glyph) }
+        turns.take(2).forEachIndexed { i, glyph -> put(21 + i, glyph) }
+        put(23, DashManeuverGlyphs.OFF_RAMP_LEFT)
+        put(24, DashManeuverGlyphs.OFF_RAMP_RIGHT)
         put(11, DashManeuverGlyphs.UTURN_LEFT)
         put(12, DashManeuverGlyphs.UTURN_RIGHT)
         put(19, DashManeuverGlyphs.UTURN_LEFT)

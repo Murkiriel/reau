@@ -19,6 +19,10 @@ val StatusErro = Color(0xFFD64A4A)
 val StatusSucesso = Color(0xFF3E8C45)
 val StatusAtencao = Color(0xFFC26A22)
 val StatusInfo = Color(0xFF4A82C3)
+// The error colour as TEXT (an experimental row's letters, "Delete", "Forget"): StatusErro reads at 3.9:1 on Carvão and 3.5:1 on Marfim,
+// under the 4.5:1 small text needs. A lighter red on the dark theme and a darker one on the light theme; the status icons keep StatusErro.
+val ErroTextoNoEscuro = Color(0xFFE86A6A)
+val ErroTextoNoClaro = Color(0xFFB3261E)
 
 // Blends worked out beforehand (Material 3 wants solid colours)
 private val OuroSobreGrafite12 = Color(0xFF2B2510)  // Ouro 12% over Grafite
@@ -36,7 +40,7 @@ val REauDark = darkColorScheme(
     surfaceContainerLowest = Grafite, surfaceContainerLow = Carvao,
     surfaceContainer = Carvao, surfaceContainerHigh = Carvao, surfaceContainerHighest = Carvao,
     outline = OuroSuave, outlineVariant = OuroSuaveSobreGrafite22,
-    error = StatusErro, onError = Grafite,
+    error = ErroTextoNoEscuro, onError = Grafite,
     inverseSurface = Marfim, inverseOnSurface = Grafite, inversePrimary = Ouro,
 )
 
@@ -51,7 +55,7 @@ val REauLight = lightColorScheme(
     surfaceContainer = Marfim, surfaceContainerHigh = Marfim,
     surfaceContainerHighest = Carvao,               // chrome: the top bar, the tabs' track
     outline = OuroSuave, outlineVariant = OuroSuave,
-    error = StatusErro, onError = Grafite,
+    error = ErroTextoNoClaro, onError = Marfim,
     inverseSurface = Carvao, inverseOnSurface = Marfim, inversePrimary = Ouro,
 )
 

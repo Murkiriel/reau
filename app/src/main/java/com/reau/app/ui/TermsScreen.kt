@@ -34,6 +34,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.reau.app.R
@@ -164,10 +166,10 @@ private fun BlockView(block: Block) {
     when (block) {
         is Block.Title -> Text(
             block.text, style = MaterialTheme.typography.headlineSmall, color = colors.onSurface,
-            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().semantics { heading() },
         )
         is Block.Heading -> Text(
-            block.text, style = MaterialTheme.typography.titleMedium, color = colors.onSurface, modifier = Modifier.padding(top = 8.dp),
+            block.text, style = MaterialTheme.typography.titleMedium, color = colors.onSurface, modifier = Modifier.padding(top = 8.dp).semantics { heading() },
         )
         is Block.Paragraph -> Text(block.text, style = MaterialTheme.typography.bodyMedium, color = colors.onSurface.copy(alpha = 0.86f))
         is Block.Bullet -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

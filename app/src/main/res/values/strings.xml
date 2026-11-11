@@ -97,7 +97,7 @@
     <string name="link_name_needed">Wi-Fi name missing</string>
     <string name="headline_dash_name_needed">Full dash Wi-Fi name missing</string>
     <string name="notif_title_dash_name_needed">Full dash Wi-Fi name missing</string>
-    <string name="notif_text_dash_name_needed">Open REau and type the full name in Settings</string>
+    <string name="notif_text_dash_name_needed">Open REau and type the full name in Bike data</string>
     <string name="dash_name_warning">The dash only accepts its full Wi-Fi name (for example RE_AB12_345678), and REau couldn’t find it: Android only lets apps scan for networks while REau is open on screen. Open \"Bike data\" and, in the \"Dash Wi-Fi\" group, type the full name in the \"Full Wi-Fi name\" field (if another dash is saved, tap \"Forget\" first); or turn on the projection with REau open.</string>
     <string name="dash_taken_warning">Another app is using the dash (the phone’s port 2002 is busy): probably another dash app that’s streaming. Turn off its streaming; REau tries again on its own.</string>
     <string name="action_card">Send wallpaper</string>
@@ -237,7 +237,7 @@
     <string name="about_data_web_title">The browser (only if you turn it on)</string>
     <string name="about_data_web">With \"Turn on the network server\" on (off by default), anyone on your network who enters the PIN sees the Android Auto picture, unencrypted, so don’t use it on strangers’ networks.</string>
     <string name="about_data_stays_title">What stays on the phone</string>
-    <string name="about_data_stays">The diagnostic log has no position, streets, songs or caller; the optional recordings (off in the app you install to ride) hold them; both stay on the phone and leave only through \"Share\".</string>
+    <string name="about_data_stays">The diagnostic log has no position, streets, songs or caller; the optional recordings (off by default) hold them; both stay on the phone and leave only through \"Share\".</string>
     <string name="about_data_kept_title">What REau remembers about the dash</string>
     <string name="about_data_kept">The dash’s Wi-Fi name and password and what it reported, encrypted with a key kept by Android, and the rounded position and last weather, if they exist, in the app’s folder.</string>
     <string name="about_data_control_title">What you control</string>
@@ -346,7 +346,7 @@
     <string name="warn_vpn">With REau inside the VPN, Android won’t let it use the dash’s Wi-Fi. In the VPN app, leave REau out (\"split tunneling\") and fully reconnect the VPN.</string>
     <string name="warn_taken_title">Dash in use</string>
     <string name="warn_name_title">Full Wi-Fi name missing</string>
-    <string name="action_open_settings_short">Open Settings</string>
+    <string name="action_open_bike_data_short">Open Bike data</string>
     <string name="shortcuts_label">Shortcuts</string>
     <string name="tile_aa_screen">Android Auto screen</string>
     <string name="tile_aa_screen_sub">View and fit the picture</string>
@@ -377,6 +377,7 @@
     <string name="group_video_profiles">Video profiles</string>
     <string name="group_card">Wallpaper</string>
     <string name="group_connection_experiments">Experimental connection</string>
+    <string name="group_video_experiments">Experimental video</string>
     <string name="exp_pacing_title">Space out the video</string>
     <string name="exp_pacing_sub">Experimental: a 2 ms pause every 4 video packets, at most 400 a second</string>
     <string name="exp_dscp_title">Mark Wi-Fi priority on debug builds</string>
@@ -384,7 +385,17 @@
     <string name="exp_bitrate_title">Lower, adaptive bitrate</string>
     <string name="exp_bitrate_sub">Experimental: aims at 200 kbps and follows what the encoder really puts out</string>
     <string name="exp_wifi_title">Wi-Fi and EPERM</string>
-    <string name="exp_wifi_sub">Experimental: low-latency Wi-Fi lock (Android 10+) and 5 more tries on the same network when Android refuses it (EPERM). Counts from the next connection</string>
+    <string name="exp_wifi_sub">Experimental: low-latency Wi-Fi lock (Android 10 to 13; on Android 14 or later this part changes nothing) and 5 more tries on the same network when Android refuses it (EPERM). Counts from the next connection</string>
+    <string name="exp_encoder_watch_title">Rebuild a silent encoder</string>
+    <string name="exp_encoder_watch_sub">Experimental: if the video encoder takes frames in and gives none out for 3 s, it is rebuilt (up to 3 times per stream)</string>
+    <string name="exp_focus_gap_title">Longer pause when asking for a keyframe</string>
+    <string name="exp_focus_gap_sub">Experimental: when the picture breaks and a keyframe is asked of Android Auto, the video focus comes back after 400 ms instead of 100 ms. Counts from the next request</string>
+    <string name="exp_wifi_band_title">Ask for the dash on 2.4 GHz only</string>
+    <string name="exp_wifi_band_sub">Experimental: the request for the dash\'s Wi-Fi names the 2.4 GHz band (Android 12 or later). A request that is not answered is asked once without the band. Counts from the next request</string>
+    <string name="exp_start_guard_title">Guard the start</string>
+    <string name="exp_start_guard_sub">Experimental: if the app dies within 10 s of a start made with experimental switches on, they are switched off the next time the app opens, and the log says so</string>
+    <string name="exp_night_memory_title">Day and night with memory</string>
+    <string name="exp_night_memory_sub">Experimental: with the map theme by the sun, the night theme lasts until sunrise instead of ending about half an hour before it. Counts from the next look, within a minute</string>
     <string name="pairing_known_title">Known dash</string>
     <string name="pairing_known_info">This is the dash whose full Wi-Fi name REau already knows, which it needs to connect. \"Forget\" deletes that name, everything the dash has reported (the bike data below) and the network suggested to Android; after that, REau looks for the dash again (with REau open, the name shows up on its own) or you type the full name. Use it when you change motorcycle or dash.</string>
     <string name="pairing_unknown_title">No known dash</string>

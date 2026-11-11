@@ -37,6 +37,25 @@ object DayNight {
     /** The place a time zone stands for when the phone's own is not known. */
     fun standIn(utcOffsetMs: Long): Place = Place(0.0, utcOffsetMs / MS_PER_HOUR * DEGREES_PER_HOUR)
 
+    /**
+     * The projection's memory of its last answer. The rule of the sun has a band between day and night in which the answer is the one before
+     * (dusk turns to night at one edge, dawn to day at the other). The projection asked with a new [Clock] at every look, so "the one
+     * before" was always day: dusk came out right, and dawn came about half an hour early. With [remember] (the experimental switch,
+     * [com.reau.app.settings.REauSettings.experimentNightMemory]) the last answer is the one before; without it every look starts as day,
+     * as it always did.
+     */
+    class Memory {
+        private var wasNight = false
+
+        @Synchronized
+        fun isNight(remember: Boolean, theme: MapTheme, epochMs: Long, place: Place?, utcOffsetMs: Long): Boolean =
+            isNight(theme, epochMs, place, utcOffsetMs, wasNight = remember && wasNight).also { wasNight = it }
+
+        /** [isNight] at this moment of the phone's clock, in the phone's time zone. */
+        fun isNightNow(remember: Boolean, theme: MapTheme, place: Place?, nowMs: Long = System.currentTimeMillis()): Boolean =
+            isNight(remember, theme, nowMs, place, java.util.TimeZone.getDefault().getOffset(nowMs).toLong())
+    }
+
     /** Asks [isNight] again each time, remembering its last answer for the dusk rule. */
     class Clock(
         private val theme: MapTheme,

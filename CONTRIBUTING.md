@@ -26,7 +26,7 @@ repository (`docs/`, `NOTICE`, the READMEs, the changelogs, `app/src/main/res/`)
 they run again by themselves when a text changes. The instrumented tests (`app/src/androidTest`) need an
 emulator, as the README says; `scripts/emu/` has the scripts.
 The Python scripts have their own tests (`python3 -B -m unittest discover -p "test_*.py"` inside `scripts/`, `scripts/registro/`,
-`scripts/dev/`, `scripts/emu/`, `scripts/icon/` and `bench/`; the last two need Pillow, pinned in `scripts/requirements.txt`), and the
+`scripts/dev/`, `scripts/emu/` and `bench/`; the last one needs Pillow, pinned in `scripts/requirements.txt`), and the
 continuous integration runs them too.
 
 Every code change comes with a new or adjusted test. The project has three languages: texts that people read go in English
@@ -36,7 +36,7 @@ per language. The text behind an (i) gives the general idea in at most 3 sentenc
 
 ## Fuzzing and the mutation test
 
-The parsers that read bytes from outside (the dash's packets, a browser's WebSocket frames and HTTP head) have fuzz targets in
+The parsers that read bytes from outside (the dash's packets, a browser's WebSocket frames and HTTP head, and Android Auto's messages, video units, video size header and navigation messages) have fuzz targets in
 `app/src/test/java/com/reau/app/fuzz/ParserFuzzTargets.kt`, written with [Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)
 (Apache-2.0, a test dependency only: it never goes into an APK). In the normal unit-test run each target only replays its seeds, the
 files under `app/src/test/resources/com/reau/app/fuzz/ParserFuzzTargetsInputs/<target>/`, as a regression test. To really fuzz, steered by

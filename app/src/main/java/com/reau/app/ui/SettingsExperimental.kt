@@ -8,7 +8,7 @@ import com.reau.app.ui.components.SettingsGroup
 import com.reau.app.ui.components.SwitchRow
 
 /**
- * "Conexão experimental": four switches, all off by default, each a way of putting less load on the dash's Wi-Fi or of keeping the link up
+ * "Conexão experimental": switches, all off by default (the first four are of 10/11/2026; the band and the start guard came after), each a way of putting less load on the dash's Wi-Fi or of keeping the link up
  * (REauSettings.experimentRtpPacing, experimentDebugDscp, experimentAdaptiveBitrate, experimentWifiBind). With all of them off the app does exactly what it did
  * before them. The lines say "Experimental", which paints the rows red (ExperimentalMark). The first and the third restart the stream and count at once; the other two
  * count from the next connection.
@@ -41,5 +41,46 @@ internal fun ConnectionExperimentsGroup(s: REauSettings, change: (REauSettings) 
                 sub = stringResource(R.string.exp_wifi_sub),
             )
         },
+        {
+            SwitchRow(
+                stringResource(R.string.exp_wifi_band_title), s.experimentWifiBand, { change(s.copy(experimentWifiBand = it)) }, "exp_wifi_band",
+                sub = stringResource(R.string.exp_wifi_band_sub),
+            )
+        },
+        {
+            SwitchRow(
+                stringResource(R.string.exp_start_guard_title), s.experimentStartGuard, { change(s.copy(experimentStartGuard = it)) }, "exp_start_guard",
+                sub = stringResource(R.string.exp_start_guard_sub),
+            )
+        },
     ), tag = "group_connection_experiments")
+}
+
+/**
+ * "Vídeo experimental": switches of the video's path, all off by default; with all of them off the app does exactly what it did before them.
+ * The lines say "Experimental", which paints the rows red (ExperimentalMark).
+ */
+@Composable
+internal fun VideoExperimentsGroup(s: REauSettings, change: (REauSettings) -> Unit) {
+    SettingsGroup(R.drawable.ic_ms_tune, stringResource(R.string.group_video_experiments), listOf(
+        {
+            SwitchRow(
+                stringResource(R.string.exp_encoder_watch_title), s.experimentEncoderWatch,
+                { change(s.copy(experimentEncoderWatch = it)) }, "exp_encoder_watch",
+                sub = stringResource(R.string.exp_encoder_watch_sub), now = true,
+            )
+        },
+        {
+            SwitchRow(
+                stringResource(R.string.exp_focus_gap_title), s.experimentFocusGap, { change(s.copy(experimentFocusGap = it)) }, "exp_focus_gap",
+                sub = stringResource(R.string.exp_focus_gap_sub),
+            )
+        },
+        {
+            SwitchRow(
+                stringResource(R.string.exp_night_memory_title), s.experimentNightMemory, { change(s.copy(experimentNightMemory = it)) }, "exp_night_memory",
+                sub = stringResource(R.string.exp_night_memory_sub),
+            )
+        },
+    ), tag = "group_video_experiments")
 }

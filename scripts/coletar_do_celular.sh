@@ -52,6 +52,10 @@ GEARHEAD=com.google.android.projection.gearhead
   no_celular dumpsys deviceidle whitelist | grep -E "gearhead|reau" || echo "(nenhum dos dois na lista de isenção do Doze)"
   echo "--- economia de bateria e bateria"
   echo "low_power=$(no_celular settings get global low_power | tr -d '\r')"
+  echo "--- o que faz o Android recusar ligar um socket a uma rede (EPERM)"
+  echo "restricted_networking_mode=$(no_celular settings get global restricted_networking_mode | tr -d '\r')"
+  echo "always_on_vpn_app=$(no_celular settings get secure always_on_vpn_app | tr -d '\r')"
+  echo "always_on_vpn_lockdown=$(no_celular settings get secure always_on_vpn_lockdown | tr -d '\r')"
   no_celular dumpsys power | grep -iE "saver|low_power" | head -8 || true
   no_celular dumpsys battery | head -14 || true
 } > "$OUT/INFO.txt" 2>&1

@@ -5,6 +5,8 @@ import com.reau.app.data.RideDiagnostics
 import com.reau.app.dash.BitrateMode
 import com.reau.app.dash.DashConfig
 import com.reau.app.dash.video.DashEncoder
+import com.reau.app.dash.video.PendingFrames
+import com.reau.app.util.CodecErrors
 import com.reau.app.util.StageStats
 import com.reau.app.video.DashCompositor
 import com.reau.app.video.Reading
@@ -89,6 +91,8 @@ internal class VideoLoop(
         val rtpPacing: Boolean = false,
         /** Experimental ([com.reau.app.settings.REauSettings.experimentAdaptiveBitrate]): the bitrate follows what the encoder really puts out ([BitrateAdapter]). */
         val adaptiveBitrate: Boolean = false,
+        /** Experimental ([com.reau.app.settings.REauSettings.experimentEncoderWatch]): an encoder gone mute without failing is rebuilt ([EncoderMuteWatch]). */
+        val encoderMuteWatch: Boolean = false,
     )
 
     private var encoder: DashEncoder? = null
@@ -104,6 +108,9 @@ internal class VideoLoop(
     // The experimental live adjustment of the bitrate; null (the default) leaves the bitrate to the governor alone.
     private var adapter: BitrateAdapter? = null
     private var pacing: RtpPacing? = null
+
+    // The experimental watch for an encoder gone mute; null (the default): only an encoder that fails is rebuilt.
+    private var muteWatch: EncoderMuteWatch? = null
 
     // Set by [start] for the encoder it builds, taken by [buildEncoder]: the rebuilt ones do not tell the ride log what the phone offers again.
     private var reportCodecsOfNextEncoder = false
@@ -151,6 +158,7 @@ internal class VideoLoop(
         encoder = fresh
         governor = g
         adapter = BitrateAdapter.whenOn(settings.adaptiveBitrate)
+        muteWatch = EncoderMuteWatch.whenOn(settings.encoderMuteWatch)
         log(
             "video loop start: ${g.fps} fps (ceiling ${plan.ceiling}), keyframe ${g.keyframeSec}s" +
                 (if (settings.keyframeSec > 0) " fixed" else " auto") +
@@ -158,7 +166,8 @@ internal class VideoLoop(
                 ", ${g.activeBitrateBps / 1000} kbps (${settings.bitrateBps / 1000} chosen) ${settings.bitrateMode ?: "default"}, " +
                 "clock ${settings.clockSlowPercent}% slow" +
                 (if (settings.rtpPacing) ", RTP packets spaced out (experiment)" else "") +
-                (if (settings.adaptiveBitrate) ", bitrate follows the encoder's real output (experiment)" else ""),
+                (if (settings.adaptiveBitrate) ", bitrate follows the encoder's real output (experiment)" else "") +
+                (if (settings.encoderMuteWatch) ", a mute encoder is rebuilt (experiment)" else ""),
         )
         stats?.panelStarted()
         stats?.stream(settings.bitrateMode, g.keyframeSec, settings.keyframeSec > 0)
@@ -201,6 +210,7 @@ internal class VideoLoop(
         pacing?.let { log("RTP pacing (experiment): ${it.waitedNs / NS_PER_MS} ms waited in all, the packet cap reached ${it.capHits} times") }
         pacing = null
         adapter = null
+        muteWatch = null
         log("video loop stop (${output?.heldBack ?: 0} frames held back before a keyframe, ${output?.idrWithheld ?: 0} keyframes withheld for lack of SPS/PPS)")
         output = null
     }
@@ -210,7 +220,7 @@ internal class VideoLoop(
         val out = output ?: return@synchronized
         runCatching {
             val encoded = runCatching { encoder?.collectOutput() }
-            encoded.exceptionOrNull()?.let { if (!outputFailing) log("${RideDiagnostics.WARN}encoder output failing: ${it.message}") }
+            encoded.exceptionOrNull()?.let { if (!outputFailing) log("${RideDiagnostics.WARN}encoder output failing: ${CodecErrors.describe(it)}") }
             outputFailing = encoded.isFailure
             // A codec that failed stays failed (the output thread is gone), and the poll only logged it once: the dash
             // kept the last picture and the app said "streaming". A few seconds of it, and a new encoder takes over.
@@ -221,6 +231,7 @@ internal class VideoLoop(
                 rebuild(g.rebuildAction())
             }
             val timed = encoded.getOrNull()
+            if (timed != null) watchForAMuteEncoder(g, timed, SystemClock.elapsedRealtime())
             val counts = out.takeCounts()
             adaptBitrate(counts.bytes)
             askAgainForWithheldKeyframe(out, g, SystemClock.elapsedRealtime())
@@ -256,6 +267,18 @@ internal class VideoLoop(
                 ),
             )
         }.onFailure { log("video loop poll failed: $it") }
+    }
+
+    /**
+     * The experiment ([EncoderMuteWatch]): the encoder took [timed]'s frames in and gave its frames out since the last poll. Frames in and none
+     * out for long enough, with no error, and the encoder is rebuilt as a failing one is. Nothing happens with the switch off.
+     */
+    private fun watchForAMuteEncoder(g: StreamGovernor, timed: PendingFrames.Stats, nowMs: Long) {
+        val watch = muteWatch ?: return
+        val verdict = watch.onPoll(nowMs, timed.submitted, timed.frames)
+        if (verdict == EncoderMuteWatch.Verdict.FINE) return
+        log("${RideDiagnostics.WARN}${EncoderMuteWatch.line(verdict, watch.lastWaitFrames, watch.rebuilds)}")
+        if (verdict == EncoderMuteWatch.Verdict.REBUILD) rebuild(g.rebuildAction())
     }
 
     /**

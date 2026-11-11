@@ -27,6 +27,18 @@ class ConnectionExperimentsAreWiredTest {
     }
 
     @Test
+    fun `the mute encoder watch goes from the settings to the loop, which rebuilds only on its word and only with the switch on`() {
+        assertTrue(Regex("""encoderMuteWatch = settings\.experimentEncoderWatch""").findAll(live).count() == 2)
+        assertTrue(loop.contains("muteWatch = EncoderMuteWatch.whenOn(settings.encoderMuteWatch)"))
+        assertTrue(loop.contains("if (timed != null) watchForAMuteEncoder(g, timed, SystemClock.elapsedRealtime())"))
+        val watch = loop.substringAfter("private fun watchForAMuteEncoder").substringBefore("private fun adaptBitrate")
+        assertTrue("no watch, nothing done", watch.contains("val watch = muteWatch ?: return"))
+        assertTrue(watch.contains("watch.onPoll(nowMs, timed.submitted, timed.frames)"))
+        assertTrue(watch.contains("if (verdict == EncoderMuteWatch.Verdict.REBUILD) rebuild(g.rebuildAction())"))
+        assertTrue("the watch ends with the stream", loop.substringAfter("fun stop()").substringBefore("private fun poll").contains("muteWatch = null"))
+    }
+
+    @Test
     fun `the adjusted bitrate is asked of the running encoder, never by building another`() {
         val adapt = loop.substringAfter("private fun adaptBitrate").substringBefore("private fun askAgainForWithheldKeyframe")
         assertTrue(adapt.contains("encoder?.requestBitrate(wanted)"))
@@ -50,6 +62,7 @@ class ConnectionExperimentsAreWiredTest {
     @Test
     fun `the Wi-Fi lock is asked for low latency by the switch, and the log says it`() {
         assertTrue(service.contains("locks.acquire(lowLatency = experiment)"))
+        assertTrue(service.contains("ProjectionLocks.logWords(experiment, mode, android.os.Build.VERSION.SDK_INT)"))
         assertTrue(service.contains("SettingsInUse.experimentsLine(inUse)"))
     }
 }

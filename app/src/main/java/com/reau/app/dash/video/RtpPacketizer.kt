@@ -8,7 +8,8 @@ import java.util.Random
  * Rules enforced (from better-dash analysis):
  *  - NO STAP-A (type 24) — dash rejects aggregation packets
  *  - FU-A (type 28) fragmentation for NALs larger than MAX_PAYLOAD
- *  - Marker bit only on the LAST RTP packet of each access unit
+ *  - Marker bit on the LAST RTP packet of each NAL handed in with endOfAU; the stream hands in one NAL per frame
+ *    (the keyframe goes with its SPS/PPS glued in front) and always says endOfAU, so that is the last packet of the frame
  *  - 90 kHz RTP clock
  *  - Max payload 1380 bytes (avoids IP fragmentation on 192.168.1.x)
  */

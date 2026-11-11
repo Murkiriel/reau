@@ -97,7 +97,7 @@
     <string name="link_name_needed">Falta el nombre del Wi-Fi</string>
     <string name="headline_dash_name_needed">Falta el nombre completo del Wi-Fi del tablero</string>
     <string name="notif_title_dash_name_needed">Falta el nombre completo del Wi-Fi del tablero</string>
-    <string name="notif_text_dash_name_needed">Abre REau y escribe el nombre completo en Ajustes</string>
+    <string name="notif_text_dash_name_needed">Abre REau y escribe el nombre completo en Datos de la moto</string>
     <string name="dash_name_warning">El tablero solo acepta su nombre completo de Wi-Fi (por ejemplo RE_AB12_345678) y REau no pudo encontrarlo: Android solo deja que las apps busquen redes mientras REau está abierta en pantalla. Abre \"Datos de la moto\" y, en el grupo \"Wi-Fi del tablero\", escribe el nombre completo en el campo \"Nombre completo del Wi-Fi\" (si hay otro tablero guardado, toca \"Olvidar\" primero); o enciende la proyección con REau abierta.</string>
     <string name="dash_taken_warning">Otra app está usando el tablero (el puerto 2002 del teléfono está ocupado): probablemente otra app de tablero que está transmitiendo. Apaga su transmisión; REau lo intenta de nuevo sola.</string>
     <string name="action_card">Enviar fondo</string>
@@ -237,7 +237,7 @@
     <string name="about_data_web_title">El navegador (solo si lo activas)</string>
     <string name="about_data_web">Solo con \"Encender el servidor de red\" (apagado por defecto), quien esté en la misma red e ingrese el PIN ve la imagen de Android Auto sin cifrado; evita redes de desconocidos.</string>
     <string name="about_data_stays_title">Qué se queda en el teléfono</string>
-    <string name="about_data_stays">El registro de diagnóstico no tiene posición, calles, canciones ni quién llama; las grabaciones opcionales (desactivadas en la app que instalas para rodar) sí lo guardan; ambos solo salen del teléfono por \"Compartir\".</string>
+    <string name="about_data_stays">El registro de diagnóstico no tiene posición, calles, canciones ni quién llama; las grabaciones opcionales (desactivadas por defecto) sí lo guardan; ambos solo salen del teléfono por \"Compartir\".</string>
     <string name="about_data_kept_title">Qué recuerda REau del tablero</string>
     <string name="about_data_kept">Nombre y contraseña del Wi-Fi del tablero y lo que informó, cifrados con una clave de Android, y la posición redondeada y el último clima, si existen, en la carpeta de la app.</string>
     <string name="about_data_control_title">Qué controlas tú</string>
@@ -334,7 +334,7 @@
     <string name="warn_vpn">Con REau dentro de la VPN, Android no le deja usar el Wi-Fi del tablero. En la app de la VPN, deja a REau fuera (\"split tunneling\") y reconecta la VPN por completo.</string>
     <string name="warn_taken_title">Tablero en uso</string>
     <string name="warn_name_title">Falta el nombre completo del Wi-Fi</string>
-    <string name="action_open_settings_short">Abrir Ajustes</string>
+    <string name="action_open_bike_data_short">Abrir Datos de la moto</string>
     <string name="shortcuts_label">Accesos</string>
     <string name="tile_aa_screen">Pantalla de Android Auto</string>
     <string name="tile_aa_screen_sub">Ver y ajustar la imagen</string>
@@ -366,6 +366,7 @@
     <string name="group_video_profiles">Perfiles de video</string>
     <string name="group_card">Fondo</string>
     <string name="group_connection_experiments">Conexión experimental</string>
+    <string name="group_video_experiments">Video experimental</string>
     <string name="exp_pacing_title">Espaciar el video</string>
     <string name="exp_pacing_sub">Experimental: pausa de 2 ms cada 4 paquetes de video, como máximo 400 por segundo</string>
     <string name="exp_dscp_title">Marcar la prioridad del Wi-Fi en la debug</string>
@@ -373,7 +374,17 @@
     <string name="exp_bitrate_title">Bitrate menor y adaptativo</string>
     <string name="exp_bitrate_sub">Experimental: apunta a 200 kbps y sigue lo que el codificador realmente genera</string>
     <string name="exp_wifi_title">Wi-Fi y EPERM</string>
-    <string name="exp_wifi_sub">Experimental: bloqueo de Wi-Fi de baja latencia (Android 10+) y 5 intentos más en la misma red cuando Android la rechaza (EPERM). Vale desde la próxima conexión</string>
+    <string name="exp_wifi_sub">Experimental: bloqueo de Wi-Fi de baja latencia (Android 10 a 13; en Android 14 o posterior esta parte no cambia nada) y 5 intentos más en la misma red cuando Android la rechaza (EPERM). Vale desde la próxima conexión</string>
+    <string name="exp_encoder_watch_title">Rehacer el codificador mudo</string>
+    <string name="exp_encoder_watch_sub">Experimental: si el codificador de video recibe cuadros y no devuelve ninguno durante 3 s, se rehace (hasta 3 veces por transmisión)</string>
+    <string name="exp_focus_gap_title">Pausa mayor al pedir cuadro clave</string>
+    <string name="exp_focus_gap_sub">Experimental: cuando la imagen se rompe y se pide un cuadro clave a Android Auto, el foco de video vuelve después de 400 ms en vez de 100 ms. Vale desde el próximo pedido</string>
+    <string name="exp_wifi_band_title">Pedir el tablero solo en 2,4 GHz</string>
+    <string name="exp_wifi_band_sub">Experimental: el pedido del Wi-Fi del tablero dice la banda de 2,4 GHz (Android 12 o posterior). Un pedido sin respuesta se repite una vez sin la banda. Vale desde el próximo pedido</string>
+    <string name="exp_start_guard_title">Proteger el arranque</string>
+    <string name="exp_start_guard_sub">Experimental: si la app muere hasta 10 s después de un arranque hecho con interruptores experimentales encendidos, se apagan la próxima vez que la app se abre, y el registro lo dice</string>
+    <string name="exp_night_memory_title">Día y noche con memoria</string>
+    <string name="exp_night_memory_sub">Experimental: con el tema del mapa según el sol, el tema nocturno dura hasta la salida del sol en vez de terminar cerca de media hora antes. Vale desde la próxima mirada, en hasta un minuto</string>
     <string name="pairing_known_title">Tablero conocido</string>
     <string name="pairing_known_info">Este es el tablero cuyo nombre completo de Wi-Fi REau ya conoce y que necesita para conectarse. \"Olvidar\" borra ese nombre, todo lo que el tablero ha reportado (los datos de la moto de abajo) y la red sugerida a Android; después, REau vuelve a buscar el tablero (con REau abierta, el nombre aparece solo) o tú escribes el nombre completo. Úsalo cuando cambies de moto o de tablero.</string>
     <string name="pairing_unknown_title">Ningún tablero conocido</string>

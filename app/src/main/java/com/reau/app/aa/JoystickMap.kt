@@ -204,7 +204,16 @@ class JoystickMap(
     companion object {
         /** The ride log's line for a button (with the state of the call, to read a press made in one). */
         fun logLine(name: String, code: Int, lines: List<String>, call: String): String =
-            "button $name 0x${"%02X".format(code)} -> ${lines.ifEmpty { listOf("nothing") }.joinToString("; ")} [call=$call]"
+            "button $name 0x${"%02X".format(code)} -> ${lines.ifEmpty { listOf("nothing") }.joinToString("; ")} [call=$call]${codeNote(code)}"
+
+        /**
+         * A note for the log on a code REau has no use for but knows a report of: 0x20, said to come from the dash's own menu when the
+         * rider removes a stop of the dash's own navigation. Never seen in REau's rides; written so that the first time it comes is noticed.
+         */
+        internal fun codeNote(code: Int): String =
+            if (code == MENU_REMOVE_STOP) " (0x20: reported as the dash's own menu removing a stop; never seen here until now)" else ""
+
+        private const val MENU_REMOVE_STOP = 0x20
 
         const val DOUBLE_BACK_MS = 700L
         /** A ride: a second tap on the right came 1.7 s after the reject and moved the focus. */

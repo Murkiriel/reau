@@ -98,7 +98,12 @@ class LiveTuningTest {
     fun `the video experiments restart the stream and the connection ones do nothing live`() {
         assertEquals(setOf(Step.NEW_STREAM), LiveTuning.steps(before, before.copy(experimentRtpPacing = true)))
         assertEquals(setOf(Step.NEW_STREAM), LiveTuning.steps(before, before.copy(experimentAdaptiveBitrate = true)))
+        assertEquals(setOf(Step.NEW_STREAM), LiveTuning.steps(before, before.copy(experimentEncoderWatch = true)))
         assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentDebugDscp = true)))
         assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentWifiBind = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentWifiBand = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentStartGuard = true)))
+        assertEquals("a session of Android Auto is not restarted for it", emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentFocusGap = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentNightMemory = true)))
     }
 }

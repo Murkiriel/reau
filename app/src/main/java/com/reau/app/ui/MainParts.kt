@@ -24,7 +24,7 @@ import com.reau.app.ui.components.WarningCard
 
 /** One warning above the bridge, with its way out. */
 @Composable
-internal fun Warning(warning: Warning, state: MainUiState, onOpenAndroidAutoSettings: () -> Unit, onOpenSettings: () -> Unit, extras: MainExtras) {
+internal fun Warning(warning: Warning, state: MainUiState, onOpenAndroidAutoSettings: () -> Unit, extras: MainExtras) {
     val warn = StatusKind.CONNECTING
     when (warning) {
         Warning.SERVER_OFF -> ServerWarning(state.androidAutoInstalled, onOpenAndroidAutoSettings)
@@ -71,7 +71,7 @@ internal fun Warning(warning: Warning, state: MainUiState, onOpenAndroidAutoSett
         )
         Warning.NAME_NEEDED -> WarningCard(
             StatusKind.ERROR, R.drawable.ic_ms_error, stringResource(R.string.warn_name_title), stringResource(R.string.dash_name_warning),
-            null, CardAction(stringResource(R.string.action_open_settings_short), "name_open_settings", onOpenSettings),
+            null, CardAction(stringResource(R.string.action_open_bike_data_short), "name_open_settings", extras.onOpenWifi),
             tag = "dash_name_warning",
         )
     }

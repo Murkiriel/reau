@@ -254,6 +254,19 @@ better-dash (Apache License 2.0)
   mode's side presses and the down press (aa/JoystickMap.kt; the down press,
   0x15, was confirmed on the bike on 28/10/2026).
 
+TripperDashPlusPlus (PolyForm Noncommercial License 1.0.0): dash maneuver glyph bytes
+  Copyright 2026 Martin Kolací (@kolaCZek), as that project's license text states
+  its Required Notice. https://github.com/kolaCZek/TripperDashPlusPlus
+  Which byte the dash's navigation bubble turns into which arrow
+  (dash/nav/DashManeuverGlyphs.kt) is read from the glyph scan that project
+  published (its docs/maneuver-glyphs: every byte 0x00..0xFF sent to a real K1G
+  dash and photographed by its author). The table came into REau with the
+  EstrelaAustral file named above. REau uses only the observed facts (byte ->
+  drawing), written in its own words and code: no code, text or images of that
+  project are in the repository or in the APK, and nothing of it is distributed
+  with REau. Its license does not allow commercial use and does not combine with
+  the AGPL-3.0, which is why nothing but facts is taken from it.
+
 recon-dash (GNU Affero General Public License v3.0)
   https://github.com/MinotaurG/recon-dash (MinotaurG is the owner's name on
   GitHub; the repository carries no copyright line besides the license text).

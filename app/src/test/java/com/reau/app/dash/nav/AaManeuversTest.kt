@@ -40,9 +40,19 @@ class AaManeuversTest {
     }
 
     @Test
-    fun `ramps on and off are drawn as the turn they are`() {
+    fun `ramps on and the slight ramps off are drawn as the turn they are`() {
         assertEquals(listOf(0x18, 0x19, 0x14, 0x15, 0x16, 0x17), (13..18).map { glyph(it) })
-        assertEquals(listOf(0x18, 0x19, 0x14, 0x15), (21..24).map { glyph(it) })
+        assertEquals(listOf(0x18, 0x19), (21..22).map { glyph(it) })
+    }
+
+    @Test
+    fun `the exit ramp is the side road that leaves, left 0x08 and right 0x07, and no longer a plain turn`() {
+        // Bytes typed out by hand (not the constants of the code under test). Not yet seen on the bike: the debug card has both.
+        assertEquals("off ramp, left", 0x08, glyph(23))
+        assertEquals("off ramp, right", 0x07, glyph(24))
+        assertEquals("a plain turn stays a turn", listOf(0x14, 0x15), (7..8).map { glyph(it) })
+        assertEquals("A side road leaves to the left", DashManeuverGlyphs.describe(glyph(23)))
+        assertEquals("A side road leaves to the right", DashManeuverGlyphs.describe(glyph(24)))
     }
 
     @Test

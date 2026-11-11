@@ -87,6 +87,7 @@ fun SettingsScreen(
                     VideoProfilesGroup(settings)
                     CardGroup(settings, change, actions.onPickCardImage)
                     ConnectionExperimentsGroup(settings, change)
+                    VideoExperimentsGroup(settings, change)
                     DebugGroup(settings, change, actions, say)
                     UpdateGroup()
                 }

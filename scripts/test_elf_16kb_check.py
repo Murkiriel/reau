@@ -143,6 +143,17 @@ class FilesTest(unittest.TestCase):
             fh.write(elf64(CONSCRYPT_2_6_3_ARM64))
         self.assertEqual(self.run_main(path)[0], 0)
 
+    def test_a_library_cut_short_is_a_failure_with_its_name_and_not_a_traceback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, data in (("cut.so", b"\x7fELF\x02\x01"), ("not-elf.so", b"hello, this is not a library at all" * 4)):
+                so = os.path.join(tmp, name)
+                with open(so, "wb") as f:
+                    f.write(data)
+                code, text = self.run_main(so)
+                self.assertEqual(1, code, text)
+                self.assertIn("FALHA", text)
+                self.assertIn("ilegível", text)
+
     def test_an_archive_with_no_library_exits_2(self):
         code, text = self.run_main(self.zip_with("d.apk", {"classes.dex": b"dex"}))
         self.assertEqual(code, 2, text)

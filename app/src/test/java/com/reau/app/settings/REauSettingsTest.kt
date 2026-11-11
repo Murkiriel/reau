@@ -847,4 +847,15 @@ class REauSettingsTest {
         assertEquals(listOf("zoom: 100 -> 120"), plan.changesTo(plan.copy(zoom = 120)))
         assertEquals(listOf("cover.top: 0 -> 10"), plan.changesTo(plan.copy(cover = FrameFit.Cover(top = 10))))
     }
+
+    @Test
+    fun `a change of the picture is told as none, default or picked, never with the address of the rider's file`() {
+        val picked = "content://com.android.externalstorage.documents/document/primary%3ADCIM%2FFace.jpg"
+        val none = REauSettings(cardImage = null)
+        assertEquals(listOf("cardImage: none -> picked"), none.changesTo(none.copy(cardImage = picked)))
+        assertEquals(listOf("cardImage: picked -> default"), none.copy(cardImage = picked).changesTo(REauSettings()))
+        assertEquals("another picture is still a change", listOf("cardImage: picked -> picked"), none.copy(cardImage = picked).changesTo(none.copy(cardImage = "content://x/y")))
+        assertEquals(false, none.changesTo(none.copy(cardImage = picked)).any { "Face" in it || "DCIM" in it || "content:" in it })
+        assertEquals("the other settings are told as before", listOf("density: 160 -> 200"), REauSettings(density = 160).changesTo(REauSettings(density = 200)))
+    }
 }

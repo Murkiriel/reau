@@ -134,7 +134,7 @@ private fun Permission(row: AppPermissions.Row, ask: AppPermissions.Ask?, option
     val why = stringResource(e.why)
     PermissionRow(
         stringResource(e.title), e.permission.takeIf { e.kind != Kind.SPECIAL }, row.granted, stringResource(state), why,
-        ask?.let { { onAsk(it) } }, "permission_${e.permission}", askTag = "ask_${e.permission}",
+        ask?.let { { onAsk(it) } }, "permission_${e.permission}", askTag = "ask_${e.permission}", optional = optional,
     )
 }
 

@@ -15,6 +15,8 @@ ROOT = Path(__file__).resolve().parents[2]
 # The file as it was, kept here while a mutation is applied: a run killed in the middle (not by SIGTERM, which unwinds) leaves a mutated
 # source file, and the next run puts it back first ([recover]). Under build/, which is not versioned.
 PENDING = ROOT / "build" / "mutacoes_pendentes"
+# The most one mutation's test run may take: a Gradle that hangs would otherwise take the whole job with it.
+TIMEOUT_S = 900
 ENV = {**os.environ, "PYTHONIOENCODING": "utf-8"}  # Gradle needs a JDK 21: JAVA_HOME set, or java on the PATH
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
@@ -70,13 +72,20 @@ def run(mutations, command, tail=3):
         _write_durably(PENDING / f"{key}.orig", raw)
         _write_durably(PENDING / f"{key}.path", rel.encode("utf-8"))
         _write_durably(path, text.replace(old, new).encode("utf-8"))
+        timed_out = False
         try:
             done = subprocess.run(command, cwd=ROOT, env=ENV, capture_output=True, text=True, encoding="utf-8",
-                                  errors="replace")
+                                  errors="replace", timeout=TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            timed_out = True
         finally:
             _write_durably(path, raw)
             (PENDING / f"{key}.path").unlink(missing_ok=True)
             (PENDING / f"{key}.orig").unlink(missing_ok=True)
+        if timed_out:
+            # A run that hangs proves nothing about the tests: not counted as caught, and said, so the list gets a look.
+            print(f"{name}: NÃO TERMINOU em {TIMEOUT_S} s (não conta como pega)", flush=True)
+            continue
         out = (done.stdout + done.stderr).strip().splitlines()
         if "NÃO COMPILOU" in "\n".join(out):
             print(f"{name}: NÃO COMPILOU (mutação inválida)\n   " + "\n   ".join(out[-tail:]), flush=True)

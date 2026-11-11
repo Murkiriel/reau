@@ -111,6 +111,18 @@ RELEASE_MANIFEST = xmltree(RELEASE_COMPONENTS)
 RELEASE_ENTRIES = ["classes.dex", apk_audit.BASELINE_PROFILE]
 
 
+class BuildToolTest(unittest.TestCase):
+    def test_the_newest_build_tools_is_the_one_with_the_greatest_number_not_the_last_as_text(self):
+        with tempfile.TemporaryDirectory() as sdk:
+            for version in ("9.0.0", "35.0.0", "35.0.1", "34.0.0"):
+                folder = os.path.join(sdk, "build-tools", version)
+                os.makedirs(folder)
+                open(os.path.join(folder, "aapt2"), "w").close()
+            self.assertTrue(apk_audit.build_tool(sdk, "aapt2").endswith(os.path.join("35.0.1", "aapt2")))
+            self.assertIsNone(apk_audit.build_tool(sdk, "apksigner"))
+            self.assertEqual([35, 0, 1], apk_audit.version_key(os.path.join(sdk, "build-tools", "35.0.1", "aapt2")))
+
+
 class ScanZipTest(unittest.TestCase):
 
     def test_libraries_natives_and_hosts_come_from_the_zip(self):

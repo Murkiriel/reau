@@ -70,6 +70,9 @@ class DashWifiManagerHelpersTest {
     @Test
     fun `maskSsid handles a short ssid without going negative on length`() {
         assertEquals("RE**", DashWifiManager.maskSsid("RE_1"))
+        // A name of five to seven characters came out whole, or all but one or two characters: two characters of it now.
+        for (short in listOf("RE_AB", "RE_AB1", "RE_AB12")) assertEquals(short, "RE**", DashWifiManager.maskSsid(short))
+        assertEquals("eight characters: three and two", "RE_****23", DashWifiManager.maskSsid("RE_AB123"))
     }
 
     @Test

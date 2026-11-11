@@ -48,7 +48,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import java.io.File
-import java.util.TimeZone
 
 /**
  * The real sides of the projection, all inside the service:
@@ -170,7 +169,8 @@ internal class LiveSides(
                             null
                         },
                         recording = recording,
-                        voice = voice,
+                        // The focus gap (an experiment) is read at each keyframe request: a switch changed while the projection runs counts from the next.
+                        voice = voice, focusGapMs = { com.reau.app.aa.FocusGap.ms(SettingsStore.open(context).load().experimentFocusGap) },
                         // Only the first projection of this process: the exit Android keeps stays the newest until the
                         // next one, and a clean Desligar and Ligar a minute later was taken for a fresh install again.
                         quickUnresponsive = com.reau.app.aa.FirstOfProcess.projection.take() &&
@@ -185,8 +185,8 @@ internal class LiveSides(
                         bitrateMode = settings.bitrateMode,
                         keyframeSec = settings.keyframeSec,
                         lightScreenFps = REauSettings.lightScreenFps(),
-                        rtpPacing = settings.experimentRtpPacing,
-                        adaptiveBitrate = settings.experimentAdaptiveBitrate,
+                        rtpPacing = settings.experimentRtpPacing, adaptiveBitrate = settings.experimentAdaptiveBitrate,
+                        encoderMuteWatch = settings.experimentEncoderWatch,
                         recordFrames = if (settings.recordVideo && folder != null) RECORD_FRAMES else 0,
                         recordDir = folder?.let { File(it, "video") },
                         recordRolling = true,
@@ -213,11 +213,11 @@ internal class LiveSides(
             }
 
             /** Day or night as the rider's map theme says: the place learned on the screen with "Usar a localização" on, else the time zone. */
-            private fun isNightNow(context: Context, settings: REauSettings): Boolean = DayNight.Clock(
-                settings.mapTheme,
-                place = { SunPlace.saved(context, settings.useLocation) },
-                offsetMs = { TimeZone.getDefault().getOffset(System.currentTimeMillis()).toLong() },
-            ).isNight()
+            private fun isNightNow(context: Context, settings: REauSettings): Boolean =
+                nightMemory.isNightNow(settings.experimentNightMemory, settings.mapTheme, SunPlace.saved(context, settings.useLocation))
+
+            // What the last look said, for the experimental switch (DayNight.Memory); with the switch off it is never read.
+            private val nightMemory = DayNight.Memory()
 
             private fun phoneThermalStatus(context: Context): Int =
                 runCatching { context.getSystemService(PowerManager::class.java).currentThermalStatus }.getOrDefault(VideoLoop.THERMAL_UNKNOWN)
@@ -247,7 +247,8 @@ internal class LiveSides(
 
             private fun phoneLinkUp(context: Context, scope: CoroutineScope): DashLinkUp {
                 val pairing = DashPairing.open(context)
-                val wifi = DashWifiManager(context, scope, pairing)
+                // The band (an experiment) is read at each request: a switch changed while the projection runs counts from the next one.
+                val wifi = DashWifiManager(context, scope, pairing, band24 = { SettingsStore.open(context).load().experimentWifiBand })
                 return WifiDashLinkUp(
                     scope, wifi.state, { wifi.network },
                     { ssid, password, prefix -> wifi.connect(ssid, password, prefix) },
@@ -489,6 +490,7 @@ internal class LiveSides(
             val rotation = com.reau.app.weather.InfoRingRotation()
             var frame: com.reau.app.weather.RingFrame? = null
             var tick = 0
+            var ringFailures = 0
             var inPlace = false
             val posts = InfoRingFeed.Posts()
             while (isActive) {
@@ -503,7 +505,8 @@ internal class LiveSides(
                     tick = 0
                     GpsWatch.stop()
                 } else if (tick++ % RING_TICKS_PER_LOOK == 0) {
-                    frame = runCatching { setup.infoRing(rotation) }.getOrNull()
+                    frame = runCatching { setup.infoRing(rotation) }
+                        .onFailure { e -> InfoRingFeed.failureLine(e, ringFailures++)?.let { RideDiagnostics.warn("ring", it) } }.getOrNull()
                 }
                 if (posts.changed(frame)) compositor.setInfoRing(frame)
                 delay(InfoRingFeed.pollMs(tuned?.infoRing == true))
@@ -871,6 +874,7 @@ internal class LiveSides(
                 bitrateBps = settings.effectiveStreamBitrateBps, bitrateMode = settings.bitrateMode, keyframeSec = settings.keyframeSec,
                 lightScreenFps = REauSettings.lightScreenFps(),
                 rtpPacing = settings.experimentRtpPacing, adaptiveBitrate = settings.experimentAdaptiveBitrate,
+                encoderMuteWatch = settings.experimentEncoderWatch,
             )
             val running = loop ?: return
             running.stop()

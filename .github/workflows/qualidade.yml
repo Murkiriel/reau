@@ -12,6 +12,11 @@ on:
 permissions:
   contents: read
 
+# Duas execuções pedidas à mão em seguida não rodam em dobro: a segunda espera a primeira.
+concurrency:
+  group: qualidade-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.console=plain
 
@@ -59,8 +64,8 @@ jobs:
   mutacao:
     name: Teste de mutação (fatia ${{ matrix.fatia }} de 10)
     runs-on: ubuntu-24.04
-    # Mais de 440 mutações (python3 scripts/dev/mutacoes.py --lista conta; 451 em 28/10/2026), cada uma um Gradle de testes. Com o daemon ligado e o código já compilado
-    # cada uma leva de 10 a 60 s; uma fatia de um décimo (cerca de 45) cabe em meia hora. Medir na primeira execução e ajustar o número de fatias.
+    # 700 mutações em 10/11/2026 (python3 scripts/dev/mutacoes.py --lista conta), cada uma um Gradle de testes. Com o daemon ligado e o código já compilado
+    # cada uma leva de 10 a 60 s; uma fatia de um décimo (70) leva de 12 a 70 min. Medir na primeira execução e ajustar o número de fatias (o script aceita qualquer N).
     timeout-minutes: 90
     strategy:
       fail-fast: false

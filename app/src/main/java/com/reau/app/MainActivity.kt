@@ -509,8 +509,9 @@ private const val KB = 1024
 
 /** The dash's name and password as the rider typed them; the pairing now. */
 private fun savePairing(pairingStore: DashPairing, typed: PairingUi): PairingUi {
-    pairingStore.ssidPrefix = typed.ssidPrefix
-    pairingStore.password = typed.password
+    // Only what changed: each write is a round of the Keystore on this thread, and this runs at every letter typed in the name.
+    if (typed.ssidPrefix != pairingStore.ssidPrefix) pairingStore.ssidPrefix = typed.ssidPrefix
+    if (typed.password != pairingStore.password) pairingStore.password = typed.password
     // On a clean install the whole name may be typed when REau cannot see the Wi-Fi list.
     if (typed.ssid != pairingStore.ssid) pairingStore.ssid = typed.ssid
     return typed

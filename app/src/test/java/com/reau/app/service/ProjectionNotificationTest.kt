@@ -126,4 +126,14 @@ class ProjectionNotificationTest {
             assertEquals("$path: a title for it", true, Regex("""name="notif_title_no_dash_stopped">[^<]+<""").containsMatchIn(xml))
         }
     }
+
+    @Test
+    fun `the ongoing notification asks to be shown at once, from the Android that may hold it back`() {
+        val source = File("src/main/java/com/reau/app/service/ProjectionNotification.kt").readText()
+        val ongoing = source.substringAfter(".setOngoing(true)").substringBefore("/** Told once, apart from the ongoing one")
+        assertEquals(
+            true,
+            ongoing.contains("if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)"),
+        )
+    }
 }

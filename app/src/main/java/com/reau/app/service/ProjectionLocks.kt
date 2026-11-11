@@ -10,12 +10,14 @@ import android.os.PowerManager
  * The two locks of the projection, both tagged [ProjectionService.LOCK_TAG]: a partial wake lock (the CPU keeps
  * running with the screen off) and a Wi-Fi lock (Wi-Fi power saving does not drop the dash's link).
  *
- * The Wi-Fi lock asks for "high performance". On the Android 16 emulator the system files it
- * as a low-latency lock (`dumpsys wifi`: type 4), a kind Android documents as acting only with the app on screen.
- * What it does on the phone with the screen off is not verified.
+ * The Wi-Fi lock asks for "high performance". Android's documentation (WifiManager, `WIFI_MODE_FULL_HIGH_PERF`, deprecated in API 34)
+ * says that from Android 14 that request is swapped by the system for a low-latency lock, with all the limits of that lock: it acts only
+ * while the phone is joined to an access point, the screen is on and the app is in front. It is what `dumpsys wifi` shows (type 4).
+ * So on Android 14 and later no Wi-Fi lock of the app acts with the phone in a pocket, screen off; what the lock adds there is not verified.
  *
- * Experiment ([com.reau.app.settings.REauSettings.experimentWifiBind]): on Android 10 and later the lock is taken as "low latency" instead
- * ([wifiMode]); Android documents "high performance" as having no effect from Android 14, and it is held for the whole projection either way.
+ * Experiment ([com.reau.app.settings.REauSettings.experimentWifiBind]): on Android 10 and later the lock is asked as "low latency" itself
+ * ([wifiMode]). On Android 10 to 13 that is a different lock; on Android 14 and later it is the very lock the system already gives
+ * ([sameLockEitherWay]), so there the switch changes nothing about the lock. It is held for the whole projection either way.
  */
 internal class ProjectionLocks(private val context: Context) {
     private var wakeLock: PowerManager.WakeLock? = null
@@ -56,6 +58,24 @@ internal class ProjectionLocks(private val context: Context) {
         @Suppress("DEPRECATION") // see the class comment
         internal fun wifiMode(lowLatency: Boolean, sdk: Int): Int =
             if (lowLatency && sdk >= Build.VERSION_CODES.Q) WifiManager.WIFI_MODE_FULL_LOW_LATENCY else WifiManager.WIFI_MODE_FULL_HIGH_PERF
+
+        /**
+         * Whether, on Android [sdk], asking for "high performance" and asking for "low latency" end in the same lock: from Android 14
+         * (API 34) the system swaps the first for the second.
+         */
+        internal fun sameLockEitherWay(sdk: Int): Boolean = sdk >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+
+        /**
+         * What the ride log's line of the locks says of the Wi-Fi lock: nothing with the [experiment] off (the line as it always was), and
+         * with it on the [mode] taken and, on Android 14 and later, that the switch did not change the lock.
+         */
+        internal fun logWords(experiment: Boolean, mode: Int, sdk: Int): String = when {
+            !experiment -> ""
+            sameLockEitherWay(sdk) && mode == WifiManager.WIFI_MODE_FULL_LOW_LATENCY ->
+                ", Wi-Fi lock: ${modeName(mode)} (experiment; on Android 14 and later the system gives this same lock without the switch, " +
+                    "and it acts only with the screen on and the app in front)"
+            else -> ", Wi-Fi lock: ${modeName(mode)} (experiment)"
+        }
 
         /** The ride log's words for the mode taken. */
         internal fun modeName(mode: Int): String =

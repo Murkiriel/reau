@@ -52,10 +52,10 @@ jobs:
           echo "ANDROID_HOME=${ANDROID_HOME:?o runner deveria trazer o Android SDK}"
           ls "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools"
 
-      - name: Testes unitários (as duas edições)
+      - name: Testes unitários
         run: ./gradlew --console=plain --max-workers=2 :app:testDebugUnitTest
 
-      - name: Lint (as duas edições; qualquer aviso falha)
+      - name: Lint (qualquer aviso falha)
         run: ./gradlew --console=plain --max-workers=2 :app:lintDebug
 
       # detekt é a CLI do detekt 1.23.8 (versão em gradle/libs.versions.toml), chamada pela tarefa :app:detekt de
@@ -128,12 +128,12 @@ jobs:
       - name: Pillow (versão e hashes fixados)
         run: python3 -m pip install --target "$RUNNER_TEMP/pylibs" --require-hashes --no-deps -r scripts/requirements.txt
 
-      # O Python do runner (3.12 no ubuntu-24.04). Os testes de scripts/ só usam a biblioteca padrão; os de bench/ e scripts/icon, o Pillow.
-      - name: Testes dos scripts (leitor de registros, auditoria de APK, redução, ícone, emulador)
+      # O Python do runner (3.12 no ubuntu-24.04). Os testes de scripts/ só usam a biblioteca padrão; os de bench/, o Pillow.
+      - name: Testes dos scripts (leitor de registros, auditoria de APK, redução, emulador)
         env:
           PYTHONPATH: ${{ runner.temp }}/pylibs
         run: |
-          for dir in scripts scripts/registro scripts/dev bench scripts/emu scripts/icon; do
+          for dir in scripts scripts/registro scripts/dev bench scripts/emu; do
             echo "== $dir"
             (cd "$dir" && python3 -B -m unittest discover -p "test_*.py" -v)
           done

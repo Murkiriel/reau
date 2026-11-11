@@ -24,7 +24,8 @@ object SettingsInUse {
         "statsOverlay", "buttonOverlay", "dashPhoneStatus", "dashAlbumArt", "dashWeather", "infoRing", "infoRingData", "infoRingCarousel", "infoRingSeconds",
         "infoRingInPlace",
         "maneuverRing", "webView", "webTouch", "webAudio",
-        "experimentRtpPacing", "experimentDebugDscp", "experimentAdaptiveBitrate", "experimentWifiBind",
+        "experimentRtpPacing", "experimentDebugDscp", "experimentAdaptiveBitrate", "experimentWifiBind", "experimentWifiBand", "experimentStartGuard",
+        "experimentEncoderWatch", "experimentFocusGap", "experimentNightMemory",
     )
 
     /** Left out on purpose: the fine placement of the picture and the numbers on it (said when they change), and the joystick's text. */
@@ -51,12 +52,17 @@ object SettingsInUse {
             "priority marks on a debug build".takeIf { settings.experimentDebugDscp },
             "lower adaptive bitrate (${DashConfig.EXPERIMENT_TARGET_BPS / 1000} kbps target)".takeIf { settings.experimentAdaptiveBitrate },
             "Wi-Fi low-latency lock and bind retries on the same network".takeIf { settings.experimentWifiBind },
+            "the dash's Wi-Fi asked on 2.4 GHz only".takeIf { settings.experimentWifiBand },
+            "start guard (experiments go off after a death right after a start)".takeIf { settings.experimentStartGuard },
+            "mute encoder watch (rebuilt after 3 s without output)".takeIf { settings.experimentEncoderWatch },
+            "400 ms focus gap when a keyframe is asked of Android Auto".takeIf { settings.experimentFocusGap },
+            "day and night remembered between looks (dawn at sunrise, not before it)".takeIf { settings.experimentNightMemory },
         )
         return if (on.isEmpty()) null else "connection experiments ON: ${on.joinToString("; ")}"
     }
 
     /** The picture sent while no map is there: which one is not said (it is a file of the rider's), only whether it is the built-in one. */
-    private fun card(value: String) = when (value) {
+    internal fun card(value: String) = when (value) {
         "null" -> "none"
         REauSettings.DEFAULT_CARD -> "default"
         else -> "picked"

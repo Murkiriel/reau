@@ -1,4 +1,4 @@
-# Python tools of the scripts (the icon generator's test needs Pillow). Exact version and the hashes of the Linux x86-64 wheels for Python 3.12
+# Python tools of the scripts (the test of bench/reduce.py needs Pillow). Exact version and the hashes of the Linux x86-64 wheels for Python 3.12
 # (the CI runner) and 3.13: `pip install --require-hashes --no-deps -r scripts/requirements.txt`. To update, take the new hashes from
 # https://pypi.org/pypi/pillow/<version>/json and replace all the hash lines together.
 pillow==13.0.0 \

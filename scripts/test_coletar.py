@@ -108,6 +108,22 @@ class LocationAccessTest(unittest.TestCase):
         self.assertRegex(script, r'dumpsys location 2>&1 \| grep -i "com\\\.reau\\\.app" > "\$OUT/sistema/location-reau\.txt" \|\| true')
         self.assertNotIn("dumpsys-location", script)  # the unfiltered dump (every app's use of the location) is not kept
 
+    def test_the_settings_that_make_android_refuse_a_socket_on_a_network_are_read_into_the_info(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            log = fake_adb(tmp, ["ABC123"])
+            out = tmp / "saida"
+            env = {**os.environ, "ADB": str(tmp / "adb"), "REAU_SAIDA": str(out)}
+            done = subprocess.run(["bash", str(SCRIPT)], env=env, capture_output=True, text=True)
+            self.assertEqual(0, done.returncode, done.stderr)
+            commands = log.read_text(encoding="utf-8").splitlines()
+            self.assertIn("-s ABC123 shell settings get global restricted_networking_mode", commands)
+            self.assertIn("-s ABC123 shell settings get secure always_on_vpn_app", commands)
+            self.assertIn("-s ABC123 shell settings get secure always_on_vpn_lockdown", commands)
+            info = (out / "INFO.txt").read_text(encoding="utf-8")
+            for name in ("restricted_networking_mode", "always_on_vpn_app", "always_on_vpn_lockdown"):
+                self.assertIn(f"{name}=fake", info)
+
     def test_it_only_reads(self):
         script = SCRIPT.read_text(encoding="utf-8")
         for line in script.splitlines():

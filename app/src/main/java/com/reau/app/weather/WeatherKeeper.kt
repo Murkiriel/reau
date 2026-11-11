@@ -136,6 +136,8 @@ object WeatherKeeper {
         snapshot ?: return null
         if (snapshot.ageMs(nowMs, monoNowMs) > USABLE_MS) return null
         val now = snapshot.forecast.current ?: return null
+        // A temperature that is not a number (a broken answer) is no weather: rounding it throws.
+        if (!now.temperatureC.isFinite()) return null
         val icon = WeatherCondition.forCode(now.weatherCode).dashIcon ?: DashCommands.WEATHER_NONE
         return DashCommands.Weather(now.temperatureC.roundToInt(), icon)
     }

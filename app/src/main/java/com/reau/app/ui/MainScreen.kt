@@ -87,7 +87,7 @@ fun MainScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     for (warning in MainLook.warnings(p, state.battery, state.vpnHoldsREau, state.otherEditionInstalled, state.locationOff)) {
-                        Warning(warning, state, onOpenAndroidAutoSettings, onOpenSettings, extras)
+                        Warning(warning, state, onOpenAndroidAutoSettings, extras)
                     }
                     BridgeCard(
                         headlineText(p), subText(p), androidAutoSide(state), dashSide(p),

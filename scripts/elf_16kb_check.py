@@ -101,7 +101,10 @@ def main(argv: list[str]) -> int:
     for path in args.paths:
         for name, data in libraries(path):
             checked += 1
-            found = problems(program_headers(data))
+            try:
+                found = problems(program_headers(data))
+            except (ValueError, struct.error) as e:
+                found = [f"cabeçalho ELF ilegível ({e})"]
             print(f"{'FALHA' if found else 'ok   '}  {name}")
             for line in found:
                 print(f"        {line}")

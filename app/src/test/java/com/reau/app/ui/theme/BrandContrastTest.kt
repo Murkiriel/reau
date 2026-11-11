@@ -34,4 +34,24 @@ class BrandContrastTest {
     fun `in the dark theme the gold reads at once too`() {
         assertTrue(contrast(Ouro, REauDark.surface) >= 7.0)
     }
+
+    @Test
+    fun `the error colour as text reads on every ground it is written on, in both themes`() {
+        // Small text needs 4.5:1. The grounds: the page, a card (Carvão in the dark theme) and a dialog.
+        for (ground in listOf(REauDark.background, REauDark.surfaceVariant, REauDark.surfaceContainerHigh)) {
+            assertTrue("dark, on $ground: ${contrast(REauDark.error, ground)}", contrast(REauDark.error, ground) >= 4.5)
+        }
+        for (ground in listOf(REauLight.background, REauLight.surfaceContainerHigh, REauLight.primaryContainer)) {
+            assertTrue("light, on $ground: ${contrast(REauLight.error, ground)}", contrast(REauLight.error, ground) >= 4.5)
+        }
+    }
+
+    @Test
+    fun `the brand's status red did not read as text, which is why the text has reds of its own, and the icons keep the brand's`() {
+        assertTrue(contrast(StatusErro, Carvao) < 4.5)
+        assertTrue(contrast(StatusErro, Marfim) < 4.5)
+        assertEquals("icons need 3:1 and keep the brand colour", StatusErro, REauStatusDark.error)
+        assertEquals(StatusErro, REauStatusLight.error)
+        assertTrue(contrast(StatusErro, Marfim) >= 3.0 && contrast(StatusErro, Carvao) >= 3.0)
+    }
 }

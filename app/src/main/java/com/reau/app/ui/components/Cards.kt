@@ -32,7 +32,9 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,7 +67,7 @@ fun WarningCard(
     Column(
         modifier.fillMaxWidth().clip(shape).background(colors.surfaceContainer)
             .border(if (dark) 1.dp else 1.5.dp, if (dark) tone.copy(alpha = 0.53f) else tone, shape)
-            .padding(horizontal = 16.dp, vertical = 14.dp).semantics(mergeDescendants = true) {}.testTag(tag),
+            .padding(horizontal = 16.dp, vertical = 14.dp).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }.testTag(tag),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {

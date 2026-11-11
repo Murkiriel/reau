@@ -246,18 +246,28 @@ data class REauSettings(
      */
     val webAudio: WebAudioMode = WebAudioMode.PHONE,
     /**
-     * The four experimental switches of the connection ("Conexão experimental" in Settings), all off by default and none of them touched by
+     * The first four experimental switches of the connection ("Conexão experimental" in Settings; the later ones have their own words below), all off by default and none of them touched by
      * [sanitized]: with them off the app does exactly what it did before them. Each is logged with the settings in use ([SettingsInUse]).
      * [experimentRtpPacing]: the video's RTP packets leave a little apart ([com.reau.app.stream.RtpPacing]) instead of in a burst.
      * [experimentDebugDscp]: a debug build marks the dash's sockets for Wi-Fi priority too (a release always does, [com.reau.app.dash.DashSocket.priorityMarks]).
      * [experimentAdaptiveBitrate]: the normal stream asks for 200 kbps and follows what the encoder really puts out ([com.reau.app.stream.BitrateAdapter]).
-     * [experimentWifiBind]: the Wi-Fi lock for low latency (Android 10 and later) and, when Android refuses to bind a socket to the dash's
+     * [experimentWifiBind]: the Wi-Fi lock for low latency (Android 10 and later; on Android 14 and later the system already gives that lock, so that part changes nothing) and, when Android refuses to bind a socket to the dash's
      * network (EPERM), a few more tries on the same network before it is let go ([com.reau.app.dash.BindRetry]).
      */
     val experimentRtpPacing: Boolean = false,
     val experimentDebugDscp: Boolean = false,
     val experimentAdaptiveBitrate: Boolean = false,
     val experimentWifiBind: Boolean = false,
+    /** Experimental: the dash's Wi-Fi is asked for on the 2.4 GHz band only (Android 12 and later; [com.reau.app.dash.BandChoice]). Off, no band is asked, as always. */
+    val experimentWifiBand: Boolean = false,
+    /** Experimental: if the app's process ends within 10 s of a projection started with experimental switches on, the next opening switches them off ([ExperimentsGuard]). */
+    val experimentStartGuard: Boolean = false,
+    /** Experimental: an encoder that takes frames in and gives none out for 3 s, without failing, is rebuilt ([com.reau.app.stream.EncoderMuteWatch]). Off, only an encoder that fails is. */
+    val experimentEncoderWatch: Boolean = false,
+    /** Experimental: when a keyframe is asked of Android Auto, the video focus is given back 400 ms after it was taken, not 100 ms ([com.reau.app.aa.FocusGap]). */
+    val experimentFocusGap: Boolean = false,
+    /** Experimental: the projection remembers whether it was night at its last look, so that dawn and dusk each have their own threshold as the theme's rule says ([com.reau.app.service.DayNight.Memory]). Off, every look starts as day, as always. */
+    val experimentNightMemory: Boolean = false,
 ) {
     /**
      * The bitrate the stream is built for and asked for while pictures keep coming: the profile's ([streamBitrateBps], 400 kbps) or, with
@@ -343,7 +353,8 @@ data class REauSettings(
     /**
      * What changed from these settings to [other], one "name: old -> new" per field (the log says which
      * setting the rider changed, from what to what). Read from the data class's own text, so a new field is covered
-     * without a list to keep up to date. No setting holds a place or a route.
+     * without a list to keep up to date. No setting holds a place or a route; the one that holds a file's address (the picture) is said
+     * only as none, default or picked.
      */
     fun changesTo(other: REauSettings): List<String> =
         changes(fieldsOf(toString()) - KEPT_MENU_FIT, fieldsOf(other.toString()) - KEPT_MENU_FIT, "")
@@ -356,6 +367,8 @@ data class REauSettings(
             when {
                 old == null || old == value -> emptyList()
                 nested(old) && nested(value) -> changes(fieldsOf(old), fieldsOf(value), "$prefix$name.")
+                // The picture is a file of the rider's: its address (a folder, a file name) is not written, as in the settings line.
+                name == "cardImage" -> listOf("$prefix$name: ${SettingsInUse.card(old)} -> ${SettingsInUse.card(value)}")
                 else -> listOf("$prefix$name: $old -> $value")
             }
         }
@@ -722,6 +735,11 @@ class SettingsStore(private val prefs: SharedPreferences) {
             experimentDebugDscp = prefs.getBoolean(KEY_EXPERIMENT_DEBUG_DSCP, defaults.experimentDebugDscp),
             experimentAdaptiveBitrate = prefs.getBoolean(KEY_EXPERIMENT_ADAPTIVE_BITRATE, defaults.experimentAdaptiveBitrate),
             experimentWifiBind = prefs.getBoolean(KEY_EXPERIMENT_WIFI_BIND, defaults.experimentWifiBind),
+            experimentWifiBand = prefs.getBoolean(KEY_EXPERIMENT_WIFI_BAND, defaults.experimentWifiBand),
+            experimentStartGuard = prefs.getBoolean(KEY_EXPERIMENT_START_GUARD, defaults.experimentStartGuard),
+            experimentEncoderWatch = prefs.getBoolean(KEY_EXPERIMENT_ENCODER_WATCH, defaults.experimentEncoderWatch),
+            experimentFocusGap = prefs.getBoolean(KEY_EXPERIMENT_FOCUS_GAP, defaults.experimentFocusGap),
+            experimentNightMemory = prefs.getBoolean(KEY_EXPERIMENT_NIGHT_MEMORY, defaults.experimentNightMemory),
         ).sanitized()
     }
 
@@ -816,6 +834,11 @@ class SettingsStore(private val prefs: SharedPreferences) {
             putBoolean(KEY_EXPERIMENT_DEBUG_DSCP, s.experimentDebugDscp)
             putBoolean(KEY_EXPERIMENT_ADAPTIVE_BITRATE, s.experimentAdaptiveBitrate)
             putBoolean(KEY_EXPERIMENT_WIFI_BIND, s.experimentWifiBind)
+            putBoolean(KEY_EXPERIMENT_WIFI_BAND, s.experimentWifiBand)
+            putBoolean(KEY_EXPERIMENT_START_GUARD, s.experimentStartGuard)
+            putBoolean(KEY_EXPERIMENT_ENCODER_WATCH, s.experimentEncoderWatch)
+            putBoolean(KEY_EXPERIMENT_FOCUS_GAP, s.experimentFocusGap)
+            putBoolean(KEY_EXPERIMENT_NIGHT_MEMORY, s.experimentNightMemory)
         }
     }
 
@@ -921,6 +944,11 @@ class SettingsStore(private val prefs: SharedPreferences) {
         private const val KEY_EXPERIMENT_DEBUG_DSCP = "experiment_debug_dscp"
         private const val KEY_EXPERIMENT_ADAPTIVE_BITRATE = "experiment_adaptive_bitrate"
         private const val KEY_EXPERIMENT_WIFI_BIND = "experiment_wifi_bind"
+        private const val KEY_EXPERIMENT_WIFI_BAND = "experiment_wifi_band"
+        private const val KEY_EXPERIMENT_START_GUARD = "experiment_start_guard"
+        private const val KEY_EXPERIMENT_ENCODER_WATCH = "experiment_encoder_watch"
+        private const val KEY_EXPERIMENT_FOCUS_GAP = "experiment_focus_gap"
+        private const val KEY_EXPERIMENT_NIGHT_MEMORY = "experiment_night_memory"
         private const val OLD_KEY_AA_SLOW_PACE = "aa_slow_pace"
         private const val OLD_KEY_AA_SLOW_PACE_FPS = "aa_slow_pace_fps"
         private const val KEY_AA_NEW_PROTOCOL = "aa_new_protocol"

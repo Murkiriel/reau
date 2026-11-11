@@ -46,8 +46,12 @@ class AaStats(private val nowMs: () -> Long = { android.os.SystemClock.elapsedRe
 
     fun message(channel: Int) = both { byChannel.merge(channel, 1L, Long::plus) }
 
+    /** Told of every keyframe among the units ([unit]), on the thread that counts it; null: nobody asks. */
+    @Volatile var onKeyframe: (() -> Unit)? = null
+
     /** An access unit handed to the decoder. */
     fun unit(bytes: Int, keyframe: Boolean) {
+        if (keyframe) onKeyframe?.invoke()
         // Once, here: `both` below runs its block for the window and for the total, which counted every unit twice.
         AaVideoMeter.units.incrementAndGet()
         AaVideoMeter.bytes.addAndGet(bytes.toLong())

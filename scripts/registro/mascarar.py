@@ -6,6 +6,7 @@ the list of things the collection script (`coletar_do_celular.sh`) masks in the 
 
 Usage:  python3 mascarar.py ENTRADA SAIDA
 """
+import os
 import re
 import sys
 
@@ -23,6 +24,10 @@ def mascarar(texto: str) -> str:
 def main(argv):
     if len(argv) != 2:
         print(__doc__)
+        return 2
+    if os.path.abspath(argv[0]) == os.path.abspath(argv[1]):
+        # Opening the output empties it: over its own input the file would be lost.
+        print("a saída não pode ser o próprio arquivo de entrada", file=sys.stderr)
         return 2
     with open(argv[0], encoding="utf-8", errors="replace") as entrada, open(argv[1], "w", encoding="utf-8") as saida:
         for linha in entrada:

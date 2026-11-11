@@ -405,5 +405,11 @@ class JoystickGesturesTest {
         )
         assertEquals("button Back 0x12 -> a; b [call=IDLE]", JoystickMap.logLine("Back", 0x12, listOf("a", "b"), "IDLE"))
         assertEquals("button Unknown 0x0B -> nothing [call=RINGING]", JoystickMap.logLine("Unknown", 0x0B, emptyList(), "RINGING"))
+        // 0x20: no use for it, but a report of what it is; the line says so the first time it ever comes.
+        assertEquals(
+            "button Unknown 0x20 -> not mapped -> nothing [call=IDLE] (0x20: reported as the dash's own menu removing a stop; never seen here until now)",
+            JoystickMap.logLine("Unknown", 0x20, listOf("not mapped -> nothing"), "IDLE"),
+        )
+        for (code in listOf(0x00, 0x12, 0x1F, 0x21, 0x7F)) assertEquals("0x%02X".format(code), "", JoystickMap.codeNote(code))
     }
 }

@@ -26,11 +26,23 @@ object CodecErrors {
                 add("errorCode=${detail.errorCode}${codeName(detail.errorCode)}")
                 add("recoverable=${detail.recoverable}")
                 add("transient=${detail.transient}")
+                add("kind=${kind(detail)}")
                 add("diagnostic=${detail.diagnosticInfo?.trim()?.take(MAX_DIAGNOSTIC)?.ifEmpty { null } ?: "-"}")
             }
         }
         val head = if (message.isNullOrEmpty()) type else "$type: $message"
         return if (parts.isEmpty()) head else "$head [${parts.joinToString(" ")}]"
+    }
+
+    /**
+     * What Android's documentation says each kind of codec failure calls for: a transient one, to try again later; a recoverable one, to
+     * stop, configure and start the codec again; any other, to release it and make a new one. REau rebuilds the codec for all three; the
+     * word in the log says which kind it was.
+     */
+    internal fun kind(detail: Detail): String = when {
+        detail.transient -> "transient(try-again-later)"
+        detail.recoverable -> "recoverable(stop-configure-start)"
+        else -> "fatal(release)"
     }
 
     /** The codec's exception in [error] or its causes (a few levels: the pump wraps it once), or null when it is none. */

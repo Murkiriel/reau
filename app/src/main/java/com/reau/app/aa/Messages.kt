@@ -33,6 +33,21 @@ object Messages {
         return "${number(MAJOR_AT)}.${number(MINOR_AT)}, status ${number(STATUS_AT).toShort()}"
     }
 
+    /**
+     * The status of a version answer when it is not 0 (Android Auto refused the version asked for), null when it is 0 or the answer is too
+     * short to carry one. Only for the log: the handshake goes on as it always did, and a refused version fails at the TLS step.
+     */
+    fun versionRefusal(buffer: ByteArray, length: Int): Int? {
+        if (length < VERSION_ANSWER_SIZE) return null
+        val status = ((buffer[STATUS_AT].toInt() and 0xFF shl 8) or (buffer[STATUS_AT + 1].toInt() and 0xFF)).toShort().toInt()
+        return status.takeIf { it != 0 }
+    }
+
+    /** The log's line for a version answer with [status] not 0, asked for as 1.[minor]. */
+    fun versionRefusalLine(status: Int, minor: Int): String =
+        "Handshake: Android Auto answered the version request 1.$minor with status $status (not 0): it did not accept the version. " +
+            "The handshake goes on, and what fails next (the TLS step) comes from this."
+
     // byte ac_buf [] = {0, 3, 0, 4, 0, 4, 8, 0};
     val statusOk: ByteArray
         get() = createRawMessage(0, 3, 4, byteArrayOf(8, 0), 2)

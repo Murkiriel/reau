@@ -72,8 +72,14 @@ def find_sdk() -> str | None:
 
 
 def build_tool(sdk: str, name: str) -> str | None:
-    hits = sorted(glob.glob(os.path.join(sdk, "build-tools", "*", name)))
+    # By version number, not by text: as text "9.0.0" comes after "35.0.0".
+    hits = sorted(glob.glob(os.path.join(sdk, "build-tools", "*", name)), key=version_key)
     return hits[-1] if hits else None
+
+
+def version_key(path: str) -> list[int]:
+    """The numbers of the build-tools folder a tool is in ("…/build-tools/35.0.1/aapt2" -> [35, 0, 1])."""
+    return [int(n) for n in re.findall(r"\d+", os.path.basename(os.path.dirname(path)))]
 
 
 def java_env() -> dict:

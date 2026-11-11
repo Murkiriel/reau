@@ -26,7 +26,7 @@ repositorio (`docs/`, `NOTICE`, los README, los historiales de cambios, `app/src
 se ejecutan de nuevo solas cuando cambia un texto. Las pruebas instrumentadas (`app/src/androidTest`) necesitan un
 emulador, como dice el README; `scripts/emu/` tiene los scripts.
 Los scripts en Python tienen sus propias pruebas (`python3 -B -m unittest discover -p "test_*.py"` dentro de `scripts/`, `scripts/registro/`,
-`scripts/dev/`, `scripts/emu/`, `scripts/icon/` y `bench/`; los dos últimos necesitan Pillow, fijado en `scripts/requirements.txt`), y la
+`scripts/dev/`, `scripts/emu/` y `bench/`; el último necesita Pillow, fijado en `scripts/requirements.txt`), y la
 integración continua también las ejecuta.
 
 Todo cambio de código viene con una prueba nueva o ajustada. El proyecto tiene tres idiomas: los textos que lee la gente van en inglés
@@ -36,7 +36,7 @@ por idioma. El texto detrás de un (i) da la idea general en como máximo 3 fras
 
 ## Fuzzing y la prueba de mutación
 
-Los lectores de bytes que vienen de fuera (los paquetes del tablero, las tramas WebSocket y la cabecera HTTP de un navegador) tienen
+Los lectores de bytes que vienen de fuera (los paquetes del tablero, las tramas WebSocket y la cabecera HTTP de un navegador, y los mensajes, las unidades de video, la cabecera de tamaño del video y los mensajes de navegación de Android Auto) tienen
 objetivos de fuzzing en `app/src/test/java/com/reau/app/fuzz/ParserFuzzTargets.kt`, escritos con [Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)
 (Apache-2.0, solo dependencia de prueba: nunca entra en un APK). En la prueba unitaria normal cada objetivo solo repite sus semillas, los
 archivos de `app/src/test/resources/com/reau/app/fuzz/ParserFuzzTargetsInputs/<objetivo>/`, como prueba de regresión. Para hacer fuzzing de

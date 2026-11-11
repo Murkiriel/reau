@@ -1,5 +1,6 @@
 package com.reau.app.ui
 
+import kotlinx.coroutines.delay
 import android.content.ClipData
 import android.content.ClipboardManager
 import androidx.compose.foundation.background
@@ -14,6 +15,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -158,11 +160,21 @@ private fun PinRow(pin: String) {
     }
 }
 
+/** How long the copy button says "Copied". */
+private const val COPIED_SHOWN_MS = 2_000L
+
 /** One address in mono, selectable, with the button that copies it (the button says so for a moment). */
 @Composable
 private fun AddressRow(url: String, tag: String) {
     val context = LocalContext.current
     var copied by remember(url) { mutableStateOf(false) }
+    // "Copied" for a moment, as the words above say: it stayed for good.
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(COPIED_SHOWN_MS)
+            copied = false
+        }
+    }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         SelectionContainer(Modifier.weight(1f)) {
             Text(url, style = REauMono.copy(fontSize = 12.sp), color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.testTag(tag))
