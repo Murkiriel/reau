@@ -124,7 +124,7 @@ private fun WeatherContent(enabled: Boolean, onToggle: (Boolean) -> Unit) {
                 else -> stringResource(R.string.weather_state_ok, dayAndTime(kept!!.fetchedAtMs, locale))
             }
             add { ValueRow(stringResource(R.string.weather_state_title), state, "weather_state", mono = false) }
-            val sent = WeatherKeeper.forDash()
+            val sent = WeatherKeeper.forDash(freshOnly = SettingsStore.open(context).load().experimentWeatherAge)
             add {
                 ValueRow(
                     stringResource(R.string.weather_sent_title),

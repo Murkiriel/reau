@@ -41,6 +41,28 @@ class AapMessageTest {
     }
 
     @Test
+    fun `the request for protocol 6 dot 0 names both numbers, and 1 dot minor is the one it always was`() {
+        assertArrayEquals(bytes(0, 3, 0, 6, 0, 1, 0, 6, 0, 0), Messages.versionRequestFor(6, 0))
+        assertArrayEquals(Messages.versionRequestFor(Messages.MINOR_NEWER), Messages.versionRequestFor(1, Messages.MINOR_NEWER))
+        assertArrayEquals(bytes(0, 3, 0, 6, 0, 1, 0, 1, 0, 7), Messages.versionRequestFor(1, 7))
+    }
+
+    @Test
+    fun `the version answered is read as two numbers, and a short answer has none`() {
+        val answer = bytes(0, 3, 0, 8, 0, 2, 0, 6, 0, 0, 0, 0)
+        assertEquals(6 to 0, Messages.versionAnswered(answer, answer.size))
+        val other = bytes(0, 3, 0, 8, 0, 2, 0, 1, 0, 7, 0, 0)
+        assertEquals(1 to 7, Messages.versionAnswered(other, other.size))
+        assertEquals(null, Messages.versionAnswered(answer, 10))
+    }
+
+    @Test
+    fun `the refusal line names the major as well`() {
+        assertEquals(true, Messages.versionRefusalLine(-1, 6, 0).contains("version request 6.0 with status -1"))
+        assertEquals(Messages.versionRefusalLine(-1, 1, 7), Messages.versionRefusalLine(-1, 7))
+    }
+
+    @Test
     fun `the version Android Auto answers is read for the log`() {
         // channel 0, flags 3, length 8, type 2 (version response), major 1, minor 7, status 0.
         val answer = bytes(0, 3, 0, 8, 0, 2, 0, 1, 0, 7, 0, 0)
@@ -67,7 +89,7 @@ class AapMessageTest {
     @Test
     fun `the handshake writes the refusal and goes on as before`() {
         val transport = java.io.File("src/main/java/com/reau/app/aa/AapTransport.kt").readText()
-        assertEquals(true, transport.contains("Messages.versionRefusal(buffer, ret)?.let { AaLog.w(Messages.versionRefusalLine(it, protocolMinor)) }"))
+        assertEquals(true, transport.contains("Messages.versionRefusal(buffer, ret)?.let { AaLog.w(Messages.versionRefusalLine(it, protocolMajor, protocolMinor)) }"))
         val after = transport.substringAfter("Messages.versionRefusal(buffer, ret)").substringBefore("Handshake: Ignoring unexpected message")
         assertEquals("the answer still counts as received", true, after.contains("received = true"))
     }

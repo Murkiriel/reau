@@ -88,6 +88,7 @@ fun SettingsScreen(
                     CardGroup(settings, change, actions.onPickCardImage)
                     ConnectionExperimentsGroup(settings, change)
                     VideoExperimentsGroup(settings, change)
+                    DashExperimentsGroup(settings, change)
                     DebugGroup(settings, change, actions, say)
                     UpdateGroup()
                 }

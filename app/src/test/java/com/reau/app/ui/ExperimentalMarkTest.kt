@@ -42,7 +42,8 @@ class ExperimentalMarkTest {
             .toSet()
         // The album cover works, the real route is always on and the maneuver ring is a plain switch (28/10/2026): the only red rows today are
         // the four of "Conexão experimental" (their lines say so), which are off by default.
-        assertEquals(setOf("exp_pacing_sub", "exp_dscp_sub", "exp_bitrate_sub", "exp_wifi_sub", "exp_encoder_watch_sub", "exp_focus_gap_sub", "exp_wifi_band_sub", "exp_start_guard_sub", "exp_night_memory_sub"), marked)
+        assertEquals(setOf("exp_pacing_sub", "exp_dscp_sub", "exp_bitrate_sub", "exp_wifi_sub", "exp_encoder_watch_sub", "exp_focus_gap_sub", "exp_wifi_band_sub", "exp_start_guard_sub", "exp_night_memory_sub",
+            "exp_weather_age_sub", "exp_heat_ceiling_sub", "exp_gps_speed_sub", "exp_recalc_sub", "exp_color_sub", "exp_protocol_six_sub", "exp_tolerant_rx_sub"), marked)
         // A row becomes red again only by saying so in its own text (a new experiment); the ring's line does not.
         assertFalse(ExperimentalMark.marks(text("ring_title"), text("ring_sub")))
         assertFalse("the real route has no row any more", strings.contains("name=\"route_extras_sub\""))

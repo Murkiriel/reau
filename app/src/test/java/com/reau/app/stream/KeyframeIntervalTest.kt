@@ -223,7 +223,7 @@ class KeyframeIntervalTest {
         val loop = java.io.File("src/main/java/com/reau/app/stream/VideoLoop.kt").readText()
         assertTrue(loop.contains("buildEncoder(out, g.encoderFps, g.activeBitrateBps, g.encoderKeyframeSec)"))
         assertTrue(loop.contains("buildEncoder(out, wanted.fps, wanted.bitrateBps, wanted.encoderKeyframeSec)"))
-        assertTrue(loop.contains("created.prepare(fps, bitrateBps, encoderKeyframeSec, settings.bitrateMode)"))
+        assertTrue(loop.contains("created.prepare(fps, bitrateBps, encoderKeyframeSec, settings.bitrateMode, colorMatrix = settings.colorMatrix)"))
         assertTrue("and says what it asked for", loop.contains("encoder asked"))
     }
 

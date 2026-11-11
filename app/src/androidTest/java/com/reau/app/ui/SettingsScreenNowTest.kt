@@ -63,7 +63,9 @@ class SettingsScreenNowTest {
      * The experimental switches that restart the stream or act on the running one at once (10/11/2026: LiveTuning) carry the chip too; the other
      * experimental ones count from the next connection or the next start, and carry none.
      */
-    private val experimentsWithChip = listOf("exp_rtp_pacing", "exp_adaptive_bitrate", "exp_encoder_watch")
+    private val experimentsWithChip = listOf(
+        "exp_rtp_pacing", "exp_adaptive_bitrate", "exp_encoder_watch", "exp_weather_age", "exp_heat_ceiling", "exp_gps_speed", "exp_recalc_inactive",
+    )
 
     /** The rows that wait for the next start, are fixed, or are not settings at all (their buttons): no chip. */
     private val withoutChip = listOf(
@@ -72,6 +74,7 @@ class SettingsScreenNowTest {
         "fps", "bitrate", "bitrate_mode", "keyframe", "maneuver_fps_profile", "speed_fps_profile",
         "open_joystick", "card_now", "view_logs", "share", "delete",
         "exp_debug_dscp", "exp_wifi_bind", "exp_wifi_band", "exp_start_guard", "exp_focus_gap", "exp_night_memory",
+        "exp_color_matrix", "exp_protocol_six", "exp_tolerant_rx",
     )
 
     private data class Row(val tag: String, val titlePt: String, val titleEn: String)

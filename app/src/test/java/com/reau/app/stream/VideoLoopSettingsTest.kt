@@ -36,6 +36,13 @@ class VideoLoopSettingsTest {
     }
 
     @Test
+    fun `the colour matrix switch reaches the loop alone, and off it does not`() {
+        assertFalse(loop.withRider(REauSettings()).colorMatrix)
+        val color = loop.withRider(REauSettings(experimentColorMatrix = true))
+        assertEquals(listOf(true, false, false, false), listOf(color.colorMatrix, color.rtpPacing, color.adaptiveBitrate, color.encoderMuteWatch))
+    }
+
+    @Test
     fun `the bitrate is the rider's, or the experiment's target when the adaptive switch is on`() {
         assertEquals(400_000, loop.withRider(REauSettings(streamBitrateBps = 400_000)).bitrateBps)
         assertEquals(DashConfig.EXPERIMENT_TARGET_BPS, loop.withRider(REauSettings(streamBitrateBps = 400_000, experimentAdaptiveBitrate = true)).bitrateBps)

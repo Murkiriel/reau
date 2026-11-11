@@ -378,6 +378,7 @@
     <string name="group_card">Wallpaper</string>
     <string name="group_connection_experiments">Experimental connection</string>
     <string name="group_video_experiments">Experimental video</string>
+    <string name="group_dash_experiments">Experimental dash</string>
     <string name="exp_pacing_title">Space out the video</string>
     <string name="exp_pacing_sub">Experimental: a 2 ms pause every 4 video packets, at most 400 a second</string>
     <string name="exp_dscp_title">Mark Wi-Fi priority on debug builds</string>
@@ -385,7 +386,7 @@
     <string name="exp_bitrate_title">Lower, adaptive bitrate</string>
     <string name="exp_bitrate_sub">Experimental: aims at 200 kbps and follows what the encoder really puts out</string>
     <string name="exp_wifi_title">Wi-Fi and EPERM</string>
-    <string name="exp_wifi_sub">Experimental: low-latency Wi-Fi lock (Android 10 to 13; on Android 14 or later this part changes nothing) and 5 more tries on the same network when Android refuses it (EPERM). Counts from the next connection</string>
+    <string name="exp_wifi_sub">Experimental: 5 more tries on the same network when Android refuses to bind to the dash (EPERM). The low-latency Wi-Fi lock left this switch: on Android 14 or later it changed nothing, and the choice of whoever had it on is kept. Counts from the next connection</string>
     <string name="exp_encoder_watch_title">Rebuild a silent encoder</string>
     <string name="exp_encoder_watch_sub">Experimental: if the video encoder takes frames in and gives none out for 3 s, it is rebuilt (up to 3 times per stream)</string>
     <string name="exp_focus_gap_title">Longer pause when asking for a keyframe</string>
@@ -396,6 +397,20 @@
     <string name="exp_start_guard_sub">Experimental: if the app dies within 10 s of a start made with experimental switches on, they are switched off the next time the app opens, and the log says so</string>
     <string name="exp_night_memory_title">Day and night with memory</string>
     <string name="exp_night_memory_sub">Experimental: with the map theme by the sun, the night theme lasts until sunrise instead of ending about half an hour before it. Counts from the next look, within a minute</string>
+    <string name="exp_weather_age_title">Old weather leaves the dash</string>
+    <string name="exp_weather_age_sub">Experimental: the weather is no longer sent to the dash once it was fetched more than 30 minutes ago (today, 3 hours). The dash has no room to tell the age of the data. Counts right away</string>
+    <string name="exp_heat_ceiling_title">Frame ceiling by battery heat</string>
+    <string name="exp_heat_ceiling_sub">Experimental: from 44 °C on the battery the video\'s top pace comes down (75, 62 and 50 percent of it, at 44, 46 and 48 °C) and goes back up only 3 °C under each step. For a phone whose Android thermal status never moves. Counts right away</string>
+    <string name="exp_gps_speed_title">GPS speed for the profiles</string>
+    <string name="exp_gps_speed_sub">Experimental: the speed profile reads the GPS speed when a route runs and the GPS is already on for the info ring (with “Use location” on); otherwise the route\'s estimate, as before. It never switches the GPS on. Counts right away</string>
+    <string name="exp_recalc_title">Recalculating on a short “inactive”</string>
+    <string name="exp_recalc_sub">Experimental: a short “inactive” of Android Auto during a route (up to 8 s) shows on the dash as recalculating instead of clearing the route. Counts right away</string>
+    <string name="exp_color_title">Explicit encoder colours</string>
+    <string name="exp_color_sub">Experimental: the dash\'s encoder is asked for BT.601, limited range, SDR. If the codec refuses, it is asked as before, and the log says what it accepted. Counts from the next video</string>
+    <string name="exp_protocol_six_title">Android Auto protocol 6.0</string>
+    <string name="exp_protocol_six_sub">Experimental: the handshake asks for protocol version 6.0 (today, 1.7). If Android Auto refuses it or the handshake fails, 1.7 is asked again until the app closes, and the log says what was asked and answered. Counts from the next time you turn on</string>
+    <string name="exp_tolerant_rx_title">More tolerant dash watch</string>
+    <string name="exp_tolerant_rx_sub">Experimental: the dash\'s silence only goes to the log at 12 s and ends the session at 60 s (today, 4 s); when the dash is back, a keyframe is asked. Control packets leave 12 ms apart. Counts from the next connection</string>
     <string name="pairing_known_title">Known dash</string>
     <string name="pairing_known_info">This is the dash whose full Wi-Fi name REau already knows, which it needs to connect. \"Forget\" deletes that name, everything the dash has reported (the bike data below) and the network suggested to Android; after that, REau looks for the dash again (with REau open, the name shows up on its own) or you type the full name. Use it when you change motorcycle or dash.</string>
     <string name="pairing_unknown_title">No known dash</string>

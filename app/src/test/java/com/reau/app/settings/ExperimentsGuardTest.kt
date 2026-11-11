@@ -21,14 +21,32 @@ class ExperimentsGuardTest {
 
     private val mark: File get() = ExperimentsGuard.mark(folder.root)
     private val store = SettingsStore(KeystoreBackedPrefsTest.FakePrefs())
-    private val experiments = REauSettings(experimentRtpPacing = true, experimentEncoderWatch = true)
+    private val experiments = REauSettings(experimentRtpPacing = true, experimentEncoderWatch = true, experimentStartGuard = false)
     private val guarded = experiments.copy(experimentStartGuard = true)
 
     @Test
-    fun `the guard is off by default, and off no start leaves a mark`() {
-        assertFalse(REauSettings().experimentStartGuard)
+    fun `the guard is on by default but acts only with another switch on, and off no start leaves a mark`() {
+        assertTrue(REauSettings().experimentStartGuard)
+        assertFalse("on by default and no experiment: nothing to watch", ExperimentsGuard.armed(REauSettings()))
+        assertNull(ExperimentsGuard.projectionStarted(REauSettings(), mark, nowMs = 1))
+        assertFalse(mark.exists())
         assertNull(ExperimentsGuard.projectionStarted(experiments, mark, nowMs = 1))
         assertFalse(mark.exists())
+        assertTrue("on by default, an experiment on: watched", ExperimentsGuard.armed(REauSettings(experimentRtpPacing = true)))
+    }
+
+    @Test
+    fun `a choice stored by the rider is kept, and a phone that never chose reads the guard on`() {
+        val prefs = KeystoreBackedPrefsTest.FakePrefs()
+        assertTrue(SettingsStore(prefs).load().experimentStartGuard)
+        SettingsStore(prefs).save(REauSettings(experimentStartGuard = false))
+        assertFalse("stored off stays off", SettingsStore(prefs).load().experimentStartGuard)
+        assertFalse(SettingsStore(prefs).load().sanitized().experimentStartGuard)
+        SettingsStore(prefs).save(REauSettings(experimentStartGuard = true))
+        assertTrue(SettingsStore(prefs).load().experimentStartGuard)
+        val old = KeystoreBackedPrefsTest.FakePrefs()
+        old.edit().putInt("density", 200).putBoolean("experiment_rtp_pacing", true).apply()
+        assertTrue("an older phone that stored other things but never the guard", SettingsStore(old).load().experimentStartGuard)
     }
 
     @Test
@@ -83,7 +101,8 @@ class ExperimentsGuardTest {
         val allOn = REauSettings(
             experimentRtpPacing = true, experimentDebugDscp = true, experimentAdaptiveBitrate = true, experimentWifiBind = true,
             experimentWifiBand = true, experimentEncoderWatch = true, experimentFocusGap = true, experimentNightMemory = true,
-            experimentStartGuard = true,
+            experimentStartGuard = true, experimentWeatherAge = true, experimentHeatCeiling = true, experimentGpsSpeed = true,
+            experimentRecalcInactive = true, experimentColorMatrix = true, experimentProtocolSix = true, experimentTolerantRx = true,
         )
         assertEquals("a new experimental switch needs its line in the guard", names.sorted(), ExperimentsGuard.experimentsOn(allOn).sorted())
         assertEquals(REauSettings(experimentStartGuard = true), ExperimentsGuard.allOff(allOn))

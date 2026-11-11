@@ -46,14 +46,14 @@ class ConnectionExperimentsAreWiredTest {
 
     @Test
     fun `the debug marks and the bind retries read the live settings of the rider`() {
-        assertTrue(live.contains("DashSocket(it, markInDebug = SettingsStore.open(context).load().experimentDebugDscp)"))
+        assertTrue(live.contains("DashSocket(it, markInDebug = now.experimentDebugDscp, controlGapMs = if (now.experimentTolerantRx) ControlGap.GAP_MS else 0L)"))
         assertTrue(live.contains("bindRetry = { tuned?.experimentWifiBind == true }"))
     }
 
     @Test
-    fun `the Wi-Fi lock is asked for low latency by the switch, and the log says it`() {
-        assertTrue(service.contains("locks.acquire(lowLatency = experiment)"))
-        assertTrue(service.contains("ProjectionLocks.logWords(experiment, mode, android.os.Build.VERSION.SDK_INT)"))
+    fun `the Wi-Fi lock does not follow the bind-retries switch, and the settings line is still logged`() {
+        assertTrue(service.contains("locks.acquire()"))
+        assertTrue(!service.contains("experimentWifiBind"))
         assertTrue(service.contains("SettingsInUse.experimentsLine(inUse)"))
     }
 }

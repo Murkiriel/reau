@@ -205,6 +205,13 @@ class SettingsStore(private val prefs: SharedPreferences) {
             experimentEncoderWatch = prefs.getBoolean(KEY_EXPERIMENT_ENCODER_WATCH, defaults.experimentEncoderWatch),
             experimentFocusGap = prefs.getBoolean(KEY_EXPERIMENT_FOCUS_GAP, defaults.experimentFocusGap),
             experimentNightMemory = prefs.getBoolean(KEY_EXPERIMENT_NIGHT_MEMORY, defaults.experimentNightMemory),
+            experimentWeatherAge = prefs.getBoolean(KEY_EXPERIMENT_WEATHER_AGE, defaults.experimentWeatherAge),
+            experimentHeatCeiling = prefs.getBoolean(KEY_EXPERIMENT_HEAT_CEILING, defaults.experimentHeatCeiling),
+            experimentGpsSpeed = prefs.getBoolean(KEY_EXPERIMENT_GPS_SPEED, defaults.experimentGpsSpeed),
+            experimentRecalcInactive = prefs.getBoolean(KEY_EXPERIMENT_RECALC_INACTIVE, defaults.experimentRecalcInactive),
+            experimentColorMatrix = prefs.getBoolean(KEY_EXPERIMENT_COLOR_MATRIX, defaults.experimentColorMatrix),
+            experimentProtocolSix = prefs.getBoolean(KEY_EXPERIMENT_PROTOCOL_SIX, defaults.experimentProtocolSix),
+            experimentTolerantRx = prefs.getBoolean(KEY_EXPERIMENT_TOLERANT_RX, defaults.experimentTolerantRx),
         ).sanitized()
     }
 
@@ -304,6 +311,13 @@ class SettingsStore(private val prefs: SharedPreferences) {
             putBoolean(KEY_EXPERIMENT_ENCODER_WATCH, s.experimentEncoderWatch)
             putBoolean(KEY_EXPERIMENT_FOCUS_GAP, s.experimentFocusGap)
             putBoolean(KEY_EXPERIMENT_NIGHT_MEMORY, s.experimentNightMemory)
+            putBoolean(KEY_EXPERIMENT_WEATHER_AGE, s.experimentWeatherAge)
+            putBoolean(KEY_EXPERIMENT_HEAT_CEILING, s.experimentHeatCeiling)
+            putBoolean(KEY_EXPERIMENT_GPS_SPEED, s.experimentGpsSpeed)
+            putBoolean(KEY_EXPERIMENT_RECALC_INACTIVE, s.experimentRecalcInactive)
+            putBoolean(KEY_EXPERIMENT_COLOR_MATRIX, s.experimentColorMatrix)
+            putBoolean(KEY_EXPERIMENT_PROTOCOL_SIX, s.experimentProtocolSix)
+            putBoolean(KEY_EXPERIMENT_TOLERANT_RX, s.experimentTolerantRx)
         }
     }
 
@@ -414,6 +428,13 @@ class SettingsStore(private val prefs: SharedPreferences) {
         private const val KEY_EXPERIMENT_ENCODER_WATCH = "experiment_encoder_watch"
         private const val KEY_EXPERIMENT_FOCUS_GAP = "experiment_focus_gap"
         private const val KEY_EXPERIMENT_NIGHT_MEMORY = "experiment_night_memory"
+        private const val KEY_EXPERIMENT_WEATHER_AGE = "experiment_weather_age"
+        private const val KEY_EXPERIMENT_HEAT_CEILING = "experiment_heat_ceiling"
+        private const val KEY_EXPERIMENT_GPS_SPEED = "experiment_gps_speed"
+        private const val KEY_EXPERIMENT_RECALC_INACTIVE = "experiment_recalc_inactive"
+        private const val KEY_EXPERIMENT_COLOR_MATRIX = "experiment_color_matrix"
+        private const val KEY_EXPERIMENT_PROTOCOL_SIX = "experiment_protocol_six"
+        private const val KEY_EXPERIMENT_TOLERANT_RX = "experiment_tolerant_rx"
         private const val OLD_KEY_AA_SLOW_PACE = "aa_slow_pace"
         private const val OLD_KEY_AA_SLOW_PACE_FPS = "aa_slow_pace_fps"
         private const val KEY_AA_NEW_PROTOCOL = "aa_new_protocol"

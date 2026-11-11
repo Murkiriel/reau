@@ -123,7 +123,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # O Pillow vem primeiro: o gerador de ícone e o `bench` (bench/reduce.py) o usam. Versão e hashes fixados em
+      # O Pillow vem primeiro: o `bench` (bench/reduce.py) o usa. O teste do amostrar_cego.py roda o script com `python3 -I`, que não vê o PYTHONPATH, e é pulado aqui. Versão e hashes fixados em
       # scripts/requirements.txt, instalado numa pasta à parte (o Python do sistema não aceita pip direto) e sem dependências.
       - name: Pillow (versão e hashes fixados)
         run: python3 -m pip install --target "$RUNNER_TEMP/pylibs" --require-hashes --no-deps -r scripts/requirements.txt

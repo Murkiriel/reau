@@ -549,12 +549,9 @@ class ProjectionService : Service() {
             val reported = SystemClock.elapsedRealtime()
             // Switched off before this came (Desligar right after Ligar): nothing to hold.
             if (controller.state.phase == Phase.STOPPED) return
-            val experiment = SettingsStore.open(this@ProjectionService).load().experimentWifiBind
-            val mode = locks.acquire(lowLatency = experiment)
+            locks.acquire()
             val took = "earlier runs read in ${reported - begun} ms, locks in ${SystemClock.elapsedRealtime() - reported} ms"
-            // The mode is said only when the experiment asks for one (a line as it always was with the switch off).
-            val taken = ProjectionLocks.logWords(experiment, mode, android.os.Build.VERSION.SDK_INT)
-            log("projection: foreground with wake and Wi-Fi locks ($took$taken)")
+            log("projection: foreground with wake and Wi-Fi locks ($took)")
             lookAtTheDevice()
         }
 

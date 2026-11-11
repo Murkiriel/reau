@@ -203,8 +203,9 @@ data class REauSettings(
      * [experimentRtpPacing]: the video's RTP packets leave a little apart ([com.reau.app.stream.RtpPacing]) instead of in a burst.
      * [experimentDebugDscp]: a debug build marks the dash's sockets for Wi-Fi priority too (a release always does, [com.reau.app.dash.DashSocket.priorityMarks]).
      * [experimentAdaptiveBitrate]: the normal stream asks for 200 kbps and follows what the encoder really puts out ([com.reau.app.stream.BitrateAdapter]).
-     * [experimentWifiBind]: the Wi-Fi lock for low latency (Android 10 and later; on Android 14 and later the system already gives that lock, so that part changes nothing) and, when Android refuses to bind a socket to the dash's
-     * network (EPERM), a few more tries on the same network before it is let go ([com.reau.app.dash.BindRetry]).
+     * [experimentWifiBind]: when Android refuses to bind a socket to the dash's network (EPERM), a few more tries on the same network before it is let go
+     * ([com.reau.app.dash.BindRetry]). It used to carry a Wi-Fi lock for low latency too; that part changed nothing on Android 14 and later and is gone (the Wi-Fi lock is the app's own
+     * "high performance" one, as without the switch), the stored choice stays.
      */
     val experimentRtpPacing: Boolean = false,
     val experimentDebugDscp: Boolean = false,
@@ -212,14 +213,32 @@ data class REauSettings(
     val experimentWifiBind: Boolean = false,
     /** Experimental: the dash's Wi-Fi is asked for on the 2.4 GHz band only (Android 12 and later; [com.reau.app.dash.BandChoice]). Off, no band is asked, as always. */
     val experimentWifiBand: Boolean = false,
-    /** Experimental: if the app's process ends within 10 s of a projection started with experimental switches on, the next opening switches them off ([ExperimentsGuard]). */
-    val experimentStartGuard: Boolean = false,
+    /**
+     * The guard of the start: if the app's process ends within 10 s of a projection started with experimental switches on, the next opening switches them off
+     * ([ExperimentsGuard]). On by default (the owner's decision of 11/11/2026): it acts only when another experimental switch is on, so with none nothing changes. Whoever
+     * stored a choice keeps it; [sanitized] leaves it alone.
+     */
+    val experimentStartGuard: Boolean = true,
     /** Experimental: an encoder that takes frames in and gives none out for 3 s, without failing, is rebuilt ([com.reau.app.stream.EncoderMuteWatch]). Off, only an encoder that fails is. */
     val experimentEncoderWatch: Boolean = false,
     /** Experimental: when a keyframe is asked of Android Auto, the video focus is given back 400 ms after it was taken, not 100 ms ([com.reau.app.aa.FocusGap]). */
     val experimentFocusGap: Boolean = false,
     /** Experimental: the projection remembers whether it was night at its last look, so that dawn and dusk each have their own threshold as the theme's rule says ([com.reau.app.service.DayNight.Memory]). Off, every look starts as day, as always. */
     val experimentNightMemory: Boolean = false,
+    /** Experimental: the weather the dash's heartbeat carries goes away after 30 minutes without a new fetch, not after 3 hours ([com.reau.app.weather.WeatherKeeper.FRESH_MS]). The heartbeat has room for a temperature and an icon, not for an age. Off, 3 hours as always. */
+    val experimentWeatherAge: Boolean = false,
+    /** Experimental: the battery's temperature also lowers the stream's frame ceiling, from 44 C ([com.reau.app.stream.HeatCeiling]), for a phone whose thermal status never moves. Off, only Android's thermal status does, as always. */
+    val experimentHeatCeiling: Boolean = false,
+    /** Experimental: the speed profile reads the speed of the GPS fix when the GPS is already listened to for the info ring, and a route runs ([com.reau.app.stream.ProfileSpeed]); else the route's own estimate, as always. It never switches the GPS on. */
+    val experimentGpsSpeed: Boolean = false,
+    /** Experimental: a short "inactive" of Android Auto's navigation status during a route is shown as a recalculation for up to 8 seconds ([com.reau.app.service.RecalcHold]). Off, it clears the route's card at once, as always. */
+    val experimentRecalcInactive: Boolean = false,
+    /** Experimental: the dash's encoder is asked for BT.601 colours, limited range, SDR transfer ([com.reau.app.dash.video.ColorMatrix]); a codec that refuses is asked again as before. Off, no colour keys, as always. */
+    val experimentColorMatrix: Boolean = false,
+    /** Experimental: the handshake with Android Auto asks protocol 6.0 first ([com.reau.app.aa.ProtocolAsk]); a refusal or a failed handshake goes back to 1.7 for the rest of the process. Off, 1.7 as always. */
+    val experimentProtocolSix: Boolean = false,
+    /** Experimental: a tolerant watch of the dash's silence (12 s only in the log, 60 s ends the session, a keyframe when it speaks again) and the control packets 12 ms apart ([com.reau.app.dash.RxQuiet]). Off, 4 s of silence end the session and the packets go as they come. */
+    val experimentTolerantRx: Boolean = false,
 ) {
     /**
      * The bitrate the stream is built for and asked for while pictures keep coming: the profile's ([streamBitrateBps], 400 kbps) or, with
@@ -282,6 +301,7 @@ data class REauSettings(
         density, AaMargins(marginW, marginH), navigation = maneuverData, touch = phoneTouch, audio = audioSinks,
         media = dashMusic, phone = dashCaller,
         protocolMinor = if (aaNewProtocol) com.reau.app.aa.Messages.MINOR_NEWER else com.reau.app.aa.Messages.MINOR_DEFAULT,
+        protocolSix = experimentProtocolSix,
     )
 
     /**

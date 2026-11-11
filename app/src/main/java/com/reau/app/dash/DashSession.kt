@@ -69,6 +69,8 @@ class DashSession(
     private val timing: Timing = Timing(),
     /** The experimental switch of the bind retries ([BindRetry]), read at each try to open the sockets; off, a refused bind goes straight to [onBindResult]. */
     private val bindRetry: () -> Boolean = { false },
+    /** The experimental switch of the tolerant silence watch ([RxQuiet]), read at each turn of the watch: off, [Timing.rxWatchdogMs] of silence end the session. */
+    private val tolerantRx: () -> Boolean = { false },
 ) {
     /**
      * The waits of a session: [keyPatienceMs] for the dash's key before the greeting goes again, [rxWatchdogMs] of silence before the
@@ -80,6 +82,9 @@ class DashSession(
         val watchdogTickMs: Long = WATCHDOG_TICK_MS,
         /** The wait between two tries of a refused bind ([BindRetry.PAUSE_MS]). */
         val bindRetryPauseMs: Long = BindRetry.PAUSE_MS,
+        /** With the tolerant watch: the silence that ends the session, and the one that is only noted in the log ([RxQuiet]). */
+        val rxGiveUpMs: Long = RxQuiet.GIVE_UP_MS,
+        val rxNoteMs: Long = RxQuiet.NOTE_MS,
     )
 
     /** What this session and the dash exchanged. */
@@ -177,6 +182,9 @@ class DashSession(
      * network drops it and asks for another. Called before the failure of a refusal is reported.
      */
     var onBindResult: ((network: android.net.Network?, refused: Boolean) -> Unit)? = null
+
+    /** The dash spoke again after a silence the tolerant watch noted (the milliseconds it lasted): the video is asked for a keyframe. */
+    var onRxBack: ((silentMs: Long) -> Unit)? = null
 
     private var notices0904 = 0
     private var notices0906 = 0
@@ -1197,6 +1205,7 @@ class DashSession(
         heartbeatJob = scope.launch(Dispatchers.IO) {
             var n = 0
             val sentSinceRx = HeartbeatsSinceRx()
+            val quiet = RxQuiet()
             while (isActive) {
                 val status = phoneStatusProvider()
                 runCatching { sock.send(DashCommands.heartbeat(weather = weatherProvider(), status = status, call = callNow())) }
@@ -1215,7 +1224,11 @@ class DashSession(
                 // RX watchdog: once the dash has spoken at all (rxSilenceFails), a long silence means it
                 // dropped (out of range / off). UDP gives no error, so detect it here and fail the
                 // session instead of streaming into the void while the UI still says "connected".
-                if (rxSilenceFails(_state.value, lastRxMs, MonotonicClock.nowMs(), timing.rxWatchdogMs, sentSinceRx.tick(lastRxMs))) {
+                val tolerant = tolerantRx()
+                val heartbeatsSinceRx = sentSinceRx.tick(lastRxMs)
+                noteQuiet(quiet, tolerant, heartbeatsSinceRx)
+                val silenceLimit = if (tolerant) timing.rxGiveUpMs else timing.rxWatchdogMs
+                if (rxSilenceFails(_state.value, lastRxMs, MonotonicClock.nowMs(), silenceLimit, heartbeatsSinceRx)) {
                     val silent = (MonotonicClock.nowMs() - lastRxMs) / 1000
                     Log.w(TAG, "RX watchdog: no dash packets for ${silent}s — link lost")
                     com.reau.app.data.RideDiagnostics.error("error", "RX watchdog: dash silent ${silent}s → link lost")
@@ -1257,6 +1270,18 @@ class DashSession(
                 }
                 delay(timing.watchdogTickMs)
             }
+        }
+    }
+
+    /** The tolerant watch ([RxQuiet]), when its switch is on: a silence noted in the log, and the dash's return from one passed on to [onRxBack]. */
+    private fun noteQuiet(quiet: RxQuiet, tolerant: Boolean, heartbeatsSinceRx: Int) {
+        if (!tolerant) return quiet.reset()
+        val verdict = quiet.look(MonotonicClock.nowMs(), lastRxMs, _state.value == DashState.STREAMING, heartbeatsSinceRx, timing.rxNoteMs) ?: return
+        if (verdict.kind == RxQuiet.Kind.QUIET) {
+            com.reau.app.data.RideDiagnostics.warn("dash", RxQuiet.quietLine(verdict.ms))
+        } else {
+            com.reau.app.data.RideDiagnostics.log("dash", RxQuiet.backLine(verdict.ms))
+            onRxBack?.invoke(verdict.ms)
         }
     }
 

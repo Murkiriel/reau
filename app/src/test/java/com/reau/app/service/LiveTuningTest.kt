@@ -105,5 +105,13 @@ class LiveTuningTest {
         assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentStartGuard = true)))
         assertEquals("a session of Android Auto is not restarted for it", emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentFocusGap = true)))
         assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentNightMemory = true)))
+        // The seven of the third round are read from the live settings where they act (or at the next start); none of them restarts anything.
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentWeatherAge = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentHeatCeiling = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentGpsSpeed = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentRecalcInactive = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentColorMatrix = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentProtocolSix = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentTolerantRx = true)))
     }
 }

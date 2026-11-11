@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit
 class AapTransport(
     private val context: Context,
     private val externalSsl: AapSslContext? = null,
+    private val protocolMajor: Int = 1,
     private val protocolMinor: Int = Messages.MINOR_DEFAULT,
     /** How many times the version request may be sent; the last one waits out the whole budget. */
     private val versionRequests: Int = AaConfig.VERSION_REQUESTS,
@@ -231,6 +232,7 @@ class AapTransport(
         AaLog.i("Start Aap transport handshake for $connection")
         this.connection = connection
         wasUserExit = false
+        answeredVersion = null
 
         ending = false
         sendThread = HandlerThread("AapTransport:Handler::Send", Process.THREAD_PRIORITY_AUDIO)
@@ -241,7 +243,12 @@ class AapTransport(
         pollThread!!.start()
         pollHandler = Handler(pollThread!!.looper, pollHandlerCallback)
 
-        if (!handshake(connection)) {
+        val handshook = handshake(connection)
+        // Protocol 6.0, asked on the experimental switch: whether it worked is kept, and the ride log says what was asked and answered (ProtocolAsk).
+        ProtocolAsk.settle(ProtocolAsk.Version(protocolMajor, protocolMinor), handshook, answeredVersion) { line, failed ->
+            if (failed) AaLog.w(line) else AaLog.i(line)
+        }
+        if (!handshook) {
             quit()
             AaLog.e("Handshake failed")
             return false
@@ -280,6 +287,9 @@ class AapTransport(
         }
     }
 
+    /** What Android Auto answered to the version request of this handshake ("1.7, status 0"); null before an answer. */
+    @Volatile private var answeredVersion: String? = null
+
     /** Bytes 4 and 5 of a frame header hold the message type; 2 is VERSION_RESPONSE. */
     private fun isVersionResponseType(buffer: ByteArray): Boolean = buffer[4] == 0.toByte() && buffer[5] == 2.toByte()
 
@@ -300,8 +310,8 @@ class AapTransport(
                 if (drained > 0) AaLog.i("Handshake: Drained $drained bytes of stale data before version request")
             }
 
-            AaLog.i("Handshake: Starting version request 1.$protocolMinor. TS: ${SystemClock.elapsedRealtime()}")
-            val version = Messages.versionRequestFor(protocolMinor)
+            AaLog.i("Handshake: Starting version request $protocolMajor.$protocolMinor. TS: ${SystemClock.elapsedRealtime()}")
+            val version = Messages.versionRequestFor(protocolMajor, protocolMinor)
             var ret: Int
             var attempt = 0
             var received = false
@@ -330,7 +340,8 @@ class AapTransport(
                     if (ret <= 0) break
                     if (ret >= 6 && buffer[0] == 0.toByte() && isVersionResponseType(buffer)) {
                         AaLog.i("Handshake: Version response received: ${Messages.versionAnswer(buffer, ret)} (ret=$ret, attempt=$attempt).")
-                        Messages.versionRefusal(buffer, ret)?.let { AaLog.w(Messages.versionRefusalLine(it, protocolMinor)) }
+                        answeredVersion = Messages.versionAnswer(buffer, ret)
+                        Messages.versionRefusal(buffer, ret)?.let { AaLog.w(Messages.versionRefusalLine(it, protocolMajor, protocolMinor)) }
                         received = true
                         break
                     }

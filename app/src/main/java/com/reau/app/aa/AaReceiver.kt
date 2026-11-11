@@ -523,7 +523,10 @@ internal class AaReceiver(
     private fun runSession(mine: Int, socket: Socket): Boolean {
         val config = this.config
         val link = SocketAccessoryConnection(socket)
-        val transport = AapTransport(context, protocolMinor = config.protocolMinor, versionRequests = config.versionRequests, focusGapMs = focusGapMs)
+        val asked = ProtocolAsk.resolve(config.protocolSix, config.protocolMinor)
+        val transport = AapTransport(
+            context, protocolMajor = asked.major, protocolMinor = asked.minor, versionRequests = config.versionRequests, focusGapMs = focusGapMs,
+        )
         val ended = CountDownLatch(1)
         val clean = AtomicBoolean()
         transport.onQuit = { wasClean ->

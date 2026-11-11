@@ -104,6 +104,51 @@ class DashEncoder(
          */
         internal fun iFrameIntervalText(sec: Int, fpsHint: Int): String = "$sec (every ${fpsHint * sec} frames at the hint)"
 
+        /** What [prepare] was asked for, which the format is made from. */
+        internal class Ask(val fpsHint: Int, val bitrateBps: Int, val iFrameIntervalSec: Int, val colorMatrix: Boolean)
+
+        internal fun buildFormat(ask: Ask, lowLatency: Boolean, rate: Int? = null, color: Boolean = false) =
+            MediaFormat.createVideoFormat(MIME, WIDTH, HEIGHT).apply {
+                setInteger(MediaFormat.KEY_COLOR_FORMAT,
+                    MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+                setInteger(MediaFormat.KEY_BIT_RATE, ask.bitrateBps)
+                setInteger(MediaFormat.KEY_FRAME_RATE, ask.fpsHint)
+                setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, ask.iFrameIntervalSec)
+                setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline)
+                setInteger(MediaFormat.KEY_LEVEL,
+                    MediaCodecInfo.CodecProfileLevel.AVCLevel41)
+                setLong(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER, REPEAT_AFTER_US)
+                if (lowLatency) lowLatencyKeys(android.os.Build.VERSION.SDK_INT, ask.fpsHint).forEach { (k, v) -> setInteger(k, v) }
+                if (rate != null) setInteger(MediaFormat.KEY_BITRATE_MODE, rate)
+                ColorMatrix.keysFor(color).forEach { (k, v) -> setInteger(k, v) }
+            }
+
+        /**
+         * One encoder [name] started: with the experimental colour keys first when [Ask.colorMatrix] (a codec that refuses them is asked as it always was), then,
+         * as ever, with the realtime keys; a vendor encoder that rejects those outright must not cost the rider the stream: retry once without them, then once
+         * more without the bitrate mode.
+         */
+        internal fun startNamed(
+            name: String?, ask: Ask, rate: RateMode, detail: String, start: (String?, MediaFormat, String) -> MediaCodec,
+        ): Result<MediaCodec> {
+            fun asBefore() = runCatching { start(name, buildFormat(ask, lowLatency = true, rate.constant), "$detail lowLatency=on") }
+                .recoverCatching { e ->
+                    start(name, buildFormat(ask, lowLatency = false, rate.constant), "$detail lowLatency=fallback (${e.javaClass.simpleName})")
+                }.recoverCatching { e ->
+                    if (rate.constant == null) throw e
+                    start(name, buildFormat(ask, lowLatency = false), "$detail lowLatency=fallback bitrateMode=fallback (${e.javaClass.simpleName})")
+                }
+            return ColorMatrix.attempt(
+                on = ask.colorMatrix,
+                withColor = {
+                    val format = buildFormat(ask, lowLatency = true, rate.constant, color = true)
+                    runCatching { start(name, format, "$detail lowLatency=on color=${ColorMatrix.ASKED}") }
+                },
+                asBefore = ::asBefore,
+                refused = { com.reau.app.data.RideDiagnostics.warn("stream", ColorMatrix.refusedLine(name, CodecErrors.describe(it, name))) },
+            )
+        }
+
         private fun constantOf(mode: BitrateMode): Int = when (mode) {
             BitrateMode.CBR -> MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR
             BitrateMode.VBR -> MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR
@@ -165,20 +210,9 @@ class DashEncoder(
         bitrateBps: Int = BITRATE,
         iFrameIntervalSec: Int = 1,
         bitrateMode: BitrateMode? = null,
+        colorMatrix: Boolean = false,
     ): Boolean {
-        fun buildFormat(lowLatency: Boolean, rate: Int? = null) = MediaFormat.createVideoFormat(MIME, WIDTH, HEIGHT).apply {
-            setInteger(MediaFormat.KEY_COLOR_FORMAT,
-                MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
-            setInteger(MediaFormat.KEY_BIT_RATE, bitrateBps)
-            setInteger(MediaFormat.KEY_FRAME_RATE, fpsHint)
-            setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, iFrameIntervalSec)
-            setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline)
-            setInteger(MediaFormat.KEY_LEVEL,
-                MediaCodecInfo.CodecProfileLevel.AVCLevel41)
-            setLong(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER, REPEAT_AFTER_US)
-            if (lowLatency) lowLatencyKeys(android.os.Build.VERSION.SDK_INT, fpsHint).forEach { (k, v) -> setInteger(k, v) }
-            if (rate != null) setInteger(MediaFormat.KEY_BITRATE_MODE, rate)
-        }
+        val ask = Ask(fpsHint, bitrateBps, iFrameIntervalSec, colorMatrix)
         // Every AVC encoder that can take the size and Baseline, hardware first (a software fallback runs the CPU hot, which
         // is exactly what this whole project exists to avoid); the system's own pick is the last try.
         val names: List<String?> = encoderNames() + null
@@ -187,15 +221,7 @@ class DashEncoder(
             val rate = rateMode(bitrateMode) { mode -> modeOffered(name, mode) }
             val detail = "fpsHint=$fpsHint bitrateBps=$bitrateBps profile=baseline " +
                 "iFrameIntervalSec=${iFrameIntervalText(iFrameIntervalSec, fpsHint)} repeatAfterUs=$REPEAT_AFTER_US bitrateMode=${rate.label}"
-            // A vendor encoder that rejects the realtime keys outright must not cost the rider the
-            // stream: retry once without them, then once more without the bitrate mode.
-            val started = runCatching { startCodec(name, buildFormat(lowLatency = true, rate.constant), "$detail lowLatency=on") }
-                .recoverCatching { e ->
-                    startCodec(name, buildFormat(lowLatency = false, rate.constant), "$detail lowLatency=fallback (${e.javaClass.simpleName})")
-                }.recoverCatching { e ->
-                    if (rate.constant == null) throw e
-                    startCodec(name, buildFormat(lowLatency = false), "$detail lowLatency=fallback bitrateMode=fallback (${e.javaClass.simpleName})")
-                }
+            val started = startNamed(name, ask, rate, detail, ::startCodec)
             started.onSuccess { c ->
                 lastPrepareError = null
                 codec = c

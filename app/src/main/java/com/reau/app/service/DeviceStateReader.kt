@@ -27,7 +27,7 @@ class DeviceStateReader(private val context: Context, private val bikeNetwork: (
     private val display = context.getSystemService(DisplayManager::class.java)
 
     /** The state now; what it says of the charger, the screen and doze is also kept for the line on a link's end. */
-    fun read(): DeviceState = readNow().also { com.reau.app.data.PhoneNow.update(it.charging, it.screenOn, it.dozing) }
+    fun read(): DeviceState = readNow().also { com.reau.app.data.PhoneNow.update(it.charging, it.screenOn, it.dozing, it.batteryTempC) }
 
     private fun readNow(): DeviceState {
         val battery = runCatching {

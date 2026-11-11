@@ -367,6 +367,7 @@
     <string name="group_card">Fondo</string>
     <string name="group_connection_experiments">Conexión experimental</string>
     <string name="group_video_experiments">Video experimental</string>
+    <string name="group_dash_experiments">Tablero experimental</string>
     <string name="exp_pacing_title">Espaciar el video</string>
     <string name="exp_pacing_sub">Experimental: pausa de 2 ms cada 4 paquetes de video, como máximo 400 por segundo</string>
     <string name="exp_dscp_title">Marcar la prioridad del Wi-Fi en la debug</string>
@@ -374,7 +375,7 @@
     <string name="exp_bitrate_title">Bitrate menor y adaptativo</string>
     <string name="exp_bitrate_sub">Experimental: apunta a 200 kbps y sigue lo que el codificador realmente genera</string>
     <string name="exp_wifi_title">Wi-Fi y EPERM</string>
-    <string name="exp_wifi_sub">Experimental: bloqueo de Wi-Fi de baja latencia (Android 10 a 13; en Android 14 o posterior esta parte no cambia nada) y 5 intentos más en la misma red cuando Android la rechaza (EPERM). Vale desde la próxima conexión</string>
+    <string name="exp_wifi_sub">Experimental: 5 intentos más en la misma red cuando Android rechaza conectar con el tablero (EPERM). El bloqueo de Wi-Fi de baja latencia salió de este interruptor: en Android 14 o posterior no cambiaba nada, y se mantiene la elección de quien ya lo tenía encendido. Vale desde la próxima conexión</string>
     <string name="exp_encoder_watch_title">Rehacer el codificador mudo</string>
     <string name="exp_encoder_watch_sub">Experimental: si el codificador de video recibe cuadros y no devuelve ninguno durante 3 s, se rehace (hasta 3 veces por transmisión)</string>
     <string name="exp_focus_gap_title">Pausa mayor al pedir cuadro clave</string>
@@ -385,6 +386,20 @@
     <string name="exp_start_guard_sub">Experimental: si la app muere hasta 10 s después de un arranque hecho con interruptores experimentales encendidos, se apagan la próxima vez que la app se abre, y el registro lo dice</string>
     <string name="exp_night_memory_title">Día y noche con memoria</string>
     <string name="exp_night_memory_sub">Experimental: con el tema del mapa según el sol, el tema nocturno dura hasta la salida del sol en vez de terminar cerca de media hora antes. Vale desde la próxima mirada, en hasta un minuto</string>
+    <string name="exp_weather_age_title">El clima viejo sale del tablero</string>
+    <string name="exp_weather_age_sub">Experimental: el clima deja de enviarse al tablero cuando hace más de 30 minutos que se obtuvo (hoy, 3 horas). El tablero no tiene lugar para decir la edad del dato. Vale al instante</string>
+    <string name="exp_heat_ceiling_title">Tope de cuadros por el calor de la batería</string>
+    <string name="exp_heat_ceiling_sub">Experimental: desde 44 °C en la batería el ritmo máximo del video baja (75, 62 y 50 por ciento de él, a 44, 46 y 48 °C) y solo sube 3 °C por debajo de cada escalón. Para el teléfono cuyo estado térmico de Android nunca cambia. Vale al instante</string>
+    <string name="exp_gps_speed_title">Velocidad del GPS en los perfiles</string>
+    <string name="exp_gps_speed_sub">Experimental: el perfil por velocidad lee la velocidad del GPS cuando hay ruta y el GPS ya está encendido para el anillo de información (con “Usar la ubicación” activado); si no, la estimación de la ruta, como antes. No enciende el GPS. Vale al instante</string>
+    <string name="exp_recalc_title">Recalculando con un “inactivo” corto</string>
+    <string name="exp_recalc_sub">Experimental: un “inactivo” corto de Android Auto durante la ruta (hasta 8 s) aparece en el tablero como recalculando, en vez de borrar la ruta. Vale al instante</string>
+    <string name="exp_color_title">Colores del codificador explícitos</string>
+    <string name="exp_color_sub">Experimental: al codificador del tablero se le pide BT.601, rango limitado, SDR. Si el códec lo rechaza, se pide como antes, y el registro dice lo que aceptó. Vale desde el próximo video</string>
+    <string name="exp_protocol_six_title">Protocolo 6.0 de Android Auto</string>
+    <string name="exp_protocol_six_sub">Experimental: el apretón de manos pide la versión 6.0 del protocolo (hoy, 1.7). Si Android Auto la rechaza o el apretón de manos falla, se vuelve a pedir 1.7 hasta que la app se cierre, y el registro dice lo que se pidió y se respondió. Vale desde el próximo encendido</string>
+    <string name="exp_tolerant_rx_title">Vigilancia del tablero más tolerante</string>
+    <string name="exp_tolerant_rx_sub">Experimental: el silencio del tablero solo entra en el registro a los 12 s y tumba la sesión a los 60 s (hoy, 4 s); cuando el tablero vuelve, se pide un cuadro clave. Los paquetes de control salen con 12 ms entre sí. Vale desde la próxima conexión</string>
     <string name="pairing_known_title">Tablero conocido</string>
     <string name="pairing_known_info">Este es el tablero cuyo nombre completo de Wi-Fi REau ya conoce y que necesita para conectarse. \"Olvidar\" borra ese nombre, todo lo que el tablero ha reportado (los datos de la moto de abajo) y la red sugerida a Android; después, REau vuelve a buscar el tablero (con REau abierta, el nombre aparece solo) o tú escribes el nombre completo. Úsalo cuando cambies de moto o de tablero.</string>
     <string name="pairing_unknown_title">Ningún tablero conocido</string>

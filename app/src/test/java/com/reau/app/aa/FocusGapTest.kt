@@ -71,7 +71,7 @@ class FocusGapTest {
         assertTrue("with nothing given, the transport uses the usual gap", transport.contains("private val focusGapMs: () -> Long = { FocusGap.DEFAULT_MS },"))
         assertFalse("the fixed 100 ms is gone from the transport", transport.contains("FOCUS_GAIN_DELAY_MS"))
         val receiver = File("src/main/java/com/reau/app/aa/AaReceiver.kt").readText()
-        assertTrue(receiver.contains("focusGapMs = focusGapMs)"))
+        assertTrue(receiver.contains("versionRequests = config.versionRequests, focusGapMs = focusGapMs,"))
         assertTrue(receiver.contains("stats.onKeyframe = transport::keyframeArrived"))
         assertTrue("with no option given, the receiver uses the usual gap", receiver.contains("val focusGapMs: () -> Long = { FocusGap.DEFAULT_MS },"))
         val live = File("src/main/java/com/reau/app/service/LiveSides.kt").readText()

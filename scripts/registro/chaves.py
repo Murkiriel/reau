@@ -35,13 +35,21 @@ CHAVES = [
     ("experimentRtpPacing", "espaçar o RTP", "video pacing"),
     ("experimentDebugDscp", "DSCP na debug", "priority marks"),
     ("experimentAdaptiveBitrate", "bitrate menor", "lower adaptive bitrate"),
-    ("experimentWifiBind", "Wi-Fi e EPERM", "Wi-Fi low-latency lock"),
+    ("experimentWifiBind", "Wi-Fi e EPERM", "bind retries on the same network"),
     ("experimentWifiBand", "só 2,4 GHz", "2.4 GHz only"),
-    ("experimentStartGuard", "proteger a partida", "start guard"),
     ("experimentEncoderWatch", "codificador mudo", "mute encoder watch"),
     ("experimentFocusGap", "pausa do foco", "focus gap"),
     ("experimentNightMemory", "dia e noite com memória", "day and night remembered"),
+    # As sete da leva 5 (11/11/2026); o trecho é o que `connection experiments ON:` diz de cada uma.
+    ("experimentWeatherAge", "clima velho some", "weather hidden from the dash"),
+    ("experimentHeatCeiling", "teto pelo calor da bateria", "frame ceiling lowered by the battery"),
+    ("experimentGpsSpeed", "velocidade do GPS", "GPS speed for the speed profile"),
+    ("experimentRecalcInactive", "recalculando pelo inativo", "short inactive of the route"),
+    ("experimentColorMatrix", "cores do codificador", "BT.601 limited-range"),
+    ("experimentProtocolSix", "protocolo 6.0", "protocol 6.0 asked"),
+    ("experimentTolerantRx", "vigia tolerante", "tolerant dash silence watch"),
 ]
+GUARDA = "experimentStartGuard"
 SETTINGS = "settings in use:"
 EXPERIMENTOS_LIGADOS = "connection experiments ON:"
 CAMPO = re.compile(r"\b(experiment\w+)=(true|false)\b")
@@ -66,7 +74,8 @@ def chaves_da_linha(texto):
     """(conjunto de campos ligados, se a linha fala das chaves) de uma linha `settings in use:` ou `connection experiments ON:`; None para qualquer outra."""
     if texto.startswith(SETTINGS):
         campos = CAMPO.findall(texto)
-        return {nome for nome, valor in campos if valor == "true"}, bool(campos)
+        # A guarda da partida vem ligada por padrão desde 11/11/2026 e não é um experimento: agir só age com outro ligado. Não agrupa corridas.
+        return {nome for nome, valor in campos if valor == "true" and nome != GUARDA}, bool(campos)
     if texto.startswith(EXPERIMENTOS_LIGADOS):
         return {campo for campo, _, trecho in CHAVES if trecho in texto}, True
     return None

@@ -91,6 +91,12 @@ object WeatherKeeper {
     /** Older than this the weather is not told to the dash any more (three hours): better none than an old one. */
     const val USABLE_MS = 3 * 60 * 60_000L
 
+    /**
+     * With the experimental switch ([com.reau.app.settings.REauSettings.experimentWeatherAge]) older than this the weather is not told to the dash any more (half an
+     * hour: two fetches missed, where the info ring already marks the forecast as old, [InfoRing.STALE_MS]). The heartbeat has a temperature and an icon, and no room for an age.
+     */
+    const val FRESH_MS = 30 * 60_000L
+
     private const val MINUTE_MS = 60_000L
 
     private val lock = Mutex()
@@ -135,12 +141,18 @@ object WeatherKeeper {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { clear() }
     }
 
-    /** The weather as the dash's heartbeat takes it, or null: none yet, none usable, or a current reading with no temperature. */
-    fun forDash(nowMs: Long = System.currentTimeMillis()): DashCommands.Weather? = forDash(snapshotState.value, nowMs)
+    /**
+     * The weather as the dash's heartbeat takes it, or null: none yet, none usable, or a current reading with no temperature. [freshOnly] (the experimental
+     * switch) takes it away after [FRESH_MS] instead of [USABLE_MS].
+     */
+    fun forDash(nowMs: Long = System.currentTimeMillis(), freshOnly: Boolean = false): DashCommands.Weather? =
+        forDash(snapshotState.value, nowMs, freshOnly = freshOnly)
 
-    internal fun forDash(snapshot: Snapshot?, nowMs: Long, monoNowMs: Long = MonotonicClock.nowMs()): DashCommands.Weather? {
+    internal fun forDash(
+        snapshot: Snapshot?, nowMs: Long, monoNowMs: Long = MonotonicClock.nowMs(), freshOnly: Boolean = false,
+    ): DashCommands.Weather? {
         snapshot ?: return null
-        if (snapshot.ageMs(nowMs, monoNowMs) > USABLE_MS) return null
+        if (snapshot.ageMs(nowMs, monoNowMs) > (if (freshOnly) FRESH_MS else USABLE_MS)) return null
         val now = snapshot.forecast.current ?: return null
         // A temperature that is not a number (a broken answer) is no weather: rounding it throws.
         if (!now.temperatureC.isFinite()) return null

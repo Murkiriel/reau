@@ -41,6 +41,15 @@ internal object EncoderReport {
     fun outputAnnounced(asked: MediaFormat, input: MediaFormat?, output: MediaFormat) {
         outputFormat(output)
         accepted(asked, input, output)
+        colour(asked, input, output)
+    }
+
+    /** With the experimental colour keys asked (and only then), what the codec says of them: its output format over its input one. */
+    private fun colour(asked: MediaFormat, input: MediaFormat?, output: MediaFormat) {
+        if (!asked.containsKey(MediaFormat.KEY_COLOR_STANDARD)) return
+        runCatching {
+            RideDiagnostics.log("stream", ColorMatrix.acceptedLine { key -> numberOf(output, key)?.toInt() ?: input?.let { numberOf(it, key)?.toInt() } })
+        }
     }
 
     /** The codec's output format, when it changes (once, before the first buffer). */

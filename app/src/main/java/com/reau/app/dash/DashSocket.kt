@@ -41,6 +41,8 @@ class DashSocket(
     private val rtpDest: InetSocketAddress = InetSocketAddress(InetAddress.getByName(DASH_IP), RTP_PORT),
     // The experimental switch (REauSettings.experimentDebugDscp): a debug build marks the sockets too. Off, the marking is the build's own, as always.
     private val markInDebug: Boolean = false,
+    // The experimental switch (REauSettings.experimentTolerantRx): the control packets leave this many milliseconds apart ([ControlGap]). 0: they leave as they come, as always.
+    controlGapMs: Long = 0L,
 ) : AutoCloseable {
     companion object {
         const val DASH_IP    = "192.168.1.1"
@@ -48,6 +50,7 @@ class DashSocket(
         const val CTRL_PORT  = 2000
         const val RX_PORT    = 2002
         const val RTP_PORT   = 5000
+        private const val NS_PER_MS = 1_000_000L
         private const val BUF             = 65535
         private const val RECV_TIMEOUT_MS = 500
         private const val TAG             = "DashSocket"
@@ -97,6 +100,7 @@ class DashSocket(
     private val rtpSocket: DatagramSocket
 
     private val seq = AtomicInteger(0)
+    private val controlGap = ControlGap(controlGapMs)
 
     /** Where every control packet in and out is counted; null counts nothing. */
     @Volatile var stats: DashStats? = null
@@ -178,6 +182,7 @@ class DashSocket(
         }
         // Every PROBE_EVERY-th call of a suppressed link falls through and actually hits the socket, so a
         // recovered link is detected on its own instead of staying suppressed forever.
+        waitForTheGap()
         val pkt = K1GPacket.patchSeq(data, seq.getAndIncrement())
         // UDP fire-and-forget: a dropped/unreachable link (ENETUNREACH, EBADF) must never
         // crash the app — the session will fail and reconnect.
@@ -187,6 +192,17 @@ class DashSocket(
         } catch (e: Exception) {
             sendFailed(e)
             null
+        }
+    }
+
+    /** With the experimental gap ([ControlGap]) set, holds the packet until the one before it has had its time on the wire; with none set it returns at once. */
+    private fun waitForTheGap() {
+        val ns = controlGap.waitNs(System.nanoTime())
+        if (ns <= 0L) return
+        try {
+            Thread.sleep(ns / NS_PER_MS, (ns % NS_PER_MS).toInt())
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
         }
     }
 

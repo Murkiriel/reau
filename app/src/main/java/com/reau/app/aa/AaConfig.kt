@@ -36,6 +36,8 @@ data class AaConfig(
     val audio: Boolean = false,
     val protocolMinor: Int = Messages.MINOR_DEFAULT,
     val versionRequests: Int = VERSION_REQUESTS,
+    /** Experimental: protocol 6.0 is asked first ([ProtocolAsk]); [protocolMinor] is the version to go back to. */
+    val protocolSix: Boolean = false,
 ) {
     companion object {
         /**

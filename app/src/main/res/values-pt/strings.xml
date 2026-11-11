@@ -366,6 +366,7 @@
     <string name="group_card">Wallpaper</string>
     <string name="group_connection_experiments">Conexão experimental</string>
     <string name="group_video_experiments">Vídeo experimental</string>
+    <string name="group_dash_experiments">Painel experimental</string>
     <string name="exp_pacing_title">Espaçar o vídeo</string>
     <string name="exp_pacing_sub">Experimental: pausa de 2 ms a cada 4 pacotes de vídeo, no máximo 400 por segundo</string>
     <string name="exp_dscp_title">Marcar prioridade do Wi-Fi na debug</string>
@@ -373,7 +374,7 @@
     <string name="exp_bitrate_title">Bitrate menor e adaptativo</string>
     <string name="exp_bitrate_sub">Experimental: mira 200 kbps e acompanha o que o codificador realmente gera</string>
     <string name="exp_wifi_title">Wi-Fi e EPERM</string>
-    <string name="exp_wifi_sub">Experimental: trava de Wi-Fi de baixa latência (Android 10 a 13; no Android 14 ou mais novo essa parte não muda nada) e mais 5 tentativas na mesma rede quando o Android recusa (EPERM). Vale a partir da próxima conexão</string>
+    <string name="exp_wifi_sub">Experimental: mais 5 tentativas na mesma rede quando o Android recusa ligar ao painel (EPERM). A trava de Wi-Fi de baixa latência saiu desta chave: no Android 14 ou mais novo não mudava nada, e vale a escolha de quem já a ligou. Vale a partir da próxima conexão</string>
     <string name="exp_encoder_watch_title">Refazer o codificador mudo</string>
     <string name="exp_encoder_watch_sub">Experimental: se o codificador de vídeo recebe quadros e não devolve nenhum por 3 s, ele é refeito (até 3 vezes por transmissão)</string>
     <string name="exp_focus_gap_title">Pausa maior ao pedir quadro-chave</string>
@@ -384,6 +385,20 @@
     <string name="exp_start_guard_sub">Experimental: se o app morre até 10 s depois de uma partida feita com chaves experimentais ligadas, elas são desligadas na próxima abertura do app, e o registro diz isso</string>
     <string name="exp_night_memory_title">Dia e noite com memória</string>
     <string name="exp_night_memory_sub">Experimental: com o tema do mapa pelo sol, o tema noturno vai até o nascer do sol em vez de acabar cerca de meia hora antes. Vale a partir da próxima olhada, em até um minuto</string>
+    <string name="exp_weather_age_title">Clima velho some do painel</string>
+    <string name="exp_weather_age_sub">Experimental: o clima deixa de ser mandado ao painel quando faz mais de 30 minutos que foi buscado (hoje, 3 horas). O painel não tem lugar para dizer a idade do dado. Vale na hora</string>
+    <string name="exp_heat_ceiling_title">Teto de quadros pelo calor da bateria</string>
+    <string name="exp_heat_ceiling_sub">Experimental: a partir de 44 °C na bateria o ritmo máximo do vídeo desce (75, 62 e 50 por cento dele, a 44, 46 e 48 °C) e só sobe 3 °C abaixo de cada degrau. Para o celular cujo estado térmico do Android nunca muda. Vale na hora</string>
+    <string name="exp_gps_speed_title">Velocidade do GPS nos perfis</string>
+    <string name="exp_gps_speed_sub">Experimental: o perfil por velocidade lê a velocidade do GPS quando há rota e o GPS já está ligado para o anel de informações (com “Usar a localização” ligado); senão, a estimativa da rota, como antes. Não liga o GPS. Vale na hora</string>
+    <string name="exp_recalc_title">Recalculando pelo “inativo” curto</string>
+    <string name="exp_recalc_sub">Experimental: um “inativo” curto do Android Auto durante a rota (até 8 s) aparece no painel como recalculando, em vez de apagar a rota. Vale na hora</string>
+    <string name="exp_color_title">Cores do codificador explícitas</string>
+    <string name="exp_color_sub">Experimental: o codificador do painel é pedido em BT.601, faixa limitada, SDR. Se o codec recusar, é pedido como antes, e o registro diz o que ele aceitou. Vale a partir do próximo vídeo</string>
+    <string name="exp_protocol_six_title">Protocolo 6.0 do Android Auto</string>
+    <string name="exp_protocol_six_sub">Experimental: o aperto de mão pede a versão 6.0 do protocolo (hoje, 1.7). Se o Android Auto recusar ou o aperto de mão falhar, volta ao 1.7 até o app fechar, e o registro diz o que foi pedido e respondido. Vale a partir da próxima vez que ligar</string>
+    <string name="exp_tolerant_rx_title">Vigia do painel mais tolerante</string>
+    <string name="exp_tolerant_rx_sub">Experimental: o silêncio do painel só entra no registro aos 12 s e derruba a sessão aos 60 s (hoje, 4 s); quando o painel volta, um quadro-chave é pedido. Os pacotes de controle saem 12 ms um do outro. Vale a partir da próxima conexão</string>
     <string name="pairing_known_title">Painel conhecido</string>
     <string name="pairing_known_info">É o painel de que o REau já sabe o nome inteiro do Wi-Fi, que ele precisa para se conectar. \"Esquecer\" apaga esse nome, tudo o que o painel já disse (os \"Dados da moto\" abaixo) e a rede sugerida ao Android; depois, o REau procura o painel de novo (com o REau aberto, o nome aparece sozinho) ou você digita o nome inteiro. Use ao trocar de moto ou de painel.</string>
     <string name="pairing_unknown_title">Nenhum painel conhecido</string>

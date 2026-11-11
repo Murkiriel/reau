@@ -94,11 +94,13 @@ internal class VideoLoop(
         val adaptiveBitrate: Boolean = false,
         /** Experimental ([com.reau.app.settings.REauSettings.experimentEncoderWatch]): an encoder gone mute without failing is rebuilt ([EncoderMuteWatch]). */
         val encoderMuteWatch: Boolean = false,
+        /** Experimental ([com.reau.app.settings.REauSettings.experimentColorMatrix]): the encoder is asked for BT.601, limited range, SDR ([com.reau.app.dash.video.ColorMatrix]). */
+        val colorMatrix: Boolean = false,
     ) {
         /**
          * These settings with what the rider's own settings decide of the stream: the rate ceiling and clock, the bitrate (the experimental
          * adaptive one asks for its own target, [REauSettings.effectiveStreamBitrateBps]), its mode and keyframe interval, the light-screen pace and
-         * the three experimental switches. What a projection starts with and what a new stream takes up, the same.
+         * the experimental switches. What a projection starts with and what a new stream takes up, the same.
          */
         fun withRider(rider: REauSettings): Settings = copy(
             ceilingFps = rider.fpsCeiling,
@@ -110,6 +112,7 @@ internal class VideoLoop(
             rtpPacing = rider.experimentRtpPacing,
             adaptiveBitrate = rider.experimentAdaptiveBitrate,
             encoderMuteWatch = rider.experimentEncoderWatch,
+            colorMatrix = rider.experimentColorMatrix,
         )
     }
 
@@ -383,7 +386,7 @@ internal class VideoLoop(
         // What the phone offers and what the codec accepted go to the ride log once for a stream: the first encoder tells it, a rebuilt one does not.
         created.reportCodecs = reportCodecsOfNextEncoder
         reportCodecsOfNextEncoder = false
-        if (created.prepare(fps, bitrateBps, encoderKeyframeSec, settings.bitrateMode)) return created
+        if (created.prepare(fps, bitrateBps, encoderKeyframeSec, settings.bitrateMode, colorMatrix = settings.colorMatrix)) return created
         log("${RideDiagnostics.ERROR}encoder prepare failed: ${created.lastPrepareError}")
         return null
     }

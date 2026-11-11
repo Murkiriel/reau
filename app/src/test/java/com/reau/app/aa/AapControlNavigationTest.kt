@@ -6,6 +6,7 @@ import com.reau.app.aa.proto.NavigationStatus.NavigationClusterStatus.Navigation
 import com.reau.app.aa.proto.NavigationStatus.NavigationManeuver.NavigationType
 import com.reau.app.aa.proto.NavigationStatus.NextTurnDetail
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -88,6 +89,23 @@ class AapControlNavigationTest {
         assertTrue(seen.last().rerouting)
         status(NavigationStatusEnum.INACTIVE)
         assertEquals(NavGuidance.INACTIVE, seen.last())
+    }
+
+    @Test
+    fun `the status inactive is told apart from the other ends of a guidance, though it is equal to them`() {
+        state(NavigationType.TURN_NORMAL_LEFT)
+        status(NavigationStatusEnum.INACTIVE)
+        assertTrue(seen.last().endedByStatus)
+        assertEquals("equal to the plain end, so nothing that compares notices", NavGuidance.INACTIVE, seen.last())
+        state(NavigationType.STRAIGHT)
+        status(NavigationStatusEnum.UNAVAILABLE)
+        assertFalse(seen.last().endedByStatus)
+        assertEquals(NavGuidance.INACTIVE, seen.last())
+        state(NavigationType.STRAIGHT)
+        on(NavigationStatus.MsgType.INSTRUMENT_CLUSTER_STOP_VALUE, NavigationStatus.NavigationStatusStop.newBuilder().buildPartial())
+        assertFalse("a cluster stop is no recalculation", seen.last().endedByStatus)
+        assertFalse(NavGuidance.INACTIVE.endedByStatus)
+        assertFalse(NavGuidance(active = true).endedByStatus)
     }
 
     @Test

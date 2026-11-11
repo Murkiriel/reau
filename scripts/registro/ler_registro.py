@@ -76,6 +76,11 @@ vídeo (`video/`) de uma coleta saem da seção "GRAVAÇÕES DA COLETA" (`gravac
 `last dash packet` a partir da linha que o diz, não da primeira linha da queda (98,3 s onde eram ~96 s); a união que a linha `connected` não diz de quem foi não é mais chamada de
 «o Android uniu sozinho».
 
+Desde 11/11/2026 (leva 5): as sete chaves experimentais novas (clima velho some, teto de quadros pela bateria, velocidade do GPS no perfil, «inativo» curto como recalculo, cores do
+codificador, protocolo 6.0 do Android Auto, vigia tolerante do painel) entram no agrupamento de `chaves.py` pelo que `connection experiments ON:` diz de cada uma, e a linha do tempo diz,
+em português, o que elas escrevem (`RX quiet`/`RX back`, `route: a short inactive …`, `speed profile: …`, `encoder colour: …`, `Handshake: asked protocol …`, o teto pela bateria na etiqueta
+`heat`). A chave do EPERM não fala mais da trava de Wi-Fi (`bind retries on the same network`); os registros de antes, que diziam a trava, continuam achados por `chaves.py`.
+
 Em registros de versões até a 0.2.0 (o serviço que ligava o servidor sozinho não existe mais), por Ligar, o bloco `servidor do AA:` conta a caminhada que liga o servidor do Android Auto (toque, início
 da caminhada, clique em Iniciar, Voltar, fim, primeira conexão, em ms) e acusa a causa: porta fechada 5 s depois do clique, servidor
 que só atendeu quando a tela do Android Auto abriu, menu lido pela metade (Android Auto frio?). Sem linhas `aa-server` (o serviço desligado, o caso comum) não diz nada.
@@ -868,6 +873,13 @@ def _aviso_calor(texto):
     m = re.search(r"battery back under ([\d.]+) C \(([\d.]+) C\)", texto)
     if m:
         return f"bateria esfriou ({m.group(2)} °C, abaixo de {m.group(1)} °C): novo aviso possível"
+    # Leva 5 (11/11/2026): o teto de quadros que também segue a bateria (chave experimentalHeatCeiling), por degrau.
+    m = re.match(r"battery (?:at|down to) ([\d.]+) C: the frame ceiling is held under the (\w+) step \(experiment\)", texto)
+    if m:
+        return f"teto de quadros preso pela bateria a {m.group(1)} °C, no degrau «{m.group(2)}» do estado térmico (chave experimental)"
+    m = re.match(r"battery back to ([\d.]+) C: the frame ceiling no longer follows the battery", texto)
+    if m:
+        return f"teto de quadros solto: bateria a {m.group(1)} °C (chave experimental)"
     return texto
 
 
@@ -2080,6 +2092,56 @@ def _tx_do_painel(caminhos):
     return qualquer, do_painel
 
 
+LEVA5_SILENCIO = re.compile(r"RX quiet: no dash packets for ([\d.]+) s")
+LEVA5_VOLTA = re.compile(r"RX back: the dash spoke again after ([\d.]+) s of silence")
+LEVA5_VELOCIDADE = re.compile(r"speed profile: reads the GPS speed \(([\d.]+) km/h; the route says ([^)]+)\)")
+LEVA5_COR = re.compile(r"encoder colour: asked ([^;]+); the codec says (.+)")
+LEVA5_COR_RECUSADA = re.compile(r"encoder (.+) refused the colour keys \(([^)]+)\): (.+); asked again without them")
+LEVA5_PROTOCOLO = re.compile(r"Handshake: asked protocol (\d+\.\d+), answered (.+?): the handshake (completed|did not complete)")
+LEVA5_RECALCULO = re.compile(r"route: a short inactive shown as a recalculation; holding it up to ([\d.]+) s")
+LEVA5_RECALCULO_FIM = re.compile(r"route: the guidance is back after ([\d.]+) s of inactive")
+LEVA5_RECALCULO_EXPIROU = re.compile(r"route: the inactive did not end in ([\d.]+) s")
+
+
+def _eventos_da_leva5(etiqueta, t):
+    """As linhas das chaves experimentais da leva 5 (11/11/2026) na linha do tempo, em português: a vigia tolerante do painel (`RX quiet`/`RX back`), a velocidade do GPS no perfil, as
+    cores do codificador, o protocolo 6.0 do Android Auto e o «inativo» curto da rota. Vazio para o resto. (O teto pela bateria é a etiqueta `heat`: `_aviso_calor`.)"""
+    if etiqueta == "dash":
+        m = LEVA5_SILENCIO.match(t)
+        if m:
+            return [f"painel calado há {m.group(1)} s: só registrado, a sessão segue (vigia tolerante, chave experimental)"]
+        m = LEVA5_VOLTA.match(t)
+        if m:
+            return [f"painel voltou depois de {m.group(1)} s calado: quadro-chave pedido (vigia tolerante, chave experimental)"]
+        m = LEVA5_RECALCULO.match(t)
+        if m:
+            return [f"rota: um «inativo» curto do Android Auto virou recalculando por até {m.group(1)} s (chave experimental)"]
+        m = LEVA5_RECALCULO_FIM.match(t)
+        if m:
+            return [f"rota: a guiagem voltou depois de {m.group(1)} s de «inativo»: era um recalculo (chave experimental)"]
+        m = LEVA5_RECALCULO_EXPIROU.match(t)
+        if m:
+            return [f"rota: o «inativo» não acabou em {m.group(1)} s: o cartão da rota foi apagado (chave experimental)"]
+    if etiqueta == "stream":
+        m = LEVA5_VELOCIDADE.match(t)
+        if m:
+            return [f"perfil de velocidade passou a ler o GPS: {m.group(1)} km/h (a rota diz {m.group(2)}); chave experimental"]
+        if t.startswith("speed profile: back to the route"):
+            return ["perfil de velocidade voltou à estimativa da rota (sem velocidade do GPS ou sem rota)"]
+        m = LEVA5_COR.match(t)
+        if m:
+            return [f"cores do codificador pedidas ({m.group(1)}); o codec diz: {m.group(2)}"]
+        m = LEVA5_COR_RECUSADA.search(t)
+        if m:
+            return [f"o codificador recusou as cores pedidas ({m.group(2)}): {m.group(3)}; pedido de novo sem elas"]
+    if etiqueta == "aa":
+        m = LEVA5_PROTOCOLO.search(t)
+        if m:
+            fim = "o aperto de mão completou" if m.group(3) == "completed" else "o aperto de mão NÃO completou: o 1.7 volta a ser pedido até o app fechar"
+            return [f"protocolo {m.group(1)} pedido ao Android Auto, respondido «{m.group(2)}»: {fim} (chave experimental)"]
+    return []
+
+
 def _eventos_novos(x, bloco):
     """As linhas de linha do tempo para o que o leitor não contava antes: `has not joined`, as chamadas (`[call]`), o doze e a economia de bateria."""
     t = x.texto
@@ -2094,7 +2156,9 @@ def _eventos_novos(x, bloco):
             return [f"chamada encerrada pelo joystick ({t[5:60]})"]
         return []
     if x.etiqueta == "dash":
-        return _eventos_do_painel(t)
+        return _eventos_do_painel(t) or _eventos_da_leva5(x.etiqueta, t)
+    if x.etiqueta in ("stream", "aa"):
+        return _eventos_da_leva5(x.etiqueta, t)
     if x.etiqueta == "system" and t in ("doze on", "doze off"):
         return [f"celular em doze: {'ligou' if t == 'doze on' else 'saiu'}"]
     if x.etiqueta == "system" and t.startswith("saver on"):

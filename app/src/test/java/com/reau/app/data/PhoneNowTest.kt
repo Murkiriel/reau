@@ -46,4 +46,29 @@ class PhoneNowTest {
         PhoneNow.update(charging = null, screenOn = false, dozing = null)
         assertEquals("charger in, screen off, doze off", PhoneNow.text())
     }
+
+    @Test
+    fun `the battery temperature of the device read is kept, and a null part leaves what was known`() {
+        assertEquals(null, PhoneNow.batteryTempNow(nowMs = 0))
+        PhoneNow.update(charging = true, screenOn = true, dozing = false, batteryTempC = 44.5f, nowMs = 1_000)
+        assertEquals(44.5f, PhoneNow.batteryTempNow(nowMs = 1_000)!!, 0f)
+        PhoneNow.update(charging = null, screenOn = null, dozing = null, batteryTempC = null, nowMs = 5_000)
+        assertEquals("a read with no temperature leaves the last", 44.5f, PhoneNow.batteryTempNow(nowMs = 5_000)!!, 0f)
+        PhoneNow.update(charging = null, screenOn = null, dozing = null, batteryTempC = 41f, nowMs = 6_000)
+        assertEquals(41f, PhoneNow.batteryTempNow(nowMs = 6_000)!!, 0f)
+    }
+
+    @Test
+    fun `a temperature older than 30 seconds belongs to a projection that has ended`() {
+        PhoneNow.update(null, null, null, batteryTempC = 46f, nowMs = 10_000)
+        assertEquals(46f, PhoneNow.batteryTempNow(nowMs = 10_000 + PhoneNow.TEMP_FRESH_MS)!!, 0f)
+        assertEquals(null, PhoneNow.batteryTempNow(nowMs = 10_000 + PhoneNow.TEMP_FRESH_MS + 1))
+        assertEquals(30_000L, PhoneNow.TEMP_FRESH_MS)
+    }
+
+    @Test
+    fun `the device read feeds the temperature to it`() {
+        val reader = java.io.File("src/main/java/com/reau/app/service/DeviceStateReader.kt").readText()
+        assertEquals(true, reader.contains("PhoneNow.update(it.charging, it.screenOn, it.dozing, it.batteryTempC)"))
+    }
 }

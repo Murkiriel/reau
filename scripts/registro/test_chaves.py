@@ -68,6 +68,29 @@ class LinhasDeChavesTest(unittest.TestCase):
             self.assertEqual(({campo}, True), chaves.chaves_da_linha(f"connection experiments ON: {trecho}"))
         self.assertIsNone(chaves.chaves_da_linha("setting experimentRtpPacing: false -> true"))
 
+    def test_the_seven_keys_of_the_fifth_round_are_found_by_the_lines_the_app_writes_and_only_by_them(self):
+        # the phrases as SettingsInUse.experimentsLine writes them (app/src/main/java/com/reau/app/settings/SettingsInUse.kt)
+        escritas = {
+            "experimentWeatherAge": "weather hidden from the dash after 30 min without a fetch (not 3 h)",
+            "experimentHeatCeiling": "frame ceiling lowered by the battery temperature (from 44 C)",
+            "experimentGpsSpeed": "GPS speed for the speed profile when the GPS is already listened to",
+            "experimentRecalcInactive": "a short inactive of the route shown as a recalculation (8 s)",
+            "experimentColorMatrix": "encoder asked for BT.601 limited-range colours",
+            "experimentProtocolSix": "protocol 6.0 asked of Android Auto first (1.7 if it does not take it)",
+            "experimentTolerantRx": "tolerant dash silence watch (12 s noted, 60 s ends the session) and control packets 12 ms apart",
+        }
+        for campo, frase in escritas.items():
+            self.assertEqual(({campo}, True), chaves.chaves_da_linha(f"connection experiments ON: {frase}"), campo)
+        todas = "connection experiments ON: " + "; ".join(escritas.values())
+        self.assertEqual((set(escritas), True), chaves.chaves_da_linha(todas))
+        self.assertEqual("clima velho some + teto pelo calor da bateria + velocidade do GPS", chaves.rotulo(frozenset(list(escritas)[:3]), True))
+
+    def test_the_bind_retries_key_is_found_in_the_old_line_with_the_lock_and_in_the_new_one_without_it(self):
+        antes = "connection experiments ON: Wi-Fi low-latency lock and bind retries on the same network"
+        agora = "connection experiments ON: bind retries on the same network"
+        self.assertEqual(({"experimentWifiBind"}, True), chaves.chaves_da_linha(antes))
+        self.assertEqual(({"experimentWifiBind"}, True), chaves.chaves_da_linha(agora))
+
     def test_the_labels(self):
         self.assertEqual("sem registro das chaves", chaves.rotulo(frozenset(), False))
         self.assertEqual("nenhuma", chaves.rotulo(frozenset(), True))
@@ -78,6 +101,11 @@ class PorProjecaoTest(unittest.TestCase):
     def estados(self, texto):
         linhas = lido(texto)
         return chaves.por_projecao(linhas, ler_registro.projecoes(linhas))
+
+    def test_a_run_with_one_of_the_keys_of_the_fifth_round_is_a_group_of_its_own(self):
+        t = (projecao_de("10:00:00.000", "10:10:00.000", settings("10:00:00.004", "experimentGpsSpeed", "experimentTolerantRx")) +
+             projecao_de("11:00:00.000", "11:10:00.000", settings("11:00:00.004")))
+        self.assertEqual([(frozenset({"experimentGpsSpeed", "experimentTolerantRx"}), True), (frozenset(), True)], self.estados(t))
 
     def test_the_settings_line_after_the_marker_is_the_projections(self):
         t = (projecao_de("10:00:00.000", "10:10:00.000", settings("10:00:00.004", "experimentRtpPacing")) +
@@ -94,8 +122,19 @@ class PorProjecaoTest(unittest.TestCase):
 
     def test_the_on_line_adds_to_the_settings_line_and_marks_the_state_as_known(self):
         t = projecao_de("10:00:00.000", "10:10:00.000", settings("10:00:00.004", com_campos=False),
-                        linha("10:00:00.005", "settings", "connection experiments ON: start guard (experiments go off after a death right after a start)"))
-        self.assertEqual([(frozenset({"experimentStartGuard"}), True)], self.estados(t))
+                        linha("10:00:00.005", "settings", "connection experiments ON: 400 ms focus gap when a keyframe is asked of Android Auto"))
+        self.assertEqual([(frozenset({"experimentFocusGap"}), True)], self.estados(t))
+
+    def test_the_start_guard_that_comes_on_by_default_is_no_experiment_and_groups_nothing(self):
+        # since 11/11/2026 `settings in use:` says experimentStartGuard=true in every ride, with no experiment on
+        sozinha = "settings in use: density=180 experimentRtpPacing=false experimentStartGuard=true experimentFocusGap=false"
+        self.assertEqual((set(), True), chaves.chaves_da_linha(sozinha))
+        com_outra = "settings in use: density=180 experimentRtpPacing=false experimentStartGuard=true experimentFocusGap=true"
+        self.assertEqual(({"experimentFocusGap"}, True), chaves.chaves_da_linha(com_outra))
+        self.assertNotIn("experimentStartGuard", [c[0] for c in chaves.CHAVES])
+        t = projecao_de("10:00:00.000", "10:10:00.000", linha("10:00:00.004", "settings", sozinha))
+        self.assertEqual([(frozenset(), True)], self.estados(t))
+        self.assertEqual("nenhuma", chaves.rotulo(frozenset(), True))
 
     def test_a_log_with_no_key_line_at_all_is_unknown(self):
         t = projecao_de("10:00:00.000", "10:10:00.000", linha("10:00:01.000", "wifi", "x"))

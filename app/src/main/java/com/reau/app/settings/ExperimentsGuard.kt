@@ -9,7 +9,7 @@ import java.io.File
  * run for [SETTLE_MS] and when it is switched off. A process that begins and finds the mark knows the one before ended inside those
  * seconds: it switches the other experimental switches off, keeps the guard on, and says so in the log.
  *
- * With the guard off (the default) no mark is ever left and nothing is switched off; a mark left from before goes and that is all.
+ * The guard is on by default (11/11/2026) and acts only when some other experimental switch is on, so with none nothing is ever marked. With the guard off no mark is ever left and nothing is switched off; a mark left from before goes and that is all.
  */
 object ExperimentsGuard {
     /** How long a projection must run before its start counts as survived. */
@@ -30,12 +30,21 @@ object ExperimentsGuard {
         "experimentEncoderWatch".takeIf { settings.experimentEncoderWatch },
         "experimentFocusGap".takeIf { settings.experimentFocusGap },
         "experimentNightMemory".takeIf { settings.experimentNightMemory },
+        "experimentWeatherAge".takeIf { settings.experimentWeatherAge },
+        "experimentHeatCeiling".takeIf { settings.experimentHeatCeiling },
+        "experimentGpsSpeed".takeIf { settings.experimentGpsSpeed },
+        "experimentRecalcInactive".takeIf { settings.experimentRecalcInactive },
+        "experimentColorMatrix".takeIf { settings.experimentColorMatrix },
+        "experimentProtocolSix".takeIf { settings.experimentProtocolSix },
+        "experimentTolerantRx".takeIf { settings.experimentTolerantRx },
     )
 
     /** [settings] with every experimental switch off but the guard. */
     fun allOff(settings: REauSettings): REauSettings = settings.copy(
         experimentRtpPacing = false, experimentDebugDscp = false, experimentAdaptiveBitrate = false, experimentWifiBind = false,
         experimentWifiBand = false, experimentEncoderWatch = false, experimentFocusGap = false, experimentNightMemory = false,
+        experimentWeatherAge = false, experimentHeatCeiling = false, experimentGpsSpeed = false, experimentRecalcInactive = false,
+        experimentColorMatrix = false, experimentProtocolSix = false, experimentTolerantRx = false,
     )
 
     /** Whether a start with [settings] is one the guard watches: the guard is on and so is some other experimental switch. */
