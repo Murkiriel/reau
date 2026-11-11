@@ -154,6 +154,9 @@ class DashSession(
     // kdoc for the full story, including the live failure this closes.
     @Volatile private var disconnecting = false
 
+    // The exit sequence of the disconnect going on (or the last), to log what the dash answers to it; see [ExitSequence].
+    @Volatile private var exitSequence: ExitSequence? = null
+
     // Which connect() the running session belongs to. Every coroutine a session launches
     // carries the number it was launched with, and fail()/READY from a session that is not the current one are
     // ignored: before this, a session that failed during authentication (its socket closed by fail()) kept its
@@ -566,7 +569,7 @@ class DashSession(
      * activeNavPacket numbers every second.
      */
     private fun liveRouteCard(projectionOn: Boolean): ByteArray {
-        val n = nav
+        val n = shownNav()
         return if (n != null) DashCommands.routeCard(
             // The street while guiding, else REau.
             n.road.ifBlank { destinationName }, projectionOn,
@@ -604,8 +607,19 @@ class DashSession(
         return DashCommands.proximityLevel(metres, keep)
     }
 
-    /** The ring's glyph while guiding: the maneuver itself (hiding it never worked). */
-    private fun ringGlyph(n: NavFigures): Int = bubbleManeuver(ringOn, n.maneuver)
+    /** The ring's glyph while guiding: the maneuver itself (hiding it never worked). A debug build's arrow test sends its own byte (see [shownNav]). */
+    private fun ringGlyph(n: NavFigures): Int = com.reau.app.debug.ArrowTrial.byte() ?: bubbleManeuver(ringOn, n.maneuver)
+
+    /**
+     * The figures the cards and the nav packet are made from: the guidance's, or, while a debug build's arrow test is on
+     * ([com.reau.app.debug.ArrowTrial], which a release does not have: it answers none there), a card with that arrow alone and no distance, even with no
+     * guidance. Nothing else reads this: the ring's own logic goes on with [nav].
+     */
+    private fun shownNav(): NavFigures? = com.reau.app.debug.ArrowTrial.byte()?.let { trial ->
+        nav ?: NavFigures(
+            trial, 0, DashCommands.NAV_UNIT_METERS, 0, DashCommands.NAV_UNIT_METERS, null, "", DashCommands.REMAINING_OMIT, DashCommands.NEXT_MANEUVER_NONE,
+        )
+    } ?: nav
 
     /** The phone's clock as 4 digits, the ETA of the idle card's arrival pin. */
     private fun clockHHMM(): String = java.text.SimpleDateFormat("HHmm", java.util.Locale.US).format(java.util.Date())
@@ -690,18 +704,22 @@ class DashSession(
         nav = null
         forgetLastManeuver()
         socket?.let { sock ->
+            val exit = ExitSequence(MonotonicClock::nowMs).also { exitSequence = it }
+            // Each command is told after it: whether it reached the wire and when (ExitSequence), with the timing unchanged.
+            fun send(name: String, packet: ByteArray) = exit.step(name, runCatching { sock.send(packet) }.getOrDefault(false))
             val goodbye = Runnable {
-                runCatching { sock.send(DashCommands.projectionStop()) }
-                runCatching { sock.send(DashCommands.projectionOff()) }
+                send("projection-stop", DashCommands.projectionStop())
+                send("projection-off", DashCommands.projectionOff())
                 // Extended exit sequence documented by another open implementation (see
                 // DashCommands.exitBack's doc) — best-effort, additive, unverified on real hardware.
                 // Meant to give the dash a cleaner exit-to-menu instead of possibly staying "hung"
                 // until a power-cycle; each send is independently guarded so one failing never blocks
                 // the rest of teardown.
-                runCatching { sock.send(DashCommands.exitBack()) }
-                repeat(4) { runCatching { sock.send(DashCommands.exitProjectionIdle()) } }
-                repeat(2) { runCatching { sock.send(DashCommands.exitSessionBoundary()) } }
+                send("back", DashCommands.exitBack())
+                repeat(4) { send("idle", DashCommands.exitProjectionIdle()) }
+                repeat(2) { send("boundary", DashCommands.exitSessionBoundary()) }
                 sock.close()
+                com.reau.app.data.RideDiagnostics.log("session", exit.summary())
             }
             // A guard: today every caller is on the service's worker or the IO scope, but the rider's "disconnect" once called this
             // on the main thread, where Android refuses network: every send above failed with NetworkOnMainThreadException and the
@@ -993,6 +1011,13 @@ class DashSession(
         }
     }
 
+    /** A packet that reached the receive loop during our own disconnect: the dash answering the exit commands (only its TLV keys are written). */
+    private fun noteExitAnswer(pkt: ByteArray) {
+        val sequence = exitSequence ?: return
+        val keys = runCatching { K1GPacket.parseIncoming(pkt).joinToString(" ") { "%02X%02X".format(it.type, it.sub) } }.getOrDefault("?")
+        sequence.reply(keys)?.let { com.reau.app.data.RideDiagnostics.log("session", it) }
+    }
+
     // Packets in a row whose handling threw; a session starts it over.
     private val rxFailures = FailureStreak(RX_EXCEPTIONS_BEFORE_FAIL)
 
@@ -1005,6 +1030,7 @@ class DashSession(
     @Suppress("TooGenericExceptionCaught") // whatever a packet makes the handler throw is contained here
     internal fun receivePacket(pkt: ByteArray, sock: DashSocket, mine: Int = sessionGeneration) {
         lastRxMs = MonotonicClock.nowMs()
+        if (disconnecting) noteExitAnswer(pkt)
         rxPackets++
         DashHeard.heard(lastRxMs)
         try {
@@ -1310,24 +1336,25 @@ class DashSession(
         navInfoJob?.cancel()
         navInfoJob = scope.launch(Dispatchers.IO) {
             while (isActive && _state.value == DashState.STREAMING) {
-                nav?.let { n ->
-                    socket?.send(
-                        DashCommands.activeNavPacket(
-                            maneuver = ringGlyph(n),
-                            primaryDist = n.primaryDist,
-                            primaryUnit = n.primaryUnit,
-                            totalDist = n.totalDist,
-                            totalUnit = n.totalUnit,
-                            road = n.road,
-                            decimalComma = decimalComma(),
-                            proximity = proximityBar(n),
-                            nextManeuver = nextShown(n),
-                        )
-                    )
-                }
+                navPacketNow()?.let { socket?.send(it) }
                 delay(ROUTE_CARD_MS)
             }
         }
+    }
+
+    /** The nav packet (05 02: the maneuver's bubble, the distances) as it goes to the dash now; null with no guidance (and no arrow test). */
+    internal fun navPacketNow(): ByteArray? = shownNav()?.let { n ->
+        DashCommands.activeNavPacket(
+            maneuver = ringGlyph(n),
+            primaryDist = n.primaryDist,
+            primaryUnit = n.primaryUnit,
+            totalDist = n.totalDist,
+            totalUnit = n.totalUnit,
+            road = n.road,
+            decimalComma = decimalComma(),
+            proximity = proximityBar(n),
+            nextManeuver = nextShown(n),
+        )
     }
 
     /** The music and call cards, every second while streaming (as the route card). */

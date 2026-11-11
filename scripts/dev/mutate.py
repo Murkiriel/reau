@@ -17,7 +17,10 @@ ROOT = Path(__file__).resolve().parents[2]
 PENDING = ROOT / "build" / "mutacoes_pendentes"
 # The most one mutation's test run may take: a Gradle that hangs would otherwise take the whole job with it.
 TIMEOUT_S = 900
-ENV = {**os.environ, "PYTHONIOENCODING": "utf-8"}  # Gradle needs a JDK 21: JAVA_HOME set, or java on the PATH
+# Gradle needs a JDK 21: JAVA_HOME set, or java on the PATH. No Python process of a run writes bytecode: a .pyc of a mutated source, written by a
+# test that runs a script in a child process, would outlive the restore (11/11/2026: olhadas.py came back with the same size and the same second,
+# and the mutated .pyc kept being loaded).
+ENV = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONDONTWRITEBYTECODE": "1"}
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
@@ -29,6 +32,14 @@ def _write_durably(path, data):
         f.write(data)
         f.flush()
         os.fsync(f.fileno())
+
+
+def _later_than(path, mutated_at):
+    """Gives the restored [path] a time at least a whole second after the mutated one's: Python checks a .pyc against the source's size and its
+    time in whole seconds, and a restore in the same second as the mutation, with a mutation of the same size (`==` for `!=`), left the mutated
+    bytecode looking current."""
+    when = max(path.stat().st_mtime, mutated_at + 1.0)
+    os.utime(path, (when, when))
 
 
 def recover(root=None, pending=None):
@@ -79,7 +90,9 @@ def run(mutations, command, tail=3):
         except subprocess.TimeoutExpired:
             timed_out = True
         finally:
+            mutated_at = path.stat().st_mtime
             _write_durably(path, raw)
+            _later_than(path, mutated_at)
             (PENDING / f"{key}.path").unlink(missing_ok=True)
             (PENDING / f"{key}.orig").unlink(missing_ok=True)
         if timed_out:

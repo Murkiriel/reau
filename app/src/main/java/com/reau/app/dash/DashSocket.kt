@@ -153,9 +153,11 @@ class DashSocket(
         }
     }
 
-    /** Send a K1G control packet (seq patched here, like K1GTx in the reference). */
-    fun send(data: ByteArray) {
-        wire(data)?.let(::afterWire)
+    /** Send a K1G control packet (seq patched here, like K1GTx in the reference); true when it reached the wire (false: suppressed, or the send failed and was counted and logged). */
+    fun send(data: ByteArray): Boolean {
+        val pkt = wire(data) ?: return false
+        afterWire(pkt)
+        return true
     }
 
     /**
@@ -302,6 +304,10 @@ class DashSocket(
     private val rxBuffer = ByteArray(BUF)
     private val rxPacket = DatagramPacket(rxBuffer, BUF)
 
+    // Packets from an address other than the dash's (where RTP goes): taken as ever, only noted in the ride log, once, and counted at the close.
+    private val dashAddress: InetAddress = rtpDest.address
+    private val strays = StraySources(dashAddress.hostAddress.orEmpty())
+
     /**
      * Blocks up to RECV_TIMEOUT_MS; returns null on timeout. Throws on a genuine socket
      * error (closed/unreachable) — the caller's receive loop catches it and ends the
@@ -316,6 +322,10 @@ class DashSocket(
         return try {
             rxSocket.receive(rxPacket)
             arrivedNs = System.nanoTime()
+            val from = rxPacket.address
+            if (from != null && from != dashAddress) {
+                strays.heard(from.hostAddress.orEmpty())?.let { com.reau.app.data.RideDiagnostics.log("dash", it) }
+            }
             val bytes = rxBuffer.copyOf(rxPacket.length)
             com.reau.app.data.DetailedLog.offer("dash") { "rx " + DashDump.incoming(bytes) }
             bytes
@@ -351,6 +361,7 @@ class DashSocket(
 
     override fun close() {
         Log.d(TAG, "Sockets closed")
+        strays.summary()?.let { com.reau.app.data.RideDiagnostics.log("dash", it) }
         runCatching { txSocket.close() }
         runCatching { rxSocket.close() }
         runCatching { rtpSocket.close() }

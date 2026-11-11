@@ -48,7 +48,25 @@ object RideDiagnostics {
     private const val MAX_FILE_BYTES = 50L * 1024 * 1024
     // One formatter a thread: a SimpleDateFormat is not thread-safe, and a new one for every line is a lot to throw away.
     private val clock: ThreadLocal<SimpleDateFormat> = ThreadLocal.withInitial { SimpleDateFormat("HH:mm:ss.SSS", Locale.US) }
+    // Two locks. [lock] guards the memory of the log (which file is open, the buffers, the counters) and is the one every caller of log() takes, the
+    // video and Android Auto threads among them: nothing under it touches the disk -- the lines go to the writer's queue, and the file system is
+    // asked (creating a file, listing and deleting, the rider's cleaning) outside it. [maintenance] serialises the operations that change which file
+    // is open (start, stop, the rider's cleaning, the days kept...); they hold it across their disk work, and log() never takes it. While one of them
+    // swaps the file ([transition]) the lines of log() wait in [held], stamped with the time they were logged, and are written after the swap's own
+    // first lines, in the order they came: the file reads as it did when everything waited on one lock.
     private val lock = Any()
+    private val maintenance = Any()
+    private var transition = false
+    private val held = ArrayList<Held>()
+    private var rolling = false
+
+    /** A line of log() that came while the file was being swapped: its time of day and offset are those of when it was logged. */
+    private class Held(val stamp: String, val rel: String, val tag: String, val msg: String) {
+        val line: String get() = "$rel  [$tag] $msg"
+    }
+
+    /** An operation of the small kind (no disk work) that must not run in the middle of a swap of the file: both locks, [maintenance] first. */
+    private inline fun <T> exclusive(block: () -> T): T = synchronized(maintenance) { synchronized(lock) { block() } }
 
     @Volatile private var dir: File? = null
     @Volatile private var file: File? = null
@@ -122,23 +140,31 @@ object RideDiagnostics {
     fun startProcess(reason: String) {
         if (!enabled) return
         val d = dir ?: return
-        synchronized(lock) {
-            if (file != null) return
-            openFile(d, tidyNow = false)
-            processOpen = true
-            sessionStartMs = System.currentTimeMillis()
-            // Which APK wrote the log: name, code and the commit it was built from.
-            val app = "app ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}, ${BuildConfig.GIT_COMMIT})"
-            val device = "${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
-            raw("==== process start: $reason — $app, $device ====")
-            noteSpace()
-            flushPending()
+        synchronized(maintenance) {
+            synchronized(lock) {
+                if (file != null) return
+                transition = true
+            }
+            val opened = newLogFile(d)
+            synchronized(lock) {
+                adopt(opened)
+                tidyLater(d, opened.name)
+                processOpen = true
+                sessionStartMs = System.currentTimeMillis()
+                // Which APK wrote the log: name, code and the commit it was built from.
+                val app = "app ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}, ${BuildConfig.GIT_COMMIT})"
+                val device = "${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
+                raw("==== process start: $reason — $app, $device ====")
+                noteSpace()
+                flushPending()
+                endTransition()
+            }
         }
     }
 
     /** Closes the process file (instrumented tests that need the per-session files of before). */
     fun stopProcess(reason: String) {
-        synchronized(lock) {
+        exclusive {
             if (!processOpen) return
             raw("==== process end: $reason ====")
             file = null
@@ -157,21 +183,29 @@ object RideDiagnostics {
     fun start(reason: String) {
         if (!enabled) return
         val d = dir ?: return
-        synchronized(lock) {
-            if (sessionActive) {
-                raw("---- $reason (session already active) ----")
-                return
+        synchronized(maintenance) {
+            synchronized(lock) {
+                if (sessionActive) {
+                    raw("---- $reason (session already active) ----")
+                    return
+                }
+                sessionActive = true
+                sessionStartMs = System.currentTimeMillis()
+                if (processOpen && file != null) {
+                    raw("---- projeção ligada: $reason ----")
+                    return
+                }
+                transition = true
             }
-            sessionActive = true
-            sessionStartMs = System.currentTimeMillis()
-            if (processOpen && file != null) {
-                raw("---- projeção ligada: $reason ----")
-                return
+            val opened = newLogFile(d)
+            synchronized(lock) {
+                adopt(opened)
+                tidyLater(d, opened.name)
+                raw("==== session start: $reason — ${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) ====")
+                noteSpace()
+                flushPending()
+                endTransition()
             }
-            openFile(d, tidyNow = false)
-            raw("==== session start: $reason — ${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) ====")
-            noteSpace()
-            flushPending()
         }
     }
 
@@ -183,27 +217,50 @@ object RideDiagnostics {
     }
 
     /**
-     * A new file in [d], named by the second (with a suffix when that name is taken), and the old ones rotated and trimmed: at once with
-     * [tidyNow] (the rider's own deletion), or on the tidy thread ([tidyLater]) so that the caller -- the Application's onCreate, a roll
-     * inside log() -- does not wait for the folder's listing and sorting, which grow with the number of files in it.
+     * A new, empty file in [d], named by the second (with a suffix when that name is taken) and created at once: the name is claimed by the
+     * creation itself, so two callers can never get the same file. Disk work: never called holding [lock]. Created before any tidying is queued,
+     * so it exists the instant this returns (and is the newest file in the folder); only the lines go through the writer.
      */
-    private fun openFile(d: File, tidyNow: Boolean = true) {
+    private fun newLogFile(d: File): File {
+        testOnlyDiskWork?.invoke("create")
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
         var f = File(d, "ride-$stamp.log")
         var n = 2
-        while (f.exists()) f = File(d, "ride-$stamp-${n++}.log")
-        // Created synchronously, before any tidying is queued, so it exists the instant this returns (and is the newest file in the
-        // folder); only the lines go through the writer.
-        runCatching { f.createNewFile() }
+        while (runCatching { f.createNewFile() }.getOrNull() == false) f = File(d, "ride-$stamp-${n++}.log")
+        return f
+    }
+
+    /** [f] becomes the file being written, empty. Holding [lock]. */
+    private fun adopt(f: File) {
         file = f
         fileDay = today()
         fileBytes = 0L
-        if (!tidyNow) return tidyLater(d, f.name)
+    }
+
+    /**
+     * The new file [f] fitted into its folder at once, the old ones rotated and trimmed (the rider's own deletion): disk work, so not under [lock];
+     * [f] is never removed to make room. The notes are said by [noteSpace] right after the new file's header.
+     */
+    private fun tidyNow(d: File, f: File): Pair<String?, String?> {
         val keep = setOfNotNull(f.name, OwnLogcat.currentFile()?.name)
         rotate(d, keep)
         // The folder under its ceiling, said right after the new file's header (noteSpace).
-        spaceNote = DiagSpace.trim(d, spaceCapBytes, keep)
-        ageNote = trimByAge(d, keep)
+        val space = DiagSpace.trim(d, spaceCapBytes, keep)
+        return space to trimByAge(d, keep)
+    }
+
+    /** The swap of the file is done: the lines held meanwhile are written after its first ones (or kept for the next file when none is open). Holding [lock]. */
+    private fun endTransition() {
+        transition = false
+        if (file != null) {
+            held.forEach { raw(it.line, it.stamp) }
+        } else {
+            held.forEach {
+                pending.add("(pre-connect)  [${it.tag}] ${it.msg}")
+                if (pending.size > MAX_PENDING) pending.removeAt(0)
+            }
+        }
+        held.clear()
     }
 
     // The folder's tidying (listing, summing, deleting) is the slowest thing a roll does, and a roll happens inside log(),
@@ -240,14 +297,36 @@ object RideDiagnostics {
     /** The name of the file being written, if any (never removed to make room). */
     internal fun currentFileName(): String? = file?.name
 
-    /** The process file goes on in a new one: a new day, or past [maxFileBytes]. */
-    private fun rollIfDue() {
-        val d = dir ?: return
-        if (!processOpen || file == null) return
-        if (fileBytes < maxFileBytes && today() == fileDay) return
-        val old = file?.name
-        openFile(d, tidyNow = false)
-        raw("==== continued from $old ====")
+    /** Whether the process file is to go on in a new one (a new day, or past [maxFileBytes]) and nobody is doing it already. Holding [lock]. */
+    private fun rollDue(): Boolean {
+        val closed = dir == null || !processOpen || file == null
+        if (closed || transition || rolling) return false
+        return fileBytes >= maxFileBytes || today() != fileDay
+    }
+
+    /** The file being written is still [from], the one a roll began from, and nothing closed or swapped it meanwhile. Holding [lock]. */
+    private fun stillRolling(from: File?) = processOpen && !transition && from != null && file === from
+
+    /**
+     * The process file goes on in a new one. The new file is created outside [lock]: the lines of the other threads meanwhile go on in the old
+     * one, and this thread's own line comes after the header of the new one. If the file was closed or swapped meanwhile, the new one is of no use and is removed.
+     */
+    private fun rollFile(from: File?) {
+        val d = dir
+        val opened = if (d != null) runCatching { newLogFile(d) }.getOrNull() else null
+        var orphan: File? = null
+        synchronized(lock) {
+            rolling = false
+            if (opened != null && d != null && stillRolling(from)) {
+                val old = file?.name
+                adopt(opened)
+                tidyLater(d, opened.name)
+                raw("==== continued from $old ====")
+            } else {
+                orphan = opened
+            }
+        }
+        orphan?.let { runCatching { it.delete() } }
     }
 
     /** True once a session file is open (between [start] and [stop]) — lets a caller avoid
@@ -261,19 +340,43 @@ object RideDiagnostics {
      */
     fun log(tag: String, msg: String) {
         if (!enabled) return
-        synchronized(lock) {
-            if (file == null) {
-                val line = "(pre-connect)  [$tag] $msg"
-                pending.add(line)
-                if (pending.size > MAX_PENDING) pending.removeAt(0)
-                return
+        var rollFrom: File? = null
+        val roll = synchronized(lock) {
+            if (rollDue()) {
+                rolling = true
+                rollFrom = file
+                true
+            } else {
+                put(tag, msg)
+                false
             }
-            rollIfDue()
-            // The offset is the projection's, so none outside one (not from the process start).
-            val rel = if (sessionActive && sessionStartMs > 0) "+%6dms".format(Locale.US, System.currentTimeMillis() - sessionStartMs) else "         "
-            raw("$rel  [$tag] $msg")
+        }
+        if (roll) {
+            rollFile(rollFrom)
+            synchronized(lock) { put(tag, msg) }
         }
     }
+
+    /** One line of log(): held while the file is being swapped, buffered when no file is open, written otherwise. Holding [lock]. */
+    private fun put(tag: String, msg: String) {
+        if (transition) {
+            if (held.size >= MAX_QUEUED) dropped++ else held.add(Held(clockNow(), offsetText(), tag, msg))
+            return
+        }
+        if (file == null) {
+            val line = "(pre-connect)  [$tag] $msg"
+            pending.add(line)
+            if (pending.size > MAX_PENDING) pending.removeAt(0)
+            return
+        }
+        raw(offsetText() + "  [$tag] $msg")
+    }
+
+    // The offset is the projection's, so none outside one (not from the process start).
+    private fun offsetText() =
+        if (sessionActive && sessionStartMs > 0) "+%6dms".format(Locale.US, System.currentTimeMillis() - sessionStartMs) else "         "
+
+    private fun clockNow(): String = clock.get()!!.format(Date())
 
     /**
      * A line that says something went wrong or is going wrong carries its level at the start of its text
@@ -296,7 +399,7 @@ object RideDiagnostics {
     }
 
     fun stop(reason: String) {
-        synchronized(lock) {
+        exclusive {
             when {
                 // The process file stays; only the projection is marked off.
                 processOpen -> if (sessionActive) {
@@ -316,13 +419,13 @@ object RideDiagnostics {
     }
 
     /** Always called holding [lock] (the clock and [dropped] need it). */
-    private fun raw(line: String) {
+    private fun raw(line: String, stamp: String? = null) {
         val f = file ?: return
         if (queued.get() >= MAX_QUEUED) {
             dropped++
             return
         }
-        val now = clock.get()!!.format(Date())
+        val now = stamp ?: clockNow()
         val note = if (dropped > 0) "$now  log: $dropped lines dropped, the writer fell behind\n" else ""
         dropped = 0
         val stamped = "$note$now  ${oneLine(line)}\n"
@@ -390,7 +493,7 @@ object RideDiagnostics {
      * and nothing more is written (nor kept for later) until [switchOn].
      */
     fun switchOff(reason: String) {
-        synchronized(lock) {
+        exclusive {
             if (file != null) raw("==== log switched off: $reason ====")
             file = null
             processOpen = false
@@ -408,14 +511,20 @@ object RideDiagnostics {
     /** The rider's choice of days, applied at once (and again whenever a file is opened); the log says what went. */
     fun applyKeepDays(days: Int) {
         keepDays = days
-        synchronized(lock) {
+        synchronized(maintenance) {
             val d = dir ?: return
-            ageNote = trimByAge(d, setOfNotNull(file?.name, OwnLogcat.currentFile()?.name))
-            noteSpace()
+            val keep = synchronized(lock) { setOfNotNull(file?.name, OwnLogcat.currentFile()?.name) }
+            // Listing and deleting the old files is disk work: not under the lock the video threads log through.
+            val note = trimByAge(d, keep)
+            synchronized(lock) {
+                ageNote = note
+                noteSpace()
+            }
         }
     }
 
     private fun trimByAge(d: File, keep: Set<String>): String? {
+        testOnlyDiskWork?.invoke("trim")
         val recordings = d.parentFile?.let { listOf(File(it, "video"), File(it, "sessions")) }.orEmpty()
         return LogAge.trim(listOf(d) + recordings, keepDays, System.currentTimeMillis(), keep)
     }
@@ -432,21 +541,50 @@ object RideDiagnostics {
      * there is no folder yet.
      */
     fun clearAndReopen(cleanup: (File) -> String): String? {
-        synchronized(lock) {
+        synchronized(maintenance) {
             val d = dir ?: return null
-            val wasOpen = file != null
-            file = null
-            pending.clear()
-            runCatching { ioExecutor.submit { closeWriter() }.get(CLOSE_WAIT_S, java.util.concurrent.TimeUnit.SECONDS) }
-            val said = cleanup(d)
-            if (wasOpen && enabled) {
-                openFile(d)
-                raw("==== the rider deleted the logs: $said ====")
-                noteSpace()
+            val wasOpen: Boolean
+            synchronized(lock) {
+                wasOpen = file != null
+                file = null
+                pending.clear()
+                // From here until the new file, what the other threads log waits in [held] (they used to wait on the lock itself).
+                if (wasOpen) transition = true
+            }
+            val said: String
+            val fresh: File?
+            var space: Pair<String?, String?>? = null
+            var done = false
+            try {
+                // Everything queued for the old file is written, and the writer lets it go; then the folder is cleaned, off the lock.
+                runCatching { ioExecutor.submit { closeWriter() }.get(CLOSE_WAIT_S, java.util.concurrent.TimeUnit.SECONDS) }
+                said = cleanup(d)
+                fresh = if (wasOpen && enabled) newLogFile(d) else null
+                if (fresh != null) space = tidyNow(d, fresh)
+                done = true
+            } finally {
+                // A cleaning that threw leaves no new file; what was held waits for the next one, and the log is not held for good.
+                if (!done) synchronized(lock) { if (transition) endTransition() }
+            }
+            synchronized(lock) {
+                if (fresh != null) {
+                    adopt(fresh)
+                    spaceNote = space?.first
+                    ageNote = space?.second
+                    raw("==== the rider deleted the logs: $said ====")
+                    noteSpace()
+                }
+                if (transition) endTransition()
             }
             return said
         }
     }
+
+    /**
+     * Test-only: called at the start of each piece of disk work that is done outside the locks (`create` a log file, `trim` by age), so that a test
+     * can hold it and see that the lines of other threads go on being logged meanwhile.
+     */
+    @Volatile internal var testOnlyDiskWork: ((String) -> Unit)? = null
 
     /** Test-only: how many times the writer opened a file. */
     internal fun testOnlyWriterOpens(): Int = writerOpens.get()
@@ -478,8 +616,9 @@ object RideDiagnostics {
     internal fun testOnlyReset() {
         synchronized(lock) {
             file = null; processOpen = false; sessionActive = false; pending.clear(); dropped = 0; enabledNow = true
+            transition = false; rolling = false; held.clear()
             maxFileBytes = MAX_FILE_BYTES; today = defaultToday; dir = null; spaceCapBytes = DiagSpace.capBytes()
-            keepDays = 0; ageNote = null
+            keepDays = 0; ageNote = null; testOnlyDiskWork = null
         }
         runCatching { ioExecutor.submit { closeWriter() }.get(10, java.util.concurrent.TimeUnit.SECONDS) }
         writerOpens.set(0)

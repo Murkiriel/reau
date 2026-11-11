@@ -91,4 +91,37 @@ class ImageGapTest {
         gap.streaming(40_000)
         assertNull("closed", gap.streaming(50_000))
     }
+
+    // ── the total of the gaps, for the projection's resumo (`no image=`) ──
+
+    @Test
+    fun `the gaps that ended are summed, and the one going on counts up to now`() {
+        val gap = streamed()
+        assertEquals("no loss yet: nothing", 0L, gap.totalMs(2_000))
+        gap.lost(nowMs = 10_000, heardAgoMs = 400) // counts from the last packet: 9 600
+        assertEquals("a gap going on counts up to now", 5_400L, gap.totalMs(15_000))
+        gap.streaming(20_000)
+        assertEquals("ended: 20 000 - 9 600", 10_400L, gap.totalMs(30_000))
+        gap.lost(nowMs = 40_000, heardAgoMs = 0)
+        gap.streaming(46_500)
+        assertEquals("two gaps: 10 400 + 6 500", 16_900L, gap.totalMs(60_000))
+        gap.lost(nowMs = 70_000, heardAgoMs = 0)
+        assertEquals("the third still on, at 75 000", 16_900L + 5_000, gap.totalMs(75_000))
+    }
+
+    @Test
+    fun `a new projection starts the total over`() {
+        val gap = streamed()
+        gap.lost(nowMs = 10_000, heardAgoMs = 0)
+        gap.streaming(20_000)
+        gap.forget()
+        assertEquals(0L, gap.totalMs(30_000))
+    }
+
+    @Test
+    fun `a loss before the first stream of a projection is no gap`() {
+        val gap = ImageGapClock()
+        gap.lost(nowMs = 1_000, heardAgoMs = 0)
+        assertEquals(0L, gap.totalMs(9_000))
+    }
 }

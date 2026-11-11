@@ -48,7 +48,7 @@ desligada), o laço de espera cujo painel só aparece na lembrança logo depois 
 1a" (a busca de redes com o app atrás, `varredura.py`: leituras com redes e vazias na frente e atrás, o tipo `location`, os cortes da pausa e o critério novo do `scan empty`); o tempo sem
 imagem de cada queda, no total e com o painel ligado, e o painel ligado → unido pela idade do painel, separando o Wi-Fi que caiu do painel que religou (`quedas.py`); o "visto → pedido →
 unido" sem a lembrança do painel que acabou de sair; o `has not joined`, as chamadas, o doze e a economia de bateria; e, nos avisos (não são defeitos), o menu aberto sem tecla com a tela acesa, o
-cartão de chamada sobre o mapa e os processos do Android que caíram (`logcat-crash.txt`). Lacuna conhecida: este leitor não lê as sessões (`sessions/`) nem o vídeo (`video/`).
+cartão de chamada sobre o mapa e os processos do Android que caíram (`logcat-crash.txt`). (Desde 11/11/2026 lê também as sessões e o vídeo: ver abaixo.)
 
 Desde 08/11/2026: a união ao Wi-Fi do painel que o `dumpsys wifi` traz sem registro do REau só é "do REau" se o `uid` dela é o do
 REau (o `INFO.txt` e o pacote `com.reau.app` no dumpsys dizem qual é; sem eles, o `uid` que pediu a rede enquanto o app registrava); as de outro app ou do sistema vão para
@@ -65,6 +65,17 @@ e para os `logcat-*.txt` do app (o corte padrão da coleta anterior continua só
 Desde 10/11/2026: duas ou mais sessões seguidas que chegaram a `→ STREAMING` e caíram (`session fail`) em menos de 60 s
 saem como problema "possível laço de reconexão", com a hora e a duração de cada uma. Uma sessão curta isolada não avisa (em 50 sessões reais houve duas, 40,3 s e 30,1 s, nunca seguidas).
 
+Desde 11/11/2026: (1) a seção "CORRIDAS POR CHAVES EXPERIMENTAIS" agrupa as projeções pelo conjunto de chaves que o `settings in use:` e o `connection experiments ON:` dizem ligadas
+e compara cada grupo com o «nenhuma» (todas desligadas). CRITÉRIOS, escritos antes dos dados (os números e o porquê estão em `chaves.py`): a medida principal é queda com Wi-Fi firme
+(sinal do painel de -75 dBm ou melhor antes da queda; a moto desligada não é queda) por hora transmitindo; as secundárias, só mostradas, são `late` (janelas de 5 s com atraso), kbps
+médio em movimento, segundos sem imagem por hora e quedas totais por hora; só há veredito com 1 h e 3 projeções de cada lado; PIOR/MELHOR pede 1,5 vez a taxa da referência e 2 quedas a
+mais ou a menos. A legibilidade do mapa não se mede aqui (é o teste cego do vídeo). (2) A seção "LEITURAS DO CLASSIFICADOR DE IMAGEM" lista as `picture look:` com p < 0,98 e a
+tela do `aa-screen:` na hora, e o alarme (em PROBLEMAS) dispara com mais de 3 % de leituras sem certeza (7 por minuto sem as linhas `video fps`) e ao menos 10 delas; o limite e o porquê
+estão em `olhadas.py`. (3) O batimento e o grupo `03` do painel, por conexão, saem da seção "PACOTES DO PAINEL" (`detalhes.py`, do registro `[detail]`). (4) As sessões (`sessions/`) e o
+vídeo (`video/`) de uma coleta saem da seção "GRAVAÇÕES DA COLETA" (`gravacoes.py`: cobertura, partes, rolagem, ocupação do anel, índice do vídeo). (5) O tempo sem imagem conta do
+`last dash packet` a partir da linha que o diz, não da primeira linha da queda (98,3 s onde eram ~96 s); a união que a linha `connected` não diz de quem foi não é mais chamada de
+«o Android uniu sozinho».
+
 Em registros de versões até a 0.2.0 (o serviço que ligava o servidor sozinho não existe mais), por Ligar, o bloco `servidor do AA:` conta a caminhada que liga o servidor do Android Auto (toque, início
 da caminhada, clique em Iniciar, Voltar, fim, primeira conexão, em ms) e acusa a causa: porta fechada 5 s depois do clique, servidor
 que só atendeu quando a tela do Android Auto abriu, menu lido pela metade (Android Auto frio?). Sem linhas `aa-server` (o serviço desligado, o caso comum) não diz nada.
@@ -77,8 +88,13 @@ from pathlib import Path
 
 # With `python -I` (or a script run from another folder) the script's own folder is not on the path: the helpers beside it are found by this file's place.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import chaves  # noqa: E402
+import detalhes  # noqa: E402
+import gravacoes  # noqa: E402
 import logcat_sistema  # noqa: E402
+import olhadas  # noqa: E402
 import quedas  # noqa: E402
+import tempo  # noqa: E402
 import varredura  # noqa: E402
 import wifi_sistema  # noqa: E402
 
@@ -125,7 +141,6 @@ ARQUIVO_DIA = re.compile(r"ride-(\d{4})(\d\d)(\d\d)-")
 PASTA_DE_COLETA = re.compile(r"^celular-(\d{4})(\d\d)(\d\d)-(\d\d)(\d\d)$")
 # The wait for the dash: requests for its Wi-Fi in a row with no `connected` between them.
 PEDIDO_DE_REDE = re.compile(r"requestNetwork '.*?' .*?request #(\d+)")
-SEGUNDOS_NO_DIA = 86400
 CAMINHADA_FIM = re.compile(r"\b(start|stop|visit) walk ended: \w+ in (\d+) ms")
 ESPERA_NA_LINHA_S = 60.0
 ESPERA_PROBLEMA_S = 180.0
@@ -154,7 +169,6 @@ APP_TARDE_S = 10
 PEDIDO_COM_PAINEL = re.compile(r"request #(\d+).*?the dash: '[^']*' -?\d+ dBm \d+ MHz seen (\d+) s ago")
 PAINEL_FORA_DA_VARREDURA = "the dash not among them"
 # `==== process start: app — app 0.3.0-dev+26.11.03-03.30 (29894790, 7eee9cb), motorola motorola edge 30, Android 14 (API 34) ====`: the build that ran.
-VERSAO_DO_APP = re.compile(r"^==== process start: [^—]*— app ([^\s,]+)(?: \(([^)]*)\))?")
 # The app's scan lookup that did not find the dash (the wait's own look, every pause), and the app's line when it found it.
 PROCURA_SEM_ACHAR = re.compile(r"scan lookup for '[^']*' → not found")
 # `aa-screen: apps (a select in the menu)`: the tap on a menu item is taken as an app opened at once, before any picture. The picture then says `menu (by the
@@ -171,7 +185,6 @@ QUEDA_NO_SISTEMA_S = 10.0
 # A dumpsys union to the dash this close to a line of the REau's records (before the first or after the last of a file) has a record.
 UNIAO_COM_REGISTRO_S = 30.0
 # The app's cold start: its first slow frames (a debug build with no baseline profile) are not the ride's.
-PROCESSO_COMECOU = "==== process start:"
 ABERTURA_S = 5.0
 ABERTURA_FRAME_LENTO = re.compile(r"slow frame: \d+ ms during cold start")
 ABERTURA_FRAME_LENTO_S = 1.5
@@ -376,12 +389,7 @@ def _dia_do_arquivo(arquivo):
         return None
 
 
-def instante(x):
-    """O instante (datetime) de uma linha, ou None se o nome do arquivo não traz o dia."""
-    if not x.dia:
-        return None
-    h, m, s = x.hora.split(":")
-    return datetime.fromisoformat(x.dia) + timedelta(hours=int(h), minutes=int(m), seconds=float(s))
+instante = tempo.instante  # o instante (datetime) de uma linha, ou None se o nome do arquivo não traz o dia
 
 
 MOTO_DESLIGADA = "(moto desligada)"  # na linha de uma queda que é o painel desligando com a moto: o `main` a tira dos PROBLEMAS e a põe numa seção própria
@@ -511,7 +519,7 @@ def avisos_do_dumpsys_wifi(caminhos, linhas, janela=None):
         quando = f"{unioes[0].quando:%d/%m %H:%M:%S}" + (f" a {unioes[-1].quando:%H:%M:%S}" if unioes[-1].quando != unioes[0].quando else "")
         falhas = len(unioes) - len(certas)
         partes = [f"{len(certas)} {'união' if len(certas) == 1 else 'uniões'}"] + ([f"{falhas} {'tentativa' if falhas == 1 else 'tentativas'} sem sucesso"] if falhas else [])
-        mais_longa = f"; a mais longa ficou {_duracao_texto(max(paradas))}" if paradas else ""
+        mais_longa = f"; a mais longa ficou {tempo.duracao_texto(max(paradas))}" if paradas else ""
         saida.append(f"{quando}: o celular entrou no Wi-Fi do painel por outro app ou pelo sistema, não pelo REau — {origem}, {como}: {', '.join(partes)}{mais_longa}")
     return saida
 
@@ -550,12 +558,12 @@ def do_dumpsys_wifi(caminhos, linhas, janela=None):
     for u, quem in _unioes_sem_registro(caminhos, linhas, janela)["do_reau"]:
         if u.ok:
             fim = wifi_sistema.fim_da_uniao(u, desconexoes)
-            ficou = (f"saiu às {fim.quando:%H:%M:%S} depois de {_duracao_texto((fim.quando - u.quando).total_seconds())} ({_desconexao_texto(fim)})" if fim
+            ficou = (f"saiu às {fim.quando:%H:%M:%S} depois de {tempo.duracao_texto((fim.quando - u.quando).total_seconds())} ({_desconexao_texto(fim)})" if fim
                      else "o dumpsys não mostra quando saiu")
             saida.append(f"{u.quando:%d/%m %H:%M:%S}: o celular entrou no Wi-Fi do painel sem nenhum registro do REau ({quem}, {u.ms} ms para unir, "
                          f"{u.dbm} dBm, {u.mhz} MHz); {ficou}")
         else:
-            saida.append(f"{u.quando:%d/%m %H:%M:%S}: o celular tentou entrar no Wi-Fi do painel por {_duracao_texto((u.ms or 0) / 1000)} sem nenhum registro do REau "
+            saida.append(f"{u.quando:%d/%m %H:%M:%S}: o celular tentou entrar no Wi-Fi do painel por {tempo.duracao_texto((u.ms or 0) / 1000)} sem nenhum registro do REau "
                          f"({quem}) e não conseguiu")
     return saida
 
@@ -657,7 +665,7 @@ def _aberturas(linhas):
         quando = instante(x)
         if quando is None:
             continue
-        if x.texto.startswith(PROCESSO_COMECOU):
+        if x.texto.startswith(tempo.PROCESSO_COMECOU):
             saida.append((quando, quando + timedelta(seconds=ABERTURA_S)))
         elif ABERTURA_FRAME_LENTO.search(x.texto):
             folga = timedelta(seconds=ABERTURA_FRAME_LENTO_S)
@@ -885,7 +893,7 @@ def _versoes(linhas):
     """[(arquivo, hora, versão, detalhe)] de cada `==== process start:` com a versão do app (`app 0.3.0-dev+26.11.03-03.30 (29894790, 7eee9cb)`); registro de antes dela não traz."""
     saida = []
     for x in linhas:
-        m = VERSAO_DO_APP.match(x.texto) if x.texto.startswith(PROCESSO_COMECOU) else None
+        m = tempo.VERSAO_DO_APP.match(x.texto) if x.texto.startswith(tempo.PROCESSO_COMECOU) else None
         if m:
             saida.append((x.arquivo, x.hora, m.group(1), m.group(2) or ""))
     return saida
@@ -895,7 +903,7 @@ def _versao_de_cada_projecao(linhas):
     """{id da linha de ligar: 'versão (build)'} pela última linha `process start` antes dela."""
     saida, atual = {}, None
     for x in linhas:
-        m = VERSAO_DO_APP.match(x.texto) if x.texto.startswith(PROCESSO_COMECOU) else None
+        m = tempo.VERSAO_DO_APP.match(x.texto) if x.texto.startswith(tempo.PROCESSO_COMECOU) else None
         if m:
             atual = f"{m.group(1)} ({m.group(2)})" if m.group(2) else m.group(1)
         elif x.texto.startswith(LIGOU):
@@ -1085,10 +1093,6 @@ def _video(bloco):
     return "vídeo: " + ", ".join(partes)
 
 
-def _dec(valor, casas=1):
-    return f"{valor:.{casas}f}".replace(".", ",")
-
-
 def _etapas_do_video(janelas):
     """Os campos que as linhas `video fps` ganharam no fim em 03/11/2026 (plano 23), em frases para o resumo `vídeo:`: o pior quadro de
     composição e de codificação da projeção (e o pior p95 das janelas), o que custou olhar a imagem (`look`) e travar cada imagem nova
@@ -1099,14 +1103,14 @@ def _etapas_do_video(janelas):
         pior = [float(m.group(1)) for x in janelas for m in [maximo.search(x.texto)] if m]
         if pior:
             p95s = [float(m.group(1)) for x in janelas for m in [p95.search(x.texto)] if m]
-            partes.append(f"{nome} pior quadro {_dec(max(pior))} ms (pior p95 {_dec(max(p95s))})" if p95s else f"{nome} pior quadro {_dec(max(pior))} ms")
+            partes.append(f"{nome} pior quadro {tempo.dec(max(pior))} ms (pior p95 {tempo.dec(max(p95s))})" if p95s else f"{nome} pior quadro {tempo.dec(max(pior))} ms")
     for nome, campo in (("leitura da imagem (look)", VIDEO_LOOK), ("updateTexImage", VIDEO_LATCH)):
         achados = [(int(m.group(1)), m) for x in janelas for m in [campo.search(x.texto)] if m]
         feitas = [(n, float(m.group(2)), float(m.group(3))) for n, m in achados if n > 0 and m.group(2)]
         if feitas:
             total = sum(n for n, _, _ in feitas)
             media = sum(n * media for n, media, _ in feitas) / total
-            partes.append(f"{nome} {total} vezes, média {_dec(media, 2)} ms (máx {_dec(max(m for _, _, m in feitas), 2)})")
+            partes.append(f"{nome} {total} vezes, média {tempo.dec(media, 2)} ms (máx {tempo.dec(max(m for _, _, m in feitas), 2)})")
         elif achados:
             partes.append(f"{nome} nenhuma vez")
     acordou = [(int(m.group(1)), float(janela.group(2)), int(desenhados.group(1)))
@@ -1115,8 +1119,8 @@ def _etapas_do_video(janelas):
     segundos = sum(s for _, s, _ in acordou)
     if segundos > 0:
         acordares, desenhos = sum(a for a, _, _ in acordou) / segundos, sum(d for _, _, d in acordou) / segundos
-        partes.append(f"{_dec(acordares)} acordares/s do compositor contra {_dec(desenhos)} desenhos/s" +
-                      (f" ({_dec(acordares / desenhos)} por desenho)" if desenhos > 0 else ""))
+        partes.append(f"{tempo.dec(acordares)} acordares/s do compositor contra {tempo.dec(desenhos)} desenhos/s" +
+                      (f" ({tempo.dec(acordares / desenhos)} por desenho)" if desenhos > 0 else ""))
     return partes
 
 
@@ -1163,7 +1167,7 @@ def _video_por_ritmo(bloco):
     for ritmo, (n, idrs, kbps) in sorted(_por_ritmo(bloco).items()):
         campos = []
         if idrs:
-            campos.append(f"idr/janela {_dec(sum(idrs) / len(idrs), 2)} ({min(idrs)} a {max(idrs)})")
+            campos.append(f"idr/janela {tempo.dec(sum(idrs) / len(idrs), 2)} ({min(idrs)} a {max(idrs)})")
         if kbps:
             campos.append(f"kbps médio {sum(kbps) / len(kbps):.0f}, máx {max(kbps)}")
         partes.append(f"{ritmo} fps ({n} {'janela' if n == 1 else 'janelas'}) " + ", ".join(campos) if campos else f"{ritmo} fps ({n} {'janela' if n == 1 else 'janelas'})")
@@ -1201,12 +1205,12 @@ def _tela_por_tempo(bloco):
     """`tela por tempo: mapa 12 min 03 s (60%), menu 3 min 00 s (15%), apps 5 min 00 s (25%)`; vazio sem eventos `aa-screen`."""
     soma = {}
     for tela, x, ate in _telas(bloco):
-        soma[tela] = soma.get(tela, 0.0) + (ate - x.segundos) % SEGUNDOS_NO_DIA
+        soma[tela] = soma.get(tela, 0.0) + tempo.dif(ate, x.segundos)
     total = sum(soma.values())
     if total <= 0:
         return ""
     return "tela por tempo: " + ", ".join(
-        f"{TELA_NOME[t]} {_duracao_texto(s)} ({100 * s / total:.0f}%)" for t, s in sorted(soma.items(), key=lambda p: -p[1]))
+        f"{TELA_NOME[t]} {tempo.duracao_texto(s)} ({100 * s / total:.0f}%)" for t, s in sorted(soma.items(), key=lambda p: -p[1]))
 
 
 def _apps_sem_tecla(bloco):
@@ -1221,29 +1225,18 @@ def _apps_sem_tecla(bloco):
         if tela != "apps" or "by the picture" not in x.texto:
             continue
         inicio = x.segundos
-        fim = inicio + (ate - inicio) % SEGUNDOS_NO_DIA
+        fim = inicio + tempo.dif(ate, inicio)
         pontos = [inicio] + sorted(t for t in teclas if inicio < t < fim) + [fim]
         # The longest stretch with no key; the Nav messages that came in it.
         a, b = max(zip(pontos, pontos[1:]), key=lambda p: p[1] - p[0])
         navs = [y for y in bloco if a <= y.segundos <= b and NAV_CHEGANDO.search(y.texto)]
         if b - a > APPS_SEM_TECLA_S and navs:
-            saida.append(f"{x.hora}: tela \"apps\" por {_duracao_texto(fim - inicio)}, {_duracao_texto(b - a)} deles sem nenhuma tecla do painel (nem toque no celular) e com a "
+            saida.append(f"{x.hora}: tela \"apps\" por {tempo.duracao_texto(fim - inicio)}, {tempo.duracao_texto(b - a)} deles sem nenhuma tecla do painel (nem toque no celular) e com a "
                          f"rota ativa ({len(navs)} mensagens Nav:): a leitura da imagem provavelmente tomou o mapa por um app")
     return saida
 
 
-def _hora_ms(segundos):
-    """`07:44:46,8` de um instante do dia em segundos (o `seen N s ago` não tem mais precisão que o segundo)."""
-    segundos %= SEGUNDOS_NO_DIA
-    return f"{int(segundos // 3600):02d}:{int(segundos % 3600 // 60):02d}:{segundos % 60:04.1f}".replace(".", ",")
-
-
 STALE_FOLGA_S = 2  # the scan's `seen N s ago` is in whole seconds, and the drop's line comes a moment after the loss
-
-
-def _dif_s(a, b):
-    """Os segundos de `b` até `a` no relógio do registro (a hora do dia: a meia-noite é um dia a mais)."""
-    return (a - b) % SEGUNDOS_NO_DIA
 
 
 def _pedidos_com_painel(bloco):
@@ -1268,7 +1261,7 @@ def _pedidos_com_painel(bloco):
                 continue
             # A sighting older than the drop is the dash that had just gone (the scan list remembers it: `seen 4 s ago` for a dash switched off): no measure of anything
             # (the 8 drops of the 07/11 collection read "383,7 s" and the like), and it does not use up the sighting that is the dash coming back.
-            if queda is not None and int(visto.group(2)) >= _dif_s(x.segundos, queda) - STALE_FOLGA_S:
+            if queda is not None and int(visto.group(2)) >= tempo.dif(x.segundos, queda) - STALE_FOLGA_S:
                 continue
             if not ja_visto:
                 unido = next((y for y in bloco[i + 1:] if y.etiqueta == "wifi" and y.texto.startswith(("connected ", "using already-connected WiFi"))), None)
@@ -1289,8 +1282,8 @@ def _olhada_do_app(pedido, bloco):
     if primeira is None:
         return ""
     n = int(OLHADA_COM_PAINEL.search(primeira.texto).group(1))
-    return (f"olhada do app {_hora_ms(primeira.segundos)} com o painel na varredura há {n} s (visto pelo Android cerca de {_hora_ms(primeira.segundos - n)}); "
-            f"do visto à olhada {n} s, da olhada ao pedido {_dec(pedido.segundos - primeira.segundos)} s")
+    return (f"olhada do app {tempo.hora_ms(primeira.segundos)} com o painel na varredura há {n} s (visto pelo Android cerca de {tempo.hora_ms(primeira.segundos - n)}); "
+            f"do visto à olhada {n} s, da olhada ao pedido {tempo.dec(pedido.segundos - primeira.segundos)} s")
 
 
 def _visto_pedido_unido(bloco):
@@ -1298,14 +1291,14 @@ def _visto_pedido_unido(bloco):
     pedido menos N s, ao segundo) e não pela hora em que o app olhou: 03/11/2026, painel visto às 07:44:46,8 e pedido às 07:44:59,8."""
     saida = {}
     for pedido, visto_s, _, unido in _pedidos_com_painel(bloco):
-        partes = [f"visto há {visto_s} s no pedido #{PEDIDO_DE_REDE.search(pedido.texto).group(1)} (cerca de {_hora_ms(pedido.segundos - visto_s)})",
-                  f"pedido {_hora_ms(pedido.segundos)}"]
+        partes = [f"visto há {visto_s} s no pedido #{PEDIDO_DE_REDE.search(pedido.texto).group(1)} (cerca de {tempo.hora_ms(pedido.segundos - visto_s)})",
+                  f"pedido {tempo.hora_ms(pedido.segundos)}"]
         olhada = _olhada_do_app(pedido, bloco)
         if olhada:
             partes.append(olhada)
         if unido is not None:
-            ate = (unido.segundos - pedido.segundos) % SEGUNDOS_NO_DIA
-            partes.append(f"unido {_hora_ms(unido.segundos)} (pedido→unido {_dec(ate)} s; visto→unido {_dec(ate + visto_s)} s)")
+            ate = tempo.dif(unido.segundos, pedido.segundos)
+            partes.append(f"unido {tempo.hora_ms(unido.segundos)} (pedido→unido {tempo.dec(ate)} s; visto→unido {tempo.dec(ate + visto_s)} s)")
         else:
             partes.append("sem unir até o fim da projeção")
         saida[id(pedido)] = "painel visto → pedido → unido: " + ", ".join(partes)
@@ -1324,7 +1317,7 @@ def _painel_visto_tarde(bloco):
         depois = f"{pedido.segundos - anterior.segundos:.0f} s depois do anterior" if PEDIDO_DE_REDE.search(anterior.texto) \
             else f"{pedido.segundos - anterior.segundos:.0f} s depois da última olhada sem vê-lo"
         n = PEDIDO_DE_REDE.search(pedido.texto).group(1)
-        medida = f"; visto→pedido {visto_s} s" + (f", pedido→unido {_dec((unido.segundos - pedido.segundos) % SEGUNDOS_NO_DIA)} s" if unido is not None else "")
+        medida = f"; visto→pedido {visto_s} s" + (f", pedido→unido {tempo.dec(tempo.dif(unido.segundos, pedido.segundos))} s" if unido is not None else "")
         saida.append(f"{pedido.hora}: painel visto na varredura há {visto_s} s e o app só pediu a rede agora (pedido #{n}, {depois}): "
                      f"a pausa entre as olhadas segurou o app{medida}")
     return saida
@@ -1354,7 +1347,7 @@ def problemas(linhas):
             if "unavailable after" in x.texto and "seenInScan=true" in x.texto:
                 saida.append(f"{x.hora}: pedido de rede expirou com o painel na varredura (seenInScan=true)")
         # A wait in which the dash never showed in the scan is the bike still switched off (or not yet on): no defect.
-        saida += [f"{e[0].hora}: laço de espera pelo painel — {e[2]} pedidos de rede em {_duracao_texto(e[1])}"
+        saida += [f"{e[0].hora}: laço de espera pelo painel — {e[2]} pedidos de rede em {tempo.duracao_texto(e[1])}"
                   for e in _esperas(bloco) if e[1] >= ESPERA_PROBLEMA_S and _painel_apareceu(e)]
         saida += quedas.problemas_das_interrupcoes(quedas.interrupcoes(bloco, _grupos_de_queda(bloco)))
         saida += _laco_de_reconexao(bloco)
@@ -1364,7 +1357,7 @@ def problemas(linhas):
         saida += _apps_sem_tecla(bloco) + _quadros_chave_altos(bloco) + _painel_visto_tarde(bloco)
         saida += [f"projeção de {inicio}: servidor do AA — {causa}" for causa in _servidor_aa(bloco)[1]]
     # The test of item 1a (the Wi-Fi list with the app behind) fails here, with the reasons; its whole account is in `teste_1a`.
-    return saida + varredura.problemas_do_teste(varredura.teste_1a(linhas))
+    return saida + varredura.problemas_do_teste(varredura.teste_1a(linhas)) + olhadas.problemas(projecoes(linhas))
 
 
 AUTENTICACAO_SINAL = re.compile(r"rssi[ =](-\d+)")
@@ -1393,7 +1386,7 @@ def _transmitiu_ate_o_aviso(bloco):
     """A projeção transmitiu (`→ STREAMING`) e durou 10 s ou mais depois disso: só então o painel já teria mandado o aviso dos 10 s
     (09 06 55). Uma projeção desligada com 8 s (31/10/2026, 10:11:29) não tem o que confirmar."""
     inicio = next((x for x in bloco if "→ STREAMING" in x.texto), None)
-    return inicio is not None and (bloco[-1].segundos - inicio.segundos) % SEGUNDOS_NO_DIA >= PROJECAO_CURTA_S
+    return inicio is not None and tempo.dif(bloco[-1].segundos, inicio.segundos) >= PROJECAO_CURTA_S
 
 
 def _apps_provisorio_desmentido(bloco):
@@ -1406,7 +1399,7 @@ def _apps_provisorio_desmentido(bloco):
     for i, x in selecoes:
         proximo = eventos[i + 1] if i + 1 < len(eventos) else None
         if proximo is not None and MENU_PELA_IMAGEM_DE_APPS.match(proximo.texto):
-            dt = (proximo.segundos - x.segundos) % SEGUNDOS_NO_DIA
+            dt = tempo.dif(proximo.segundos, x.segundos)
             if dt <= APPS_DESMENTIDO_S:
                 desmentidos.append((x, dt))
     return desmentidos, len(selecoes)
@@ -1425,7 +1418,7 @@ def _apps_ate_o_mapa(bloco):
     for i, x in selecoes:
         proximo = eventos[i + 1] if i + 1 < len(eventos) else None
         if proximo is not None and MAPA_PELA_IMAGEM_DE_APPS.match(proximo.texto):
-            dt = (proximo.segundos - x.segundos) % SEGUNDOS_NO_DIA
+            dt = tempo.dif(proximo.segundos, x.segundos)
             if dt <= APPS_DESMENTIDO_S:
                 ao_mapa.append((x, dt))
     return ao_mapa, len(selecoes)
@@ -1435,12 +1428,12 @@ def _apps_provisorio(bloco):
     saida = []
     desmentidos, total = _apps_provisorio_desmentido(bloco)
     if desmentidos:
-        quando = "; ".join(f"{x.hora[:10].replace('.', ',')} por {_dec(dt)} s" for x, dt in desmentidos)
+        quando = "; ".join(f"{x.hora[:10].replace('.', ',')} por {tempo.dec(dt)} s" for x, dt in desmentidos)
         saida.append(f"projeção de {bloco[0].hora} ({bloco[0].arquivo}): \"apps\" provisório desmentido pela imagem {len(desmentidos)} de {total} vezes ({quando}): "
                      "a seleção no menu trocou a tela para apps sem olhar a imagem, e o painel mostraria o recorte dos apps com o menu ainda na tela")
     ao_mapa, total = _apps_ate_o_mapa(bloco)
     if ao_mapa:
-        quando = "; ".join(f"{x.hora[:10].replace('.', ',')} por {_dec(dt)} s" for x, dt in ao_mapa)
+        quando = "; ".join(f"{x.hora[:10].replace('.', ',')} por {tempo.dec(dt)} s" for x, dt in ao_mapa)
         saida.append(f"projeção de {bloco[0].hora} ({bloco[0].arquivo}): a escolha no menu levou ao mapa {len(ao_mapa)} de {total} vezes ({quando}): o painel mostraria o recorte dos apps "
                      "por esse tempo antes de a imagem confirmar o mapa (o app escolhido era de navegação; só informativo)")
     return saida
@@ -1547,7 +1540,7 @@ def _esperas(bloco):
     def fecha(fim):
         if pedidos:
             # The clock of a line is the time of day: a wait that crosses midnight goes back, and is a day longer on the other side.
-            saida.append((pedidos[0], ((fim or pedidos[-1]).segundos - pedidos[0].segundos) % SEGUNDOS_NO_DIA, len(pedidos), list(wifi)))
+            saida.append((pedidos[0], tempo.dif((fim or pedidos[-1]).segundos, pedidos[0].segundos), len(pedidos), list(wifi)))
             pedidos.clear()
         wifi.clear()
 
@@ -1585,18 +1578,14 @@ def _painel_apareceu(espera):
     fim = espera[0].segundos + espera[1]
     # Two requests in a row with the dash in the scan, and the wait still going `ESPERA_PAINEL_VISTO_S` s after the first of them (15:10:31 and 15:10:35 on 07/11 saw the dash
     # coming back and joined 5 s later: the bike was on at the end, not a hung Wi-Fi).
-    return any(a and b and _dif_s(fim, pedidos[k].segundos) >= ESPERA_PAINEL_VISTO_S for k, (a, b) in enumerate(zip(vistos, vistos[1:])))
+    return any(a and b and tempo.dif(fim, pedidos[k].segundos) >= ESPERA_PAINEL_VISTO_S for k, (a, b) in enumerate(zip(vistos, vistos[1:])))
 
 
 def _texto_da_espera(espera):
     """`espera pelo painel: 25 pedidos de rede em 17 min 53 s sem achá-lo`"""
     _, duracao, pedidos, _ = espera
     nunca = " (o painel não apareceu na varredura: moto desligada?)" if _vezes_visto(espera) == 0 else ""
-    return f"espera pelo painel: {pedidos} pedidos de rede em {_duracao_texto(duracao)}{nunca}"
-
-
-def _duracao_texto(s):
-    return f"{int(s // 60)} min {int(s % 60):02d} s" if s >= 60 else f"{s:.0f} s"
+    return f"espera pelo painel: {pedidos} pedidos de rede em {tempo.duracao_texto(duracao)}{nunca}"
 
 
 def _ms(a, b):
@@ -1711,27 +1700,27 @@ def _sem_imagem_do_resumo(escuro, resumo, bloco):
     """O `dark=N/total (max maior)` do resumo, sem a interrupção final: a que começa num `video loop stop` e vai até o fim da projeção sem
     a imagem voltar é o painel desligado com a moto (ou o dono desligando), e o painel travado que dura até o fim já sai como "painel
     travado". Tira ela da contagem (e do maior, se ela era a maior: então o maior das outras vem do registro)."""
-    n, maior = int(escuro.group(1)), _duracao_s(escuro.group(3))
+    n, maior = int(escuro.group(1)), tempo.duracao_s(escuro.group(3))
     total = escuro.group(2)
     # Only up to the resumo: the stop that comes with the rider's Desligar, after it, is not in its `dark=`.
     interrupcoes = _interrupcoes_da_imagem(bloco[:bloco.index(resumo)])
     final = next(((p, v) for p, v in interrupcoes if v is None), None)
     duracao = 0.0
     if final is not None:
-        duracao = (resumo.segundos - final[0].segundos) % SEGUNDOS_NO_DIA
+        duracao = tempo.dif(resumo.segundos, final[0].segundos)
         n -= 1
         if n < 1:
             return []
-        total = _duracao_resumo(max(0.0, _duracao_s(total) - duracao))
+        total = tempo.duracao_resumo(max(0.0, tempo.duracao_s(total) - duracao))
         if abs(maior - duracao) <= 5:
-            fechadas = [(v.segundos - p.segundos) % SEGUNDOS_NO_DIA for p, v in interrupcoes if v is not None]
+            fechadas = [tempo.dif(v.segundos, p.segundos) for p, v in interrupcoes if v is not None]
             maior = max(fechadas, default=0)
     if maior <= DARK_PROBLEMA_S:
         return []
-    maior_texto = escuro.group(3) if final is None else _duracao_resumo(maior)
+    maior_texto = escuro.group(3) if final is None else tempo.duracao_resumo(maior)
     plural = "interrupção" if n == 1 else "interrupções"
     # The last one (the bike switched off, the image never back) is not counted, and the line says so with its size (item 17a: it was left out without a word).
-    sem_contar = f"; sem contar a última, de {_duracao_texto(duracao)}, com a moto desligada" if final is not None else ""
+    sem_contar = f"; sem contar a última, de {tempo.duracao_texto(duracao)}, com a moto desligada" if final is not None else ""
     # Every interruption that came back was an earlier switch-off of the bike (the dash vanished with a steady Wi-Fi and was back minutes later): said so, not a defect.
     moto = f" {MOTO_DESLIGADA}" if _todas_da_moto(bloco, [i for i in quedas.interrupcoes(bloco, _grupos_de_queda(bloco)) if not i["final"]]) else ""
     return [f"{resumo.hora}: painel sem imagem{moto} — {n} {plural}, {total} no total, a maior de {maior_texto} (resumo{sem_contar})"]
@@ -1743,18 +1732,6 @@ def _todas_da_moto(bloco, interrupcoes_):
         return False
     da_moto = {id(g[0]) for g in _grupos_de_queda(bloco) if _painel_desligou(g, bloco)}
     return all(id(i["queda"]) in da_moto for i in interrupcoes_)
-
-
-def _duracao_resumo(s):
-    """Uma duração como o resumo a escreve: `45s` ou `1m08s`."""
-    s = int(round(s))
-    return f"{s // 60}m{s % 60:02d}s" if s >= 60 else f"{s}s"
-
-
-def _duracao_s(texto):
-    """Os segundos de uma duração do resumo: `45s` ou `1m08s`."""
-    m = re.fullmatch(r"(?:(\d+)m)?(\d+)s", texto)
-    return int(m.group(1) or 0) * 60 + int(m.group(2)) if m else 0
 
 
 def _quedas(bloco):
@@ -1866,7 +1843,7 @@ def _tela_do_celular(x, bloco):
 
 def _velocidades(bloco, de, ate):
     """As velocidades estimadas (`speed~N km/h` das linhas `video fps`) entre dois instantes do relógio do registro."""
-    return [int(m.group(1)) for y in bloco if y.texto.startswith("video fps target=") and 0 <= _dif_s(y.segundos, de) <= _dif_s(ate, de)
+    return [int(m.group(1)) for y in bloco if y.texto.startswith("video fps target=") and 0 <= tempo.dif(y.segundos, de) <= tempo.dif(ate, de)
             for m in [VELOCIDADE.search(y.texto)] if m]
 
 
@@ -1897,7 +1874,7 @@ def _menu_sem_tecla(bloco):
     for y in bloco:
         if y.etiqueta != "aa-screen" or not MENU_DA_NAV_PELA_IMAGEM.match(y.texto):
             continue
-        if any(0 <= _dif_s(y.segundos, t) <= MENU_SEM_TECLA_S for t in teclas):
+        if any(0 <= tempo.dif(y.segundos, t) <= MENU_SEM_TECLA_S for t in teclas):
             continue
         abertos.append((y, _tela_do_celular(y, bloco)))
     com_tela = [(y, t) for y, t in abertos if t]
@@ -1905,13 +1882,13 @@ def _menu_sem_tecla(bloco):
         return []
     episodios = []
     for y in bloco:
-        if INATIVO.search(y.texto) and (not episodios or _dif_s(y.segundos, episodios[-1].segundos) > INATIVO_JUNTO_S):
+        if INATIVO.search(y.texto) and (not episodios or tempo.dif(y.segundos, episodios[-1].segundos) > INATIVO_JUNTO_S):
             episodios.append(y)
     ligados = sum(1 for y in episodios if _tela_do_celular(y, bloco))
     saida = []
     for y, _ in com_tela:
-        inativo = next((e for e in reversed(episodios) if 0 <= _dif_s(y.segundos, e.segundos) <= 10), None)
-        depois = f", {_dif_s(y.segundos, inativo.segundos):.1f} s depois de `cluster status INACTIVE`".replace(".", ",") if inativo else ""
+        inativo = next((e for e in reversed(episodios) if 0 <= tempo.dif(y.segundos, e.segundos) <= 10), None)
+        depois = f", {tempo.dif(y.segundos, inativo.segundos):.1f} s depois de `cluster status INACTIVE`".replace(".", ",") if inativo else ""
         saida.append(f"{y.hora}: menu aberto sem tecla do REau com a tela do celular acesa{depois}: foi o Android Auto, porque a tela de navegação saiu "
                      "(provavelmente o dono mexendo no celular); o recorte errado dura até a imagem confirmar o menu")
     saida.append(f"projeção de {bloco[0].hora} ({bloco[0].arquivo}): de {len(episodios)} episódios de `cluster status INACTIVE`, {ligados} com a tela acesa e "
@@ -1934,9 +1911,9 @@ def _cartoes_de_chamada(bloco):
         else:
             continue
         fim = next((y for y in bloco[k + 1:] if fim_texto in y.texto), None) or bloco[-1]
-        dur = _dif_s(fim.segundos, x.segundos)
+        dur = tempo.dif(fim.segundos, x.segundos)
         tela = next((TELA_NOME[m.group(1)] for y in reversed(bloco[:k]) if y.etiqueta == "aa-screen" for m in [TELA_AA.match(y.texto)] if m), None)
-        partes = [f"{tipo} {_dec(dur)} s ({x.hora[:8]} → {fim.hora[:8]})", f"tela {tela or 'sem dado'}"]
+        partes = [f"{tipo} {tempo.dec(dur)} s ({x.hora[:8]} → {fim.hora[:8]})", f"tela {tela or 'sem dado'}"]
         vel = _velocidades(bloco, x.segundos, fim.segundos) or _velocidades(bloco, x.segundos - 15, x.segundos)
         if vel:
             partes.append(f"velocidade estimada {min(vel)} a {max(vel)} km/h")
@@ -1945,8 +1922,8 @@ def _cartoes_de_chamada(bloco):
             partes.append("cartão do REau mostrado no painel" if any("[dash]" in y.texto or "call card shown" in y.texto for y in meio) else "sem o cartão do REau no painel")
         fim_joystick = next((y for y in meio if y.etiqueta == "call" and y.texto.startswith("end: ")), None)
         if fim_joystick is not None:
-            partes.append(f"encerrada pelo joystick {_dec(_dif_s(fim_joystick.segundos, x.segundos))} s depois")
-        fora = next((i for i in interrupcoes if _dif_s(x.segundos, i["perda"]) <= i["total"]), None)
+            partes.append(f"encerrada pelo joystick {tempo.dec(tempo.dif(fim_joystick.segundos, x.segundos))} s depois")
+        fora = next((i for i in interrupcoes if tempo.dif(x.segundos, i["perda"]) <= i["total"]), None)
         if fora is not None:
             partes.append("com o painel fora (sem imagem)")
         saida.append(f"{x.hora[:8]}: cartão de chamada do Android Auto {'; '.join(partes)}"
@@ -1964,7 +1941,7 @@ def _doze(bloco):
         fim = next((y for y in bloco[k + 1:] if y.etiqueta == "system" and y.texto == "doze off"), None) or bloco[-1]
         vel = _velocidades(bloco, x.segundos, fim.segundos)
         v = f"; velocidade estimada de {min(vel)} a {max(vel)} km/h nesse tempo (o doze profundo exige o aparelho parado: pode ser doze leve)" if vel else ""
-        saida.append(f"{x.hora[:8]}: o celular entrou em doze com a projeção ligada, até {fim.hora[:8]} ({_duracao_texto(_dif_s(fim.segundos, x.segundos))}){v}")
+        saida.append(f"{x.hora[:8]}: o celular entrou em doze com a projeção ligada, até {fim.hora[:8]} ({tempo.duracao_texto(tempo.dif(fim.segundos, x.segundos))}){v}")
     return saida
 
 
@@ -1977,7 +1954,7 @@ def _economia(bloco):
         if x.etiqueta == "system" and x.texto.startswith("saver on"):
             if "came late" in x.texto and ligada_na_partida:
                 continue  # the line of the state it started in, said apart below
-            baixa = next((y for y in reversed(bloco[:k]) if _dif_s(x.segundos, y.segundos) <= 5 and y.texto.startswith("battery low at")), None)
+            baixa = next((y for y in reversed(bloco[:k]) if tempo.dif(x.segundos, y.segundos) <= 5 and y.texto.startswith("battery low at")), None)
             nivel = re.match(r"battery low at (\d+)%", baixa.texto) if baixa else None
             if nivel:
                 saida.append(f"{x.hora[:8]}: a economia de bateria ligou sozinha, no nível automático do Android ({nivel.group(1)} %)")
@@ -2159,9 +2136,35 @@ def _por_data_e_build(linhas):
         n = por.setdefault((dia, build), {"projecoes": 0, "quedas": 0, "segundos": 0.0})
         n["projecoes"] += 1
         n["quedas"] += len(_grupos_de_queda(bloco))
-        n["segundos"] += (bloco[-1].segundos - bloco[0].segundos) % SEGUNDOS_NO_DIA
+        n["segundos"] += tempo.dif(bloco[-1].segundos, bloco[0].segundos)
     return [f"{dia[8:10] + '/' + dia[5:7] if len(dia) == 10 else dia}: build {build}: {n['projecoes']} {'projeção' if n['projecoes'] == 1 else 'projeções'}, "
-            f"{_duracao_texto(n['segundos'])} ligada{'s' if n['projecoes'] != 1 else ''}, {n['quedas']} {'queda' if n['quedas'] == 1 else 'quedas'}" for (dia, build), n in sorted(por.items())]
+            f"{tempo.duracao_texto(n['segundos'])} ligada{'s' if n['projecoes'] != 1 else ''}, {n['quedas']} {'queda' if n['quedas'] == 1 else 'quedas'}" for (dia, build), n in sorted(por.items())]
+
+
+def _sinal_antes_dbm(grupo, bloco):
+    """O sinal (dBm) do Wi-Fi do painel antes de uma queda: o último `bike=` das olhadas `[device]` até `BIKE_ATE_S` s antes, ou o pior das últimas `AMOSTRAS_RSSI` amostras do
+    histórico `[link]`; None sem nenhum dos dois."""
+    queda = grupo[0]
+    for x in reversed(bloco[:bloco.index(queda)]):
+        m = BIKE_DEVICE.search(x.texto) if x.texto.startswith("device ") else None
+        if m and queda.segundos - x.segundos <= BIKE_ATE_S:
+            return int(m.group(1))
+    antes = _wifi_antes(grupo, bloco)
+    historico = HISTORICO_RSSI.search(antes[-1].texto) if antes else None
+    amostras = [int(v) for v in historico.group(1).split() if re.fullmatch(r"-?\d+", v)][-AMOSTRAS_RSSI:] if historico else []
+    return min(amostras) if amostras else None
+
+
+def corridas(linhas):
+    """Uma entrada por projeção para comparar as chaves experimentais (`chaves.py`): o conjunto de chaves ligadas, as horas transmitindo, as quedas (sem as do painel que desligou
+    com a moto), as com Wi-Fi firme (sinal de `chaves.FIRME_DBM` ou melhor antes da queda; sem sinal no registro não é firme), `late`, kbps e o tempo sem imagem."""
+    blocos = projecoes(linhas)
+    saida = []
+    for bloco, (ligadas, conhecido) in zip(blocos, chaves.por_projecao(linhas, blocos)):
+        grupos = [g for g in _grupos_de_queda(bloco) if not _painel_desligou(g, bloco)]
+        firmes = sum(1 for g in grupos if (_sinal_antes_dbm(g, bloco) or -999) >= chaves.FIRME_DBM)
+        saida.append(chaves.fatos(bloco, ligadas, conhecido, len(grupos), firmes))
+    return saida
 
 
 def _instante_da_opcao(texto, fim_do_dia=False):
@@ -2242,6 +2245,29 @@ def main(argv):
     if teste:
         print("\nTESTE DO ITEM 1a (busca de redes com o app atrás):")
         for t in teste:
+            print(f"  {t}")
+    todas = corridas(linhas)
+    if todas and any(c["conhecido"] for c in todas):
+        print("\nCORRIDAS POR CHAVES EXPERIMENTAIS (critérios na ajuda e em chaves.py):")
+        for t in chaves.texto(todas):
+            print(f"  {t}")
+    elif todas:
+        print(f"\nCORRIDAS POR CHAVES EXPERIMENTAIS: nenhuma das {len(todas)} projeções traz o estado das chaves (build anterior às chaves experimentais): nada a comparar")
+    pacotes = detalhes.secao(_registros_de(caminhos)[0], projecoes(linhas))
+    if pacotes:
+        print("\nPACOTES DO PAINEL (registro `[detail]`: o batimento e o grupo 03 de cada conexão):")
+        for t in pacotes:
+            print(f"  {t}")
+    for raiz in gravacoes.raizes_da_coleta(caminhos):
+        gravadas = gravacoes.secao(raiz, linhas, projecoes(linhas))
+        if gravadas:
+            print(f"\nGRAVAÇÕES DA COLETA ({raiz.name}: sessions/ e video/):")
+            for t in gravadas:
+                print(f"  {t}")
+    leituras = olhadas.secao(projecoes(linhas))
+    if leituras:
+        print("\nLEITURAS DO CLASSIFICADOR DE IMAGEM (picture look com p < 0,98; o alarme está em PROBLEMAS):")
+        for t in leituras:
             print(f"  {t}")
     avisos = avisos_da_leitura(caminhos, linhas, janela)
     if avisos:

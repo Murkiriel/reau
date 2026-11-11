@@ -110,6 +110,11 @@ class AapTransport(
 
     /** Once a second: lets out a keyframe request that had to wait. */
     internal fun keyframeTick() {
+        // Debug builds only: a press of "Focus cycle" asks for the keyframe now, through the same gate as a stalled picture would.
+        if (com.reau.app.debug.FaultInjection.takeFocusCycle()) {
+            AaLog.w("AapTransport: a keyframe asked for by the debug build's focus cycle trigger")
+            triggerFocusCycleRecovery()
+        }
         focusTiming.overdue(SystemClock.elapsedRealtime())?.let { AaLog.w("AapTransport: $it") }
         if (keyframeGate.takePending(SystemClock.elapsedRealtime(), keyframeBlocked())) {
             AaLog.i("AapTransport: the keyframe request that waited goes out")

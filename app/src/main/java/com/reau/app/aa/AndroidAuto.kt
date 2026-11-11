@@ -42,17 +42,24 @@ object AndroidAuto {
 
     /**
      * Opens Android Auto's settings, where the rider reaches the developer options and "Start head unit server".
-     * If that screen cannot be opened, the system's page of the Android Auto app is opened instead.
+     * If that screen cannot be opened, the system's page of the Android Auto app is opened instead, and [say] tells the ride log so
+     * ([planBLine]): the phone's Android Auto then has no settings screen of the name REau knows (an update renamed it?) or refuses it.
      */
-    fun openSettings(context: Context, start: (Intent) -> Unit = context::startActivity): Opened {
-        val own = settingsIntent()
-        val details = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$PACKAGE".toUri())
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        return when {
-            opens(own, start) -> Opened.ANDROID_AUTO_SETTINGS
-            opens(details, start) -> Opened.APP_DETAILS
-            else -> Opened.NOTHING
-        }
+    fun openSettings(context: Context, start: (Intent) -> Unit = context::startActivity, say: (String) -> Unit = {}): Opened =
+        open(start, say)
+
+    // The two intents are asked for only when needed, and can be given: the JVM tests have no Intent that builds itself (the framework stub returns null).
+    internal fun open(
+        start: (Intent) -> Unit,
+        say: (String) -> Unit = {},
+        own: () -> Intent = ::settingsIntent,
+        details: () -> Intent = ::detailsIntent,
+    ): Opened {
+        val ownFailure = failure(own(), start)
+        if (ownFailure == null) return Opened.ANDROID_AUTO_SETTINGS
+        val detailsFailure = failure(details(), start)
+        say(planBLine(ownFailure, detailsFailure))
+        return if (detailsFailure == null) Opened.APP_DETAILS else Opened.NOTHING
     }
 
     /** Android Auto's settings screen, where its developer menu is. */
@@ -70,12 +77,32 @@ object AndroidAuto {
     /** Whether [settingsIntent] opens anything on this phone. */
     fun settingsOpen(context: Context): Boolean = context.packageManager.resolveActivity(settingsIntent(), 0) != null
 
-    internal fun opens(intent: Intent, start: (Intent) -> Unit): Boolean = try {
+    internal fun opens(intent: Intent, start: (Intent) -> Unit): Boolean = failure(intent, start) == null
+
+    /** Null when [intent] was started; else the class name of why it was not. */
+    internal fun failure(intent: Intent, start: (Intent) -> Unit): String? = try {
         start(intent)
-        true
-    } catch (_: ActivityNotFoundException) {
-        false
-    } catch (_: SecurityException) {
-        false
+        null
+    } catch (e: ActivityNotFoundException) {
+        e.javaClass.simpleName
+    } catch (e: SecurityException) {
+        e.javaClass.simpleName
     }
 }
+
+/**
+ * The ride log's line for an opening of the settings that fell to plan B: why Android Auto's own screen did not open (by the exception's
+ * class, `ActivityNotFoundException` or `SecurityException`) and what became of the system's page of the app (`opened` or why not).
+ */
+internal fun planBLine(ownFailure: String, detailsFailure: String?): String {
+    val second = if (detailsFailure == null) {
+        "the system's page of the app opened instead (plan B)"
+    } else {
+        "the system's page of the app did not open either ($detailsFailure)"
+    }
+    return "Android Auto's own settings screen did not open ($ownFailure): $second"
+}
+
+/** The system's page of the Android Auto app: plan B for [AndroidAuto.settingsIntent]. */
+private fun detailsIntent(): Intent =
+    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${AndroidAuto.PACKAGE}".toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

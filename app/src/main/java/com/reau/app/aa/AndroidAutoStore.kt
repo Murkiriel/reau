@@ -33,13 +33,13 @@ object AndroidAutoStore {
      * [AndroidAuto.openSettings] when it is installed, else its page in the store. Never throws and never stays silent:
      * [AndroidAuto.Opened.NOTHING] means the caller owes the rider a notice.
      */
-    fun open(context: Context, start: (Intent) -> Unit = context::startActivity): AndroidAuto.Opened {
+    fun open(context: Context, start: (Intent) -> Unit = context::startActivity, say: (String) -> Unit = {}): AndroidAuto.Opened {
         val pm = context.packageManager
         val app = appIntent()
         val web = webIntent()
         val route = route(AndroidAuto.installedVersion(context) != null, pm.resolveActivity(app, 0) != null, pm.resolveActivity(web, 0) != null)
         return when (route) {
-            Route.SETTINGS -> AndroidAuto.openSettings(context, start)
+            Route.SETTINGS -> AndroidAuto.openSettings(context, start, say)
             Route.STORE_APP -> when {
                 AndroidAuto.opens(app, start) -> AndroidAuto.Opened.STORE_APP
                 // The store app named itself and then failed: the web page is still a way.

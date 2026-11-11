@@ -69,15 +69,32 @@ object CodecMetrics {
     /**
      * Reads [codec]'s metrics on a thread of [BoundedRelease] and hands the line to [log]; waits at most [JOIN_MS]. A codec that does not
      * answer, or has none, is told in a line too and the caller goes on either way.
+     *
+     * The read goes on after the caller gave up (the thread is left to the driver), and the caller then releases the codec: what that late read
+     * finds, the metrics or "not available" (a read on a codec already released throws), would stand under "no answer ... given up" as if it were
+     * the codec's own state. So a line that comes after the giving up says so ([lateNote]); the numbers of a late answer are still the codec's.
      */
-    fun logBounded(role: String, name: String?, codec: MediaCodec, log: (String) -> Unit) {
+    fun logBounded(role: String, name: String?, codec: MediaCodec, log: (String) -> Unit) =
+        logBounded(role, name, { read(codec) }, JOIN_MS, log)
+
+    internal fun logBounded(role: String, name: String?, read: () -> Map<String, Any?>?, joinMs: Long, log: (String) -> Unit) {
+        val gaveUp = java.util.concurrent.atomic.AtomicBoolean(false)
         BoundedRelease.run(
-            task = { log(read(codec)?.let { line(role, name, it) } ?: "codec metrics ($role ${name ?: "?"}): not available") },
-            joinMs = JOIN_MS,
-            onStuck = { log("codec metrics ($role ${name ?: "?"}): no answer in $JOIN_MS ms, given up") },
+            task = {
+                val text = read()?.let { line(role, name, it) } ?: "codec metrics ($role ${name ?: "?"}): not available"
+                log(if (gaveUp.get()) text + lateNote(joinMs) else text)
+            },
+            joinMs = joinMs,
+            onStuck = {
+                gaveUp.set(true)
+                log("codec metrics ($role ${name ?: "?"}): no answer in $joinMs ms, given up")
+            },
             threadName = THREAD_NAME,
         )
     }
+
+    /** What a line written after the wait ended carries: the end of the codec did not wait for it, and went on to release the codec. */
+    internal fun lateNote(joinMs: Long): String = " (late: after the $joinMs ms the end did not wait for; the codec may already have been released)"
 
     const val THREAD_NAME = "CodecMetrics"
 }

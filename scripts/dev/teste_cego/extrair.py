@@ -11,7 +11,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # com `python3 
 import indice_video
 
 def ler(caminho):
-    d = open(caminho, 'rb').read()
+    with open(caminho, 'rb') as f:
+        d = f.read()
     assert d[:4] in (b'REAA', b'PGAA'), 'não é uma sessão'   # PGAA: a assinatura antiga das gravações de 15/10/2026, o resto do formato é o mesmo
     inicio = struct.unpack('>q', d[5:13])[0]
     pos, msgs = 13, []
@@ -43,8 +44,9 @@ def tem_idr(b):
         if (b[j + 3] & 0x1f) == 5: return True
         i = j + 3
 
-def main():
-    saida, tag, partes = sys.argv[1], sys.argv[2], sys.argv[3:]
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    saida, tag, partes = argv[0], argv[1], argv[2:]
     quadros, cfg, t0 = [], None, None
     for f in partes:
         inicio, msgs = ler(f)
@@ -69,4 +71,5 @@ def main():
     open(f'{saida}/{tag}.start', 'w').write(str(t0))
     print(tag, len(quadros), 'quadros; cfg', cfg.hex()[:24])
 
-main()
+if __name__ == '__main__':   # sem isto o `import` rodava o programa (11/11/2026: os testes importam as funções)
+    main()

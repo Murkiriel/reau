@@ -8,6 +8,12 @@
 #   SERIAL   o aparelho (adb devices); sem ele, só roda se houver exatamente UM aparelho conectado.
 #   PASTA    onde guardar (padrão: uma pasta celular-AAAAMMDD-HHMM numa pasta de registros ao lado da pasta do repositório, fora dele).
 # Variável ADB: o executável do adb (padrão: adb). Variável REAU_SAIDA: a pasta de saída quando não se dá o serial.
+# Dois avisos (só leitura; saem na tela e no fim do INFO.txt, em "--- avisos da coleta"):
+#   - o tamanho dos buffers do logcat (`logcat -g`, lido NO COMEÇO, antes de qualquer outra leitura): buffer `main` ou `system` abaixo de 1 MiB (LOGCAT_MIN_KIB=1024)
+#     quer dizer que o logcat do sistema guarda pouca história (o de 256 KiB cobre menos de 1 h): colete logo depois da corrida;
+#   - o espaço das gravações (item 11c): a última linha `recordings space: N files removed (X KB), Y KB left of Z KB` dos registros copiados (Y é o que ficou ocupado do
+#     teto Z; o app só a escreve quando apagou algo) e o tamanho de sessions/ + video/ copiados. Ocupado a partir de REAU_AVISO_MB (padrão 800) MB, o teto está perto:
+#     o app apaga os arquivos mais antigos e um evento raro some; colete a cada ≤ 2 dias de uso.
 #
 # ATENÇÃO: o logcat do sistema tem dado pessoal (o nome do dono, e-mails, o nome inteiro das redes Wi-Fi, a lista de apps).
 # Não compartilhe a pasta sem filtrar (só os buffers crash e as linhas do gearhead e do com.reau.app).
@@ -37,6 +43,34 @@ OUT="${2:-${REAU_SAIDA:-$(cd "$(dirname "$0")/../.." && pwd)/reau_registros/celu
 mkdir -p "$OUT"
 no_celular() { "$ADB" -s "$SERIAL" shell "$@"; }
 GEARHEAD=com.google.android.projection.gearhead
+AVISOS=""
+avisar() { AVISOS="${AVISOS}$1"$'\n'; echo "AVISO: $1" >&2; }
+
+# O tamanho dos buffers do logcat, lido antes de tudo o mais (o buffer é curto e as leituras abaixo demoram): `main: ring buffer is 256 KiB (251 KiB consumed, 1 MiB readable), …`.
+# Só leitura (`logcat -g` não muda nada; mudar o tamanho seria `-G`, que este script nunca usa).
+BUFFERS="$("$ADB" -s "$SERIAL" logcat -g 2>&1 || true)"
+LOGCAT_MIN_KIB="${LOGCAT_MIN_KIB:-1024}"
+# Imprime, uma por linha, o buffer e o tamanho em KiB dos buffers `main` e `system` que estão abaixo do mínimo (e `?` se a linha não traz o tamanho).
+buffers_pequenos() {
+  awk -v min="$LOGCAT_MIN_KIB" '
+    /^(main|system):/ {
+      nome = $1; sub(/:$/, "", nome)
+      if (match($0, /ring buffer is [0-9]+ [KMG]iB/)) {
+        trecho = substr($0, RSTART, RLENGTH); split(trecho, p, " ")
+        kib = p[4] + 0
+        if (p[5] == "MiB") kib *= 1024; else if (p[5] == "GiB") kib *= 1048576
+        if (kib < min) print nome, kib
+      } else print nome, "?"
+    }'
+}
+if [ -z "$(printf '%s\n' "$BUFFERS" | grep -E '^(main|system):' || true)" ]; then
+  avisar "o tamanho dos buffers do logcat não pôde ser lido (logcat -g); não dá para saber quanta história o aparelho guarda"
+else
+  while read -r nome kib; do
+    [ -n "$nome" ] || continue
+    avisar "o buffer $nome do logcat é pequeno (${kib} KiB, abaixo de ${LOGCAT_MIN_KIB}): o logcat do sistema cobre pouca história; colete logo depois da corrida"
+  done <<< "$(printf '%s\n' "$BUFFERS" | buffers_pequenos)"
+fi
 
 {
   echo "# coletado por adb (somente leitura) em $(date); aparelho $SERIAL"
@@ -71,7 +105,7 @@ GEARHEAD=com.google.android.projection.gearhead
 mkdir -p "$OUT/sistema"
 no_celular dumpsys wifi > "$OUT/sistema/dumpsys-wifi.txt" 2>&1 || true
 no_celular dumpsys connectivity > "$OUT/sistema/dumpsys-connectivity.txt" 2>&1 || true
-"$ADB" -s "$SERIAL" logcat -g > "$OUT/sistema/logcat-tamanho-dos-buffers.txt" 2>&1 || true
+printf '%s\n' "$BUFFERS" > "$OUT/sistema/logcat-tamanho-dos-buffers.txt"
 # O que o Android diz do acesso do REau à localização (a busca de redes com o app atrás depende dela; item 1a, pedido em 08/11/2026): os
 # modos de cada permissão do app (`cmd appops get`, com o `rejectTime` de uma recusa) e as linhas do `dumpsys location` que falam do REau
 # (pedidos e usos de localização). Só leitura; o filtro deixa de fora o que é de outros apps.
@@ -80,8 +114,8 @@ no_celular dumpsys location 2>&1 | grep -i "com\.reau\.app" > "$OUT/sistema/loca
 grep -E "wpa_supplicant|WifiService|WifiClientModeImpl|ClientModeImpl|WifiConnectivityManager|WifiNetworkFactory|WifiNetworkSelector|WifiNative|WifiHealthMonitor|WifiScanner|ConnectivityService|NetworkMonitor|NetworkAgent|netd|RE_[A-Za-z0-9]" \
   "$OUT/logcat-sistema.txt" > "$OUT/sistema/wifi-linhas.txt" 2>/dev/null || true
 
-# Uma cópia para compartilhar, sem o nome Wi-Fi do painel (RE_xxxx_aammdd, que prende o registro a uma moto e a um dono); o original fica.
-# O resto do dado pessoal do logcat (nome, e-mails, outras redes, apps) continua nele: filtre antes de compartilhar.
+# Uma cópia para compartilhar, sem o nome Wi-Fi do painel (RE_xxxx_aammdd, que prende o registro a uma moto e a um dono), sem os endereços MAC e sem os nomes das outras
+# redes Wi-Fi (casa, trabalho: registro/mascarar.py); o original fica. O resto do dado pessoal do logcat (nome, e-mails, apps) continua nele: filtre antes de compartilhar.
 if command -v python3 >/dev/null 2>&1; then
   python3 -I "$(dirname "$0")/registro/mascarar.py" "$OUT/logcat-sistema.txt" "$OUT/logcat-sistema.mascarado.txt" || true
   for arquivo in dumpsys-wifi dumpsys-connectivity wifi-linhas appops-reau location-reau; do
@@ -105,7 +139,32 @@ for pkg in com.reau.app com.reau.app.lite; do
 done
 rmdir "$OUT/antigo-lite" 2>/dev/null || true
 
+# O espaço das gravações (sessions/ e video/), pelo `left of` que o app escreve ao apagar o mais antigo e pelo tamanho do que veio na cópia. Só lê arquivos já copiados.
+AVISO_MB="${REAU_AVISO_MB:-800}"
+ESPACO_PADRAO_KB=1048576
+ultima="$(cat "$OUT"/diag/ride-*.log 2>/dev/null | awk '/recordings space:/ {ultima = $0} END {print ultima}' || true)"
+ocupado_kb=""; teto_kb="$ESPACO_PADRAO_KB"
+if [ -n "$ultima" ]; then
+  ocupado_kb="$(printf '%s\n' "$ultima" | sed -n 's/.*, \([0-9][0-9]*\) KB left of \([0-9][0-9]*\) KB.*/\1/p')"
+  teto_lido="$(printf '%s\n' "$ultima" | sed -n 's/.*, \([0-9][0-9]*\) KB left of \([0-9][0-9]*\) KB.*/\2/p')"
+  [ -z "$teto_lido" ] || teto_kb="$teto_lido"
+fi
+copiado_kb="$(du -sk "$OUT/sessions" "$OUT/video" 2>/dev/null | awk '{s += $1} END {print s + 0}' || true)"
+{
+  echo "--- espaço das gravações (item 11c)"
+  echo "ultima linha 'recordings space:' dos registros copiados: ${ultima:-(nenhuma: o app só a escreve quando apaga algo)}"
+  echo "sessions/ + video/ copiados: ${copiado_kb} KB; teto: ${teto_kb} KB"
+} >> "$OUT/INFO.txt"
+for kb in "$ocupado_kb" "$copiado_kb"; do
+  [ -n "$kb" ] || continue
+  if [ "$kb" -ge $((AVISO_MB * 1024)) ]; then
+    avisar "gravações em $((kb / 1024)) MB de $((teto_kb / 1024)) MB (livre $(( (teto_kb - kb) / 1024 )) MB; aviso a partir de ${AVISO_MB} MB): o app apaga as mais antigas ao passar do teto; colete a cada 2 dias de uso ou logo depois de um evento raro"
+    break
+  fi
+done
+if [ -n "$AVISOS" ]; then { echo "--- avisos da coleta"; printf '%s' "$AVISOS"; } >> "$OUT/INFO.txt"; fi
+
 echo "coletado em $OUT"
-echo "logcat-sistema.mascarado.txt (e os .mascarado.txt de sistema/) são as cópias sem o nome Wi-Fi do painel; ainda têm o resto do dado pessoal."
+echo "logcat-sistema.mascarado.txt (e os .mascarado.txt de sistema/) são as cópias sem o nome Wi-Fi do painel, sem MACs e sem os nomes de outras redes; ainda têm o resto do dado pessoal (nome, e-mails, apps)."
 echo "sistema/ guarda o que o Android disse do Wi-Fi e da conectividade; o logcat guarda pouca história, então rode isto logo depois da corrida."
 echo "ATENÇÃO: logcat-sistema.txt tem dado pessoal (nome, e-mails, redes Wi-Fi, apps), e sessions/ e video/ (se copiadas) mostram o mapa e por onde você andou: não compartilhe sem filtrar."

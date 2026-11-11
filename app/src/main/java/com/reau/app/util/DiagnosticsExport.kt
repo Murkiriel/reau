@@ -45,20 +45,28 @@ object DiagnosticsExport {
         return count
     }
 
-    /** As [zipDir], for several folders in one zip: each source's files go under its name ("" for the top). */
-    internal fun zipDirs(sources: List<Pair<String, File>>, destZip: File): Int {
+    /** The first entry of an exported zip: what the app was and which connection experiments were on when it was exported. */
+    internal const val HEADER_ENTRY = "report-header.txt"
+
+    /** As [zipDir], for several folders in one zip: each source's files go under its name ("" for the top). With a [header], it is the first entry. */
+    internal fun zipDirs(sources: List<Pair<String, File>>, destZip: File, header: String? = null): Int {
         val entries = sources.flatMap { (name, dir) ->
             val prefix = if (name.isEmpty()) "" else "$name/"
             dir.listFiles()?.filter { it.isFile }.orEmpty().sortedBy { it.name }.map { prefix + it.name to it }
         }
         ZipOutputStream(FileOutputStream(destZip)).use { zos ->
+            if (header != null) {
+                zos.putNextEntry(ZipEntry(HEADER_ENTRY))
+                zos.write(header.toByteArray(Charsets.UTF_8))
+                zos.closeEntry()
+            }
             for ((entry, f) in entries) {
                 zos.putNextEntry(ZipEntry(entry))
                 FileInputStream(f).use { it.copyTo(zos) }
                 zos.closeEntry()
             }
         }
-        return entries.size
+        return entries.size + if (header != null) 1 else 0
     }
 
     /** There is not the room the zip may take (the recordings alone can be hundreds of MB): nothing was written. */
@@ -86,17 +94,18 @@ object DiagnosticsExport {
         dir: File,
         freeBytes: (File) -> Long = ::freeOn,
         nowMs: Long = System.currentTimeMillis(),
+        header: String? = null,
     ): File? {
         val files = filesOf(sources)
         if (files.isEmpty()) return null
-        val needed = files.sumOf { it.length() } + SPACE_MARGIN
+        val needed = files.sumOf { it.length() } + (header?.length ?: 0) + SPACE_MARGIN
         val free = freeBytes(dir)
         if (free < needed) throw NotEnoughSpace(needed, free)
 
         val part = File(dir, "$ZIP_PREFIX.part")
         var count = 0
         try {
-            count = zipDirs(sources, part)
+            count = zipDirs(sources, part, header)
         } finally {
             if (count == 0) part.delete()           // failed halfway, or nothing went in
         }
@@ -136,7 +145,11 @@ object DiagnosticsExport {
         } else {
             listOf("" to sourceDir)
         }
-        return export(sources, dir)
+        val app = "app ${com.reau.app.BuildConfig.VERSION_NAME} (${com.reau.app.BuildConfig.VERSION_CODE}, ${com.reau.app.BuildConfig.GIT_COMMIT})"
+        val read = runCatching {
+            com.reau.app.settings.SettingsInUse.experimentsLine(com.reau.app.settings.SettingsStore.open(context).load())
+        }
+        return export(sources, dir, header = reportHeader(app, read.getOrNull(), readable = read.isSuccess))
     }
 
     /** Ajustes' button: the zip written off the main thread, then the share sheet (or a word that there is nothing yet). */
@@ -164,3 +177,13 @@ object DiagnosticsExport {
             .putExtra(Intent.EXTRA_STREAM, FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", zip))
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 }
+
+/**
+ * The text of [DiagnosticsExport.HEADER_ENTRY]: the app, then the line of the connection experiments that are on ([experimentsLine], the one the logs
+ * carry as `connection experiments ON: …`) or the word that none is. Written at the top so that whoever opens the zip reads it before
+ * any log; each ride's own line is in its log, this is what is set at the moment of the export.
+ */
+internal fun reportHeader(appLine: String, experimentsLine: String?, readable: Boolean = true): String =
+    "REau diagnostics report\n$appLine\n" +
+        (if (!readable) "connection experiments: unknown (the settings could not be read)" else experimentsLine ?: "connection experiments: none on") +
+        "\n(set at the moment of the export; each ride's own are the `settings` lines inside the logs)\n"

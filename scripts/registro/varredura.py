@@ -9,10 +9,13 @@ networks, A s ago` ajuda a decidir sozinho: N de 2 ou mais, lida há 60 s ou men
 uma leitura com redes com o app atrás. Registros de uma build sem a linha `foreground types accepted` são de antes da correção: contam-se, sem veredito.
 """
 import re
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import tempo  # noqa: E402
 
 JANELA_S = 60.0
-PROCESSO_COMECOU = "==== process start:"
-VERSAO_DO_APP = re.compile(r"^==== process start: [^—]*— app ([^\s,]+)(?: \(([^)]*)\))?")
 TIPOS_ACEITOS = re.compile(r"projection: foreground types accepted: (\S+)")
 TIPO_RECUSADO = ("foreground start refused", "the location type was not accepted", "no precise location permission")
 LEITURA_COM_REDES = re.compile(r"\bscan of (\d+) networks, the dash( not among them|: )")
@@ -21,7 +24,6 @@ IMPORTANCIA = re.compile(r"process importance (\d+)")
 SUFIXO_UNIDO = re.compile(r"wifi joined=(no|dash\+other|dash|other)")
 SUFIXO_ULTIMA = re.compile(r"last non-empty reading: (?:(\d+) networks, (\d+) s ago|none yet)")
 DADOS = re.compile(r"\bdata=(wifi|cell|none)")
-SEGUNDOS_NO_DIA = 86400
 
 
 def _estado(importancia):
@@ -47,9 +49,8 @@ def _de_cada_linha(linhas):
     `app background — process importance N`; sem esses, (None, None)."""
     saida, build, importancia = [], None, None
     for x in linhas:
-        if x.texto.startswith(PROCESSO_COMECOU):
-            m = VERSAO_DO_APP.match(x.texto)
-            build = (f"{m.group(1)} ({m.group(2)})" if m.group(2) else m.group(1)) if m else "sem versão"
+        if x.texto.startswith(tempo.PROCESSO_COMECOU):
+            build = tempo.build_do_processo(x.texto)
             importancia = None
         elif x.etiqueta == "system" and x.texto == "app foreground":
             importancia = 100
@@ -58,10 +59,6 @@ def _de_cada_linha(linhas):
             importancia = int(m.group(1)) if m else importancia
         saida.append((x, build, importancia))
     return saida
-
-
-def _hora(x):
-    return x.hora[:8]
 
 
 def _motivos(r, leituras, olhadas, mudancas):
@@ -74,7 +71,7 @@ def _motivos(r, leituras, olhadas, mudancas):
             continue
         if v["redes"] >= (2 if v["painel"] else 1):
             dt = v["linha"].segundos - x.segundos
-            motivos.append(f"a leitura de {_hora(v['linha'])} ({abs(dt):.0f} s {'depois' if dt > 0 else 'antes'}), no mesmo estado, trouxe {v['redes']} "
+            motivos.append(f"a leitura de {tempo.hora8(v['linha'])} ({abs(dt):.0f} s {'depois' if dt > 0 else 'antes'}), no mesmo estado, trouxe {v['redes']} "
                            f"redes{' (o painel e outra)' if v['painel'] else ' sem o painel'}")
             break
     unido = SUFIXO_UNIDO.search(x.texto)
@@ -85,7 +82,7 @@ def _motivos(r, leituras, olhadas, mudancas):
         antes = next((o for o in reversed(olhadas) if 0 <= x.segundos - o.segundos <= JANELA_S), None)
         dado = DADOS.search(antes.texto) if antes is not None else None
         if dado and dado.group(1) == "wifi":
-            motivos.append(f"o celular estava unido a um Wi-Fi (data=wifi na olhada das {_hora(antes)})")
+            motivos.append(f"o celular estava unido a um Wi-Fi (data=wifi na olhada das {tempo.hora8(antes)})")
     ultima = SUFIXO_ULTIMA.search(x.texto)
     if ultima and ultima.group(1) and int(ultima.group(1)) >= 2 and int(ultima.group(2)) <= JANELA_S:
         desde = x.segundos - int(ultima.group(2))
@@ -182,11 +179,11 @@ def texto_do_teste(resultados):
             vazias = r["vazias"]
             reprovadas = [v for v in vazias if v["motivos"]]
             if vazias and not reprovadas:
-                horas = ", ".join(_hora(v["linha"]) for v in vazias)
+                horas = ", ".join(tempo.hora8(v["linha"]) for v in vazias)
                 saida.append(f"  {len(vazias)} leituras vazias com o app atrás ({horas}): nenhuma com leitura vizinha com outra rede, no mesmo estado e em até "
                              f"{JANELA_S:.0f} s, nem com o celular unido a um Wi-Fi: lugar sem outra rede, não falta de acesso")
             for v in reprovadas:
-                saida.append(f"  REPROVA: leitura vazia com o app atrás às {_hora(v['linha'])}: " + "; ".join(v["motivos"]))
+                saida.append(f"  REPROVA: leitura vazia com o app atrás às {tempo.hora8(v['linha'])}: " + "; ".join(v["motivos"]))
             saida.append(f"  prova positiva (ao menos uma leitura com redes com o app atrás): {'sim' if r['positiva'] else 'NÃO'}")
         elif atras[1]:
             saida.append(f"  {atras[1]} leituras vazias com o app atrás: o esperado antes da correção (o serviço não pedia o tipo `location`)")
@@ -205,5 +202,5 @@ def problemas_do_teste(resultados):
                          f"({recusas} recusas): a lista de redes com o app atrás volta vazia")
         for v in r["vazias"]:
             if v["motivos"]:
-                saida.append(f"{_hora(v['linha'])}: item 1a — leitura vazia da lista de redes com o app atrás (build {r['build']}): " + "; ".join(v["motivos"]))
+                saida.append(f"{tempo.hora8(v['linha'])}: item 1a — leitura vazia da lista de redes com o app atrás (build {r['build']}): " + "; ".join(v["motivos"]))
     return saida

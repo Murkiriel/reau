@@ -39,6 +39,20 @@ class CommandForTest(unittest.TestCase):
         self.assertTrue(mutacoes.command_for(["SunPlaceTest"])[1].endswith("run_unit.py"))
         self.assertEqual("SunPlaceTest", mutacoes.command_for(["SunPlaceTest"])[-1])
 
+    def test_a_python_test_in_a_folder_runs_from_that_folder_and_a_bare_name_from_scripts(self):
+        bare = mutacoes.command_for(["test_apk_audit.py"])
+        self.assertEqual(["-s", "scripts", "-t", "scripts", "-p", "test_apk_audit.py"], bare[bare.index("-s"):])
+        nested = mutacoes.command_for(["registro/test_chaves.py", "registro/test_olhadas.py"])
+        self.assertEqual(["-s", "scripts/registro", "-t", "scripts/registro", "-p", "test_chaves.py", "-p", "test_olhadas.py"], nested[nested.index("-s"):])
+
+    def test_test_files_of_one_mutation_in_two_folders_are_refused(self):
+        with self.assertRaises(ValueError):
+            mutacoes.command_for(["registro/test_chaves.py", "test_apk_audit.py"])
+
+    def test_every_python_test_named_in_the_list_exists(self):
+        faltam = [f"{m[0]}: {c}" for m in mutacoes.MUTATIONS for c in m[4] if c.endswith(".py") and not (mutate.ROOT / "scripts" / c).is_file()]
+        self.assertEqual([], faltam)
+
 
 class FatiaTest(unittest.TestCase):
     def test_slices_cover_the_list_once(self):
@@ -110,6 +124,38 @@ class RunTest(unittest.TestCase):
 
     def test_the_real_limit_is_a_quarter_of_an_hour(self):
         self.assertEqual(900, mutate.TIMEOUT_S)
+
+
+class BytecodeTest(unittest.TestCase):
+    """11/11/2026: a .pyc written from a mutated source outlived the restore (same size, same second), and the mutated code kept being loaded."""
+
+    def run_recording(self, program):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.py").write_text("ok = 1 != 2\n", encoding="utf-8")
+            keep = mutate.ROOT, mutate.PENDING
+            mutate.ROOT, mutate.PENDING = root, root / "build" / "pendentes"
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    caught = mutate.run([("uma", "a.py", "!=", "==")], [sys.executable, "-c", program])
+            finally:
+                mutate.ROOT, mutate.PENDING = keep
+            seen = (root / "seen.txt").read_text(encoding="utf-8") if (root / "seen.txt").exists() else ""
+            return caught, seen, (root / "a.py").stat().st_mtime, (root / "a.py").read_text(encoding="utf-8")
+
+    def test_the_tests_of_a_run_and_their_children_write_no_bytecode(self):
+        program = "import os, sys; open('seen.txt', 'w').write(os.environ.get('PYTHONDONTWRITEBYTECODE', '')); sys.exit(1)"
+        caught, seen, _, after = self.run_recording(program)
+        self.assertEqual(1, caught)
+        self.assertEqual("1", seen)
+        self.assertEqual("ok = 1 != 2\n", after)
+
+    def test_the_restored_file_is_a_whole_second_later_than_the_mutated_one(self):
+        program = "import os, sys; open('seen.txt', 'w').write(repr(os.stat('a.py').st_mtime)); sys.exit(1)"
+        caught, seen, restored_at, after = self.run_recording(program)
+        self.assertEqual(1, caught)
+        self.assertGreaterEqual(restored_at, float(seen) + 1.0)
+        self.assertEqual("ok = 1 != 2\n", after)
 
 
 class RecoverTest(unittest.TestCase):

@@ -239,6 +239,15 @@ class JoystickMap(
         /** Down in the dash's map mode, as better-dash reads it. */
         private const val MAP_DOWN = 0x15
 
+        /**
+         * Whether REau has a meaning for [event]'s code: every code [DashButtonEvent.fromCode] names, and the ones the page reads from an
+         * unnamed one (the dash's notice, the call volume, the call screen's sides and middle, the map's down). Anything else is a code nobody
+         * has explained yet (0x20 among them), which the projection's `resumo` counts.
+         */
+        fun knowsCode(event: DashButtonEvent): Boolean =
+            event !is DashButtonEvent.Unknown || event.code == DASH_NOTICE || event.code == MAP_DOWN || event.code in CALL_VOLUME ||
+                event.code == CALL_SCREEN_LEFT || event.code == CALL_SCREEN_RIGHT || event.code == CALL_SCREEN_MIDDLE
+
         /** Which mode and control a code is; null for what the page does not know. */
         fun whereOf(event: DashButtonEvent): Pair<Mode, Control>? = when (event) {
             is DashButtonEvent.NextTrack -> Mode.MEDIA to Control.RIGHT

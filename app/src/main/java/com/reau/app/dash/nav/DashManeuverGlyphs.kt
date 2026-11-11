@@ -273,4 +273,7 @@ object DashManeuverGlyphs {
 
     /** The next byte of [testSequence] strictly after [current], wrapping to the first (pure, so the debug button is testable). */
     fun nextCandidate(current: Int): Int = testSequence.firstOrNull { it > current } ?: testSequence.first()
+
+    /** The byte of [testSequence] strictly before [current], wrapping to the last (the debug arrow test's "previous"). */
+    fun previousCandidate(current: Int): Int = testSequence.lastOrNull { it < current } ?: testSequence.last()
 }

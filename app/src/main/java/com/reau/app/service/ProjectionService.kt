@@ -181,6 +181,9 @@ class ProjectionService : Service() {
 
         private val current = MutableStateFlow(Projection())
 
+        /** Which service instance may write [current] and [started]: an old one still releasing does not overwrite the new one's (A-20, [StateOwner]). */
+        private val owner = StateOwner()
+
         /** Where the projection stands. */
         val projection: StateFlow<Projection> = current.asStateFlow()
 
@@ -244,6 +247,10 @@ class ProjectionService : Service() {
         }
     }
 
+    // This instance's number for [owner]; the writes of the process-wide state go through it.
+    private val instance = owner.newInstance()
+    private fun publish(write: () -> Unit) = owner.publish(instance, write)
+
     private lateinit var worker: ScheduledExecutorService
     private lateinit var controller: ProjectionController
 
@@ -306,8 +313,10 @@ class ProjectionService : Service() {
             onNoDashStop = { minutes -> ProjectionNotification.showStoppedNoDash(this, minutes) },
             noDashStopMs = { SettingsStore.open(this).load().noDashStopMinutes * MS_PER_MINUTE },
             onChange = { state ->
-                countDash(current.value.dash, state.dash)
-                current.value = state
+                publish {
+                    countDash(current.value.dash, state.dash)
+                    current.value = state
+                }
                 // "Desligando" goes up at once: the stop blocks this worker, which the pacer's wait runs on. Not when a newer start
                 // already holds the foreground (its notification is the one to keep).
                 if (state.headline == Headline.STOPPING && ForegroundHandover.dropsForeground(command, lastStart)) {
@@ -383,7 +392,7 @@ class ProjectionService : Service() {
                     // start that was refused (no compositor, no sides) stays to be read: the service leaves at once, and the reason would go with it.
                     "state" to {
                         val reason = current.value.problem
-                        if (current.value != Projection(problem = reason)) current.value = Projection(problem = reason)
+                        publish { if (current.value != Projection(problem = reason)) current.value = Projection(problem = reason) }
                     },
                 ),
             ) { name, e -> log("${RideDiagnostics.WARN}projection: in onDestroy, $name failed: ${e.javaClass.simpleName}") }
@@ -474,6 +483,7 @@ class ProjectionService : Service() {
         for (types in ForegroundTypes.ladder(microphone = needs.microphone, location = needs.location)) {
             val refusal = try {
                 ProjectionNotification.createChannel(this)
+                ProjectionNotification.refreshAlertChannel(this)
                 startForeground(ProjectionNotification.ID, ProjectionNotification.build(this, Headline.PREPARING), types)
                 inForeground = true
                 worker.execute { pacer.alreadyShown(Headline.PREPARING) }
@@ -489,7 +499,7 @@ class ProjectionService : Service() {
             why = "${refusal.javaClass.simpleName}: ${refusal.message}"
             log("${RideDiagnostics.ERROR}projection: foreground start refused for types $types — $why")
         }
-        current.value = Projection(problem = why)
+        publish { current.value = Projection(problem = why) }
         return false
     }
 
@@ -505,7 +515,7 @@ class ProjectionService : Service() {
             marks.reset()
             // A new summary for this projection, written when it is switched off.
             ProjectionSummary.current = RideSummary().apply { start(SystemClock.elapsedRealtime(), batteryPct = null) }
-            started.value = SystemClock.elapsedRealtime()
+            publish { started.value = SystemClock.elapsedRealtime() }
             // Sides that could not be built, or with no compositor, cannot project; the start fails here, with the reason, and the
             // machine gives the service back (Release) instead of connecting a dash that would never get video.
             refusal()?.let { return it }
@@ -561,7 +571,7 @@ class ProjectionService : Service() {
         }
 
         override fun release() {
-            started.value = null
+            publish { started.value = null }
             // Switched off by the rider: whatever the start did, the app did not die of it.
             ExperimentsGuard.settled(ExperimentsGuard.mark(filesDir), guardToken)
             guardToken = null
@@ -576,7 +586,12 @@ class ProjectionService : Service() {
             }
             deviceLook?.cancel(false)
             ProjectionNotification.clearPhoneHot(this@ProjectionService)
-            RideDiagnostics.log("projection", ProjectionSummary.current.line(SystemClock.elapsedRealtime(), marks.count))
+            RideDiagnostics.log(
+                "projection",
+                ProjectionSummary.current.line(
+                    SystemClock.elapsedRealtime(), marks.count, noImageMs = com.reau.app.dash.ImageGap.clock.totalMs(com.reau.app.util.MonotonicClock.nowMs()),
+                ),
+            )
             deviceLook = null
             locks.release()
             // A start that came while this stop was carried out has taken the foreground; it stays.

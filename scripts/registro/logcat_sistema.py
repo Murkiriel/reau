@@ -11,6 +11,11 @@ import re
 from collections import namedtuple
 from datetime import datetime, timedelta
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import mascarar  # noqa: E402
+import tempo  # noqa: E402
 
 THREADTIME = re.compile(r"^(\d\d)-(\d\d) (\d\d:\d\d:\d\d\.\d{3})\s+(\d+)\s+(\d+)\s+([VDIWEF])\s+([^:]*?)\s*: (.*)$")
 GEARHEAD = "com.google.android.projection.gearhead"
@@ -20,6 +25,7 @@ PID_DO_APP = [re.compile(r"\[(?:0,)?(\d+),\d+,com\.reau\.app(?:\.lite)?[,\]]"), 
 DAVEY = re.compile(r"Davey! duration=(\d+)ms")
 PULADOS = re.compile(r"Skipped (\d+) frames")
 PULADOS_MINIMO = 100
+DO_SISTEMA = ("logcat-sistema", "logcat-crash")  # os logcats que a coleta tira do aparelho por adb: não são os do app
 MASCARADO = ".mascarado"  # `logcat-sistema.mascarado.txt`: a cópia com o nome do painel trocado
 BYE_ATE_S = 60.0  # a crash this soon after our byebye is told as the cause being close; later, only the time
 Entrada = namedtuple("Entrada", "mes dia hora pid tid nivel tag texto")
@@ -60,12 +66,12 @@ def arquivos(caminhos):
 
 
 def arquivos_do_app(caminhos):
-    """Os `logcat-*.txt` do próprio app (a pasta `diag` do aparelho): na pasta dada, na `diag` dentro dela, ou o arquivo solto; nunca o do sistema."""
+    """Os `logcat-*.txt` do próprio app (a pasta `diag` do aparelho): na pasta dada, na `diag` dentro dela, ou o arquivo solto; nunca o do sistema nem o buffer de quedas (`logcat-crash.txt`)."""
     saida = []
     for c in map(Path, caminhos):
         if c.is_dir():
-            saida += [a for p in (c, c / "diag") if p.is_dir() for a in sorted(p.glob("logcat-*.txt")) if not a.name.startswith("logcat-sistema")]
-        elif c.name.startswith("logcat-") and not c.name.startswith("logcat-sistema"):
+            saida += [a for p in (c, c / "diag") if p.is_dir() for a in sorted(p.glob("logcat-*.txt")) if not a.name.startswith(DO_SISTEMA)]
+        elif c.name.startswith("logcat-") and not c.name.startswith(DO_SISTEMA):
             saida.append(c)
     return list(dict.fromkeys(saida))
 
@@ -97,10 +103,6 @@ def _instante(e, ano, byebyes):
     return candidatos[0] if candidatos else None
 
 
-def _hora(e):
-    return e.hora[:8]
-
-
 def travadas_do_android_auto(entradas, byebyes, ano):
     """`11:45:19  o Android Auto (gearhead:projection) travou: NullPointerException … (1,2 s depois do byebye do REau)` para cada
     `FATAL EXCEPTION` cujo processo é o do Android Auto. `byebyes` são os instantes (datetime) em que o REau mandou o byebye."""
@@ -118,7 +120,7 @@ def travadas_do_android_auto(entradas, byebyes, ano):
         quando = _instante(e, ano, byebyes)
         antes = [(quando - b).total_seconds() for b in byebyes if quando and 0 <= (quando - b).total_seconds() <= BYE_ATE_S]
         depois = f" ({min(antes):.1f} s depois do byebye do REau)".replace(".", ",") if antes else " (sem byebye do REau nos 60 s antes)"
-        saida.append(f"{_hora(e)}: o Android Auto ({nome}) travou — {excecao[:100] or 'FATAL EXCEPTION'}{depois}")
+        saida.append(f"{tempo.hora8(e)}: o Android Auto ({nome}) travou — {excecao[:100] or 'FATAL EXCEPTION'}{depois}")
     return saida
 
 
@@ -135,10 +137,10 @@ def travadas_do_app(entradas):
     saida = []
     if daveys:
         ms, e = max(daveys, key=lambda d: d[0])
-        saida.append(f"{_hora(e)}: o app travou quadros ({len(daveys)}× Davey!, o pior de {ms} ms)")
+        saida.append(f"{tempo.hora8(e)}: o app travou quadros ({len(daveys)}× Davey!, o pior de {ms} ms)")
     if pulados:
         n, e = max(pulados, key=lambda d: d[0])
-        saida.append(f"{_hora(e)}: o app pulou quadros ({len(pulados)}× com {PULADOS_MINIMO} ou mais, o pior com {n})")
+        saida.append(f"{tempo.hora8(e)}: o app pulou quadros ({len(pulados)}× com {PULADOS_MINIMO} ou mais, o pior com {n})")
     return saida
 
 
@@ -166,7 +168,7 @@ def travadas_do_app_por_evento(entradas, ano, caminhadas):
             if quando and inicio <= quando <= fim + timedelta(seconds=TOLERANCIA_FIM_S):
                 fase = f" (durante a caminhada de {'iniciar' if modo == 'start' else 'parar' if modo == 'stop' else 'visitar'} o servidor)"
                 break
-        contados.append((e, f"{e.dia:02d}/{e.mes:02d} {_hora(e)}: o app travou a tela — {o_que}{fase}", bool(fase)))
+        contados.append((e, f"{e.dia:02d}/{e.mes:02d} {tempo.hora8(e)}: o app travou a tela — {o_que}{fase}", bool(fase)))
     # The ones that fell in a walk first (that is what the report asks), then the others, each in the order of the file.
     primeiros = sorted(contados, key=lambda c: not c[2])[:POR_EVENTO_MAX]
     saida = [linha for _, linha, _ in sorted(primeiros, key=lambda c: contados.index(c))]
@@ -187,8 +189,8 @@ EVENTO_WPA = re.compile(
     r"CTRL-EVENT-(?:DISCONNECTED|CONNECTED|ASSOC-REJECT|AUTH-REJECT|SSID-TEMP-DISABLED|SSID-REENABLED|NETWORK-NOT-FOUND|TERMINATING|CHANNEL-SWITCH)"
 )  # not the signal changes, one every few seconds
 CAMPO_WPA = re.compile(r"\b(reason|status_code|locally_generated|auth_type)=(\S+)")
-DASH = re.compile(r"\bRE_[A-Za-z0-9_]{4,}")
-MAC = re.compile(r"\b(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}\b")
+DASH = mascarar.DASH_QUALQUER  # the masks are the ones of mascarar.py: one place says what is hidden
+MAC = mascarar.MAC
 WIFI_TEXTO_MAX = 140
 
 
@@ -201,7 +203,7 @@ def _resumo_wifi(e):
         campos = " ".join(f"{k}={v}" for k, v in CAMPO_WPA.findall(e.texto))
         return f"wpa_supplicant {evento.group(0)}" + (f" {campos}" if campos else "")
     if e.tag in WIFI_TAGS and DASH.search(e.texto):
-        texto = MAC.sub("**:**:**:**:**:**", DASH.sub("RE_****_******", e.texto)).strip()
+        texto = MAC.sub(mascarar.MASK_MAC, DASH.sub(mascarar.MASK, e.texto)).strip()
         return f"{e.tag} {texto[:WIFI_TEXTO_MAX]}"
     return None
 

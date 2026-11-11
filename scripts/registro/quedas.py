@@ -8,8 +8,12 @@ tempo com o painel ligado da idade dele no primeiro pacote (`dash heartbeat age 
 longa o tempo do painel é "pelo menos".
 """
 import re
+import sys
+from pathlib import Path
 
-SEGUNDOS_NO_DIA = 86400
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import tempo  # noqa: E402
+
 IDADE = re.compile(r"dash heartbeat age (\d+) s at the first packet")
 ULTIMO_PACOTE = re.compile(r"last dash packet ([\d.]+) s before")
 IMAGEM_VOLTOU = re.compile(r"image back: ([\d.]+) s without it since the last dash packet before the loss; with the dash on: "
@@ -21,26 +25,11 @@ UNIDO = ("connected ", "using already-connected WiFi")
 JANELA_IDADE_S = 30.0
 
 
-def _dif(a, b):
-    """Os segundos de `b` até `a` (o relógio do registro é a hora do dia: passar da meia-noite é um dia a mais)."""
-    return (a - b) % SEGUNDOS_NO_DIA
-
-
-def _assinado(a, b):
-    """`a - b` entre -12 h e +12 h (uma linha um pouco antes ou depois da outra, sem o salto da meia-noite)."""
-    d = _dif(a, b)
-    return d - SEGUNDOS_NO_DIA if d > SEGUNDOS_NO_DIA / 2 else d
-
-
-def _s(valor):
-    return f"{valor:.1f}".replace(".", ",") + " s"
-
-
 def _com_o_painel(fim_s, perda_s, idade_s, depois_da_queda_s):
     """Quanto da queda o painel esteve ligado: (segundos, quanto depois da queda ele ligou ou None se já estava ligado). `idade_s` é a idade no primeiro pacote, lido
     em `depois_da_queda_s` depois da queda."""
     liga = depois_da_queda_s - idade_s  # o painel ligou `liga` s depois da queda (negativo: já estava ligado)
-    total = _dif(fim_s, perda_s)
+    total = tempo.dif(fim_s, perda_s)
     return (total - max(liga, 0.0), liga if liga > 0 else None)
 
 
@@ -51,10 +40,12 @@ def interrupcoes(bloco, grupos):
     saida, fim_anterior = [], None
     for g in grupos:
         inicio = g[0]
-        if fim_anterior is not None and _assinado(inicio.segundos, fim_anterior) < 0:
+        if fim_anterior is not None and tempo.assinado(inicio.segundos, fim_anterior) < 0:
             continue  # inside the interruption before (the Wi-Fi lost again while the image had not come back)
-        atras = next((float(m.group(1)) for x in g for m in [ULTIMO_PACOTE.search(x.texto)] if m), 0.0)
-        perda = (inicio.segundos - atras) % SEGUNDOS_NO_DIA
+        # The `last dash packet N s before` is counted from the line that says it, not from the first line of the group (the watchdog's can come seconds earlier:
+        # 13:02:03.759 against 13:02:06.071 made 98,3 s of what was ~96 s, 08/11/2026).
+        ancora = next(((x, float(m.group(1))) for x in g for m in [ULTIMO_PACOTE.search(x.texto)] if m), None)
+        perda = tempo.dif(ancora[0].segundos, ancora[1]) if ancora else inicio.segundos
         depois = bloco[bloco.index(g[-1]) + 1:]
         voltou = next((x for x in depois if "→ STREAMING" in x.texto), None)
         fim = voltou if voltou is not None else bloco[-1]
@@ -62,12 +53,12 @@ def interrupcoes(bloco, grupos):
         entre = depois[:depois.index(voltou)] if voltou is not None else depois
         idade = next(((int(m.group(1)), x) for x in reversed(entre) for m in [IDADE.search(x.texto)] if m), None)
         unido = next((x for x in entre if x.etiqueta == "wifi" and x.texto.startswith(UNIDO)), None)
-        item = {"queda": inicio, "voltou": voltou, "final": voltou is None, "total": _dif(fim.segundos, perda), "com_painel": None, "religou": None,
+        item = {"queda": inicio, "voltou": voltou, "final": voltou is None, "total": tempo.dif(fim.segundos, perda), "com_painel": None, "religou": None,
                 "idade": None, "origem": "calculado", "perda": perda, "unido": unido}
         if idade is not None:
             n, linha_idade = idade
             item["idade"] = n
-            item["com_painel"], item["religou"] = _com_o_painel(fim.segundos, perda, n, _dif(linha_idade.segundos, perda))
+            item["com_painel"], item["religou"] = _com_o_painel(fim.segundos, perda, n, tempo.dif(linha_idade.segundos, perda))
         if voltou is not None:
             do_app = next((m for x in depois[depois.index(voltou):depois.index(voltou) + 6] for m in [IMAGEM_VOLTOU.search(x.texto)] if m), None)
             if do_app:
@@ -84,22 +75,22 @@ def texto_da_interrupcao(i):
     hora = i["queda"].hora[:8]
     if i["final"]:
         if i["unido"] is not None:
-            return (f"sem imagem desde a queda das {hora} até o fim da projeção ({_s(i['total'])}): o painel voltou ao Wi-Fi às {i['unido'].hora[:8]} mas a imagem não voltou "
+            return (f"sem imagem desde a queda das {hora} até o fim da projeção ({tempo.segundos_texto(i['total'])}): o painel voltou ao Wi-Fi às {i['unido'].hora[:8]} mas a imagem não voltou "
                     "(a última interrupção, que o resumo não conta)")
-        return (f"sem imagem desde a queda das {hora} até o fim da projeção ({_s(i['total'])}): o painel não voltou (moto desligada?) "
+        return (f"sem imagem desde a queda das {hora} até o fim da projeção ({tempo.segundos_texto(i['total'])}): o painel não voltou (moto desligada?) "
                 "(a última interrupção, que o resumo não conta)")
     longa = i["total"] >= CONTADOR_VOLTA_S
     if i["com_painel"] is None:
         painel = "tempo com o painel ligado: não sai (sem a idade do painel no primeiro pacote)"
     elif i["religou"] is None:
-        painel = f"{_s(i['com_painel'])} com o painel ligado: o painel ficou ligado, só o Wi-Fi caiu e voltou"
+        painel = f"{tempo.segundos_texto(i['com_painel'])} com o painel ligado: o painel ficou ligado, só o Wi-Fi caiu e voltou"
     else:
         pelo_menos = "pelo menos " if longa and i["origem"] == "calculado" else ""
-        painel = f"{pelo_menos}{_s(i['com_painel'])} com o painel ligado: o painel religou {_s(i['religou'])} depois da queda"
+        painel = f"{pelo_menos}{tempo.segundos_texto(i['com_painel'])} com o painel ligado: o painel religou {tempo.segundos_texto(i['religou'])} depois da queda"
         if i["idade"] is not None:
             painel += f" (idade {i['idade']} s no primeiro pacote)"
     origem = "linha do app" if i["origem"] == "app" else "calculado do registro"
-    return f"sem imagem {_s(i['total'])} desde a queda das {hora} ({painel}) [{origem}]"
+    return f"sem imagem {tempo.segundos_texto(i['total'])} desde a queda das {hora} ({painel}) [{origem}]"
 
 
 def problemas_das_interrupcoes(interrupcoes_):
@@ -107,7 +98,7 @@ def problemas_das_interrupcoes(interrupcoes_):
     saida = []
     for i in interrupcoes_:
         if not i["final"] and i["com_painel"] is not None and i["com_painel"] >= COM_PAINEL_LONGO_S:
-            saida.append(f"{i['voltou'].hora}: o painel ficou {_s(i['com_painel'])} ligado e sem imagem depois da queda das {i['queda'].hora[:8]} "
+            saida.append(f"{i['voltou'].hora}: o painel ficou {tempo.segundos_texto(i['com_painel'])} ligado e sem imagem depois da queda das {i['queda'].hora[:8]} "
                          f"(a partida leva ~22 s): {texto_da_interrupcao(i)}")
     return saida
 
@@ -125,7 +116,8 @@ def _quem_uniu(texto):
     if pedido:
         return (f"o app não viu o painel na última varredura antes de ele ser unido, mas a união foi a resposta ao pedido #{pedido.group(1)} do REau "
                 "(não foi o Android sozinho)")
-    return "o app não viu o painel na varredura antes de ele ser unido (o Android o uniu sozinho)"
+    # Only a line that says it is "the phone itself": this one says nothing of who asked, so it does not say "alone" (it may well have been REau's own request).
+    return "o app não viu o painel na varredura antes de ele ser unido (a linha `connected` não diz de quem foi a união: pode ter sido o pedido do REau ou o celular sozinho)"
 
 
 def ligado_unido(bloco, interrupcoes_):
@@ -137,25 +129,25 @@ def ligado_unido(bloco, interrupcoes_):
         if x.etiqueta != "wifi" or not x.texto.startswith(UNIDO):
             continue
         achada = next(((int(m.group(1)), y) for y in bloco[k + 1:k + 400] for m in [IDADE.search(y.texto)]
-                       if m and 0 <= _assinado(y.segundos, x.segundos) <= JANELA_IDADE_S), None)
+                       if m and 0 <= tempo.assinado(y.segundos, x.segundos) <= JANELA_IDADE_S), None)
         if achada is None:
             anterior = x
             continue
         n, linha_idade = achada
-        liga_antes = n - _assinado(linha_idade.segundos, x.segundos)  # o painel ligou `liga_antes` s antes do `connected`
+        liga_antes = n - tempo.assinado(linha_idade.segundos, x.segundos)  # o painel ligou `liga_antes` s antes do `connected`
         streaming = next((y for y in bloco[k + 1:] if "→ STREAMING" in y.texto), None)
-        partes = [f"unido {_s(liga_antes)} depois de ligar (idade {n} s no primeiro pacote)"]
+        partes = [f"unido {tempo.segundos_texto(liga_antes)} depois de ligar (idade {n} s no primeiro pacote)"]
         if streaming is not None:
-            partes.append(f"transmitindo {_s(liga_antes + _dif(streaming.segundos, x.segundos))} depois de ligar")
-        queda = next((i for i in interrupcoes_ if i["voltou"] is not None and _assinado(x.segundos, i["perda"]) >= 0
-                      and _assinado(i["voltou"].segundos, x.segundos) >= 0), None)
+            partes.append(f"transmitindo {tempo.segundos_texto(liga_antes + tempo.dif(streaming.segundos, x.segundos))} depois de ligar")
+        queda = next((i for i in interrupcoes_ if i["voltou"] is not None and tempo.assinado(x.segundos, i["perda"]) >= 0
+                      and tempo.assinado(i["voltou"].segundos, x.segundos) >= 0), None)
         if queda is None:
             contexto = "partida"
         else:
-            depois_da_queda = _dif(x.segundos, queda["perda"]) - liga_antes
-            contexto = (f"o painel religou {_s(depois_da_queda)} depois da queda das {queda['queda'].hora[:8]}" if depois_da_queda > 0
+            depois_da_queda = tempo.dif(x.segundos, queda["perda"]) - liga_antes
+            contexto = (f"o painel religou {tempo.segundos_texto(depois_da_queda)} depois da queda das {queda['queda'].hora[:8]}" if depois_da_queda > 0
                         else f"o painel ficou ligado: o Wi-Fi caiu às {queda['queda'].hora[:8]} e voltou")
-            if _dif(x.segundos, queda["perda"]) >= CONTADOR_VOLTA_S:
+            if tempo.dif(x.segundos, queda["perda"]) >= CONTADOR_VOLTA_S:
                 contexto += " (queda de 256 s ou mais: o contador dá a volta, a idade é um mínimo)"
         viu = any(y.etiqueta == "wifi" and ("the dash: '" in y.texto or "showed up in the scan" in y.texto)
                   for y in bloco[bloco.index(anterior):k])

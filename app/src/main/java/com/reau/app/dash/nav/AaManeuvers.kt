@@ -72,6 +72,12 @@ object AaManeuvers {
     private val ROUNDABOUT_CCW = setOf(30, 31, 34, 35)
     private val ROUNDABOUT_CW = setOf(32, 33)
 
+    /**
+     * Whether [navigationType] is one this class draws as something: a number of [BY_TYPE] or a roundabout's. The others (the unknown 0 of a
+     * stretch with no turn ahead, 45 seen at the end of a route, 43, 44...) end in the hidden bubble.
+     */
+    fun knowsType(navigationType: Int): Boolean = navigationType in BY_TYPE || navigationType in ROUNDABOUT_CCW || navigationType in ROUNDABOUT_CW
+
     fun glyphFor(navigationType: Int, roundaboutExit: Int, rerouting: Boolean = false): Int = when {
         rerouting -> DashManeuverGlyphs.RECALCULATING
         navigationType in ROUNDABOUT_CCW -> DashManeuverGlyphs.roundabout(roundaboutExit, clockwise = false)

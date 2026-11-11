@@ -541,6 +541,7 @@ internal class LiveSides(
             send(press.sent)
             if (com.reau.app.aa.FocusClearer.toAndroidAuto(press.sent)) focus.inputSent(android.os.SystemClock.elapsedRealtime())
             val call = runCatching { joystick.callForLog().name }.getOrDefault("?")
+            if (!JoystickMap.knowsCode(event)) com.reau.app.data.ProjectionSummary.current.unknownButton(event.code)
             RideDiagnostics.log("dash", JoystickMap.logLine(event::class.simpleName.orEmpty(), event.code, press.lines, call))
             // Debug only, behind its switch: the code stays on the dash's video until the next press.
             showButton(com.reau.app.video.ButtonOverlay.textFor(event, press.lines.firstOrNull() ?: "nothing"))
@@ -944,6 +945,12 @@ private fun phoneOnline(context: Context): Boolean = runCatching {
 /** Android Auto's guidance on the dash's own nav bubble; none hides the bubble again. */
 private fun DashSession.showGuidance(guidance: NavGuidance, noNetwork: Boolean, imperial: Boolean) {
     val nav = AaManeuvers.toDash(guidance, noNetwork, imperial = imperial)
+    // For the projection's resumo: the numbers Android Auto sent that no glyph answers (a rerouting shows the compass whatever the number is).
+    if (guidance.active) {
+        val summary = com.reau.app.data.ProjectionSummary.current
+        summary.maneuver(0, guidance.maneuverType, guidance.rerouting || AaManeuvers.knowsType(guidance.maneuverType))
+        summary.maneuver(1, guidance.nextManeuverType, AaManeuvers.knowsType(guidance.nextManeuverType))
+    }
     if (nav == null) {
         clearNavInfo()
     } else {

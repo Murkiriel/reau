@@ -216,4 +216,24 @@ class AaManeuversTest {
         assertEquals(DashManeuverGlyphs.RECALCULATING, AaManeuvers.toDash(guiding(rerouting = true), noNetwork = false)!!.maneuver)
         assertEquals("a real turn is never hidden by the lack of network", DashManeuverGlyphs.TURN_LEFT, AaManeuvers.toDash(guiding(), noNetwork = true)!!.maneuver)
     }
+
+    // ── which numbers REau draws (for the resumo's `maneuvers unknown=`) ──
+
+    @Test
+    fun `knowsType says yes to every number that has a glyph of its own and no to the rest, 45 and 0 among them`() {
+        for (type in listOf(1, 2, 3, 4, 5, 8, 10, 11, 12, 13, 18, 19, 20, 21, 24, 25, 26, 27, 28, 29, 36, 37, 38, 39, 40, 41, 42)) {
+            assertTrue("type $type", AaManeuvers.knowsType(type))
+        }
+        for (type in 30..35) assertTrue("roundabout $type", AaManeuvers.knowsType(type))
+        for (type in listOf(-1, 0, 43, 44, 45, 46, 99)) assertEquals("type $type", false, AaManeuvers.knowsType(type))
+    }
+
+    /** knowsType and glyphFor must not drift apart: a number is known exactly when it is not the hidden bubble. */
+    @Test
+    fun `a number is known exactly when it does not end in the hidden bubble`() {
+        for (type in -1..60) {
+            val hidden = AaManeuvers.glyphFor(type, roundaboutExit = 1) == DashManeuverGlyphs.HIDDEN_BUBBLE
+            assertEquals("type $type", !hidden, AaManeuvers.knowsType(type))
+        }
+    }
 }

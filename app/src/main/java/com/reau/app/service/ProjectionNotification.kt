@@ -25,7 +25,7 @@ object ProjectionNotification {
     private const val CHANNEL_ID = "reau_projection"
 
     /** The channel of the notices that must be heard with the phone's screen off in a pocket: high importance, sound and vibration. */
-    private const val ALERT_CHANNEL_ID = "reau_alert"
+    internal const val ALERT_CHANNEL_ID = "reau_alert"
     private val ALERT_VIBRATION = longArrayOf(0, 400, 200, 400, 200, 400)
 
     /**
@@ -75,13 +75,24 @@ object ProjectionNotification {
     /** The wall-clock time the projection started, from its [startedElapsed] start and the clocks of now. */
     fun startedWall(startedElapsed: Long, nowElapsed: Long, nowWall: Long): Long = nowWall - (nowElapsed - startedElapsed)
 
-    /** One channel, low importance (no sound, no pop-up). */
+    /**
+     * Whether a channel that already exists must be created again to carry today's [name] and [description]. Android keeps a channel's
+     * importance, sound and vibration from its creation (the rider's own settings win), but takes a new name and description from a second
+     * `createNotificationChannel` with the same id; it was not called while the channel existed, so a text changed in an update (or a language chosen later)
+     * never reached the channel's page in the system's settings. Nothing is asked when both are already today's.
+     */
+    internal fun channelTextStale(existingName: CharSequence?, existingDescription: String?, name: String, description: String): Boolean =
+        existingName?.toString() != name || existingDescription != description
+
+    /** One channel, low importance (no sound, no pop-up). Its name and description follow the texts of today. */
     fun createChannel(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
-        if (manager.getNotificationChannel(CHANNEL_ID) != null) return
+        val name = context.getString(R.string.notif_channel_name)
+        val description = context.getString(R.string.notif_channel_desc)
+        val existing = manager.getNotificationChannel(CHANNEL_ID)
+        if (existing != null && !channelTextStale(existing.name, existing.description, name, description)) return
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, context.getString(R.string.notif_channel_name), NotificationManager.IMPORTANCE_LOW)
-                .apply { description = context.getString(R.string.notif_channel_desc) },
+            NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_LOW).apply { this.description = description },
         )
     }
 
@@ -140,14 +151,27 @@ object ProjectionNotification {
     /** The channel of the notices to be heard (the dash hung): the projection's own is low importance, with no sound. */
     fun createAlertChannel(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
-        if (manager.getNotificationChannel(ALERT_CHANNEL_ID) != null) return
+        val name = context.getString(R.string.notif_alert_channel_name)
+        val description = context.getString(R.string.notif_alert_channel_desc)
+        val existing = manager.getNotificationChannel(ALERT_CHANNEL_ID)
+        // An existing channel keeps its sound and vibration (the rider's, if changed); only its name and description are renewed ([channelTextStale]).
+        if (existing != null && !channelTextStale(existing.name, existing.description, name, description)) return
         manager.createNotificationChannel(
-            NotificationChannel(ALERT_CHANNEL_ID, context.getString(R.string.notif_alert_channel_name), NotificationManager.IMPORTANCE_HIGH).apply {
-                description = context.getString(R.string.notif_alert_channel_desc)
+            NotificationChannel(ALERT_CHANNEL_ID, name, NotificationManager.IMPORTANCE_HIGH).apply {
+                this.description = description
                 enableVibration(true)
                 vibrationPattern = ALERT_VIBRATION
             },
         )
+    }
+
+    /**
+     * The alert channel's name and description renewed when it already exists (it is not created here: a rider who never had an alert has no such
+     * channel in the system's settings, and one is not added just because a projection started).
+     */
+    fun refreshAlertChannel(context: Context) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (manager.getNotificationChannel(ALERT_CHANNEL_ID) != null) createAlertChannel(context)
     }
 
     /**

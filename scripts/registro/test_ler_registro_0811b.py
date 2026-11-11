@@ -54,7 +54,9 @@ class QuemUniuOPainel(unittest.TestCase):
 
     def test_um_registro_de_antes_que_nao_dizia_de_quem_foi_fica_como_estava(self):
         t = self.textos(linha("10:01:07.000", "wifi", "connected 'RE_****30' in 900ms"))
-        self.assertIn("(o Android o uniu sozinho)", t[0])
+        # A line that says nothing of who asked does not say "alone" (11/11/2026): the union may well have been REau's own request.
+        self.assertNotIn("uniu sozinho", t[0])
+        self.assertIn("não diz de quem foi a união", t[0])
 
 
 def logcat(*blocos):

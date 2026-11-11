@@ -106,7 +106,7 @@ private fun debugRows(s: REauSettings, change: (REauSettings) -> Unit, actions: 
         { ShareRow(actions) },
         { DeleteRow { asking = it } },
         { LogKeepDays(s, change) },
-    )
+    ) + com.reau.app.debug.DebugTriggers.rows()
 }
 
 /** Sharing the logs, with or without the recordings: nothing leaves the phone otherwise. */

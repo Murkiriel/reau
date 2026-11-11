@@ -400,7 +400,7 @@ class MainActivity : ComponentActivity() {
     private fun openAndroidAutoSettings() {
         // Without Android Auto the button leads to its page in the store; whatever fails says so, never in silence.
         val installed = AndroidAuto.installedVersion(this) != null
-        val opened = com.reau.app.aa.AndroidAutoStore.open(this)
+        val opened = com.reau.app.aa.AndroidAutoStore.open(this, say = { RideDiagnostics.log("aa-server", it) })
         RideDiagnostics.log("aa-server", "rider opened Android Auto settings (installed: $installed) → $opened")
         if (opened != AndroidAuto.Opened.NOTHING) {
             leftForAaSettingsAtMs = android.os.SystemClock.elapsedRealtime()

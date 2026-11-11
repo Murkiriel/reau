@@ -51,6 +51,7 @@ class ThreadCensusTest {
         Entry("data/OwnLogcat.kt", "own-logcat-flush", "flushes the own-logcat file on a timer"),
         Entry("data/OwnLogcat.kt", "logcat-tidy", "the own-logcat folder's tidying"),
         Entry("util/DiagnosticsExport.kt", "share-logs", "zips the logs to share, off the main thread"),
+        Entry("REauApp.kt", "exit-history", "tells how the process before ended, at every opening of the app"),
     )
 
     private val main: File = listOf(File("src"), File("app/src")).first { File(it, "main").isDirectory }.let { File(it, "main/java/com/reau/app") }

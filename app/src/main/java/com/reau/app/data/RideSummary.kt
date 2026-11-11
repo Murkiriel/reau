@@ -11,6 +11,12 @@ import java.util.TreeMap
  * rider's marks, and when the dash was dark: the interruptions from the last frame delivered before the dash went to the first one
  * after it came back (`dark=2/3m02s (max 1m08s)`, only when there were some; `streaming=` stops when the dash drops, so the hole shows in no
  * other number). [ProjectionSummary] holds the one of the running projection, for the parts that feed it.
+ *
+ * Since 11/11/2026 the line ends with what the rest of it could not say: `buttons unknown=N (0x31=2 0x20=1)`, the dash's button codes REau has no
+ * meaning for ([com.reau.app.aa.JoystickMap.knowsCode]); `maneuvers unknown=N (45=4)`, Android Auto's maneuver numbers with no glyph of their own
+ * ([com.reau.app.dash.nav.AaManeuvers.knowsType]; counted when the number changes to one, not at each second it stays); and `no image=1m38s`, the
+ * time the dash was left without the picture in all, from the last packet of the dash before each loss to the stream starting again
+ * ([com.reau.app.dash.ImageGapClock.totalMs]). Only log: nothing is done differently for them.
  */
 @Suppress("TooManyFunctions") // one small function per case; splitting them would only scatter the same thing
 class RideSummary(private val windowMs: Long = WINDOW_MS) {
@@ -36,6 +42,10 @@ class RideSummary(private val windowMs: Long = WINDOW_MS) {
     private var darkCount = 0
     private var darkTotalMs = 0L
     private var darkMaxMs = 0L
+    private val unknownButtons = TreeMap<Int, Int>()
+    private val unknownManeuvers = TreeMap<Int, Int>()
+    // The maneuver number last seen in each place (the one now, the one after), to count a number once per stretch.
+    private val lastManeuver = IntArray(MANEUVER_PLACES) { NO_MANEUVER }
 
     fun start(nowMs: Long, batteryPct: Int?) = synchronized(lock) {
         startMs = nowMs
@@ -98,6 +108,20 @@ class RideSummary(private val windowMs: Long = WINDOW_MS) {
     /** A watchdog fired: the dash went silent, the decoder stalled… */
     fun watchdog(name: String) = synchronized(lock) { watchdogs.merge(name, 1, Int::plus) }
 
+    /** A button of the dash with a [code] that REau has no meaning for. */
+    fun unknownButton(code: Int) = synchronized(lock) { unknownButtons.merge(code and BYTE, 1, Int::plus) }
+
+    /**
+     * Android Auto's maneuver number [type] in [place] (0 the maneuver now, 1 the one after) was seen, [known] telling whether REau draws it.
+     * An unknown one counts once each time the number changes to it, not at every second it stays.
+     */
+    fun maneuver(place: Int, type: Int, known: Boolean) = synchronized(lock) {
+        val index = place.coerceIn(0, MANEUVER_PLACES - 1)
+        if (type == lastManeuver[index]) return@synchronized
+        lastManeuver[index] = type
+        if (!known && type >= 0) unknownManeuvers.merge(type, 1, Int::plus)
+    }
+
     /** A look at the phone ([DeviceState]). */
     fun device(thermal: Int?, batteryPct: Int?) = synchronized(lock) {
         if (thermal != null) thermalMax = maxOf(thermalMax ?: thermal, thermal)
@@ -107,7 +131,8 @@ class RideSummary(private val windowMs: Long = WINDOW_MS) {
         }
     }
 
-    fun line(nowMs: Long, marks: Int): String = synchronized(lock) {
+    /** [noImageMs]: the time without the picture so far, an unfinished one included (the image gap clock, which this class does not know). */
+    fun line(nowMs: Long, marks: Int, noImageMs: Long = 0L): String = synchronized(lock) {
         val streamed = streamedMs + if (streamingSince >= 0) nowMs - streamingSince else 0L
         val avg = if (streamed > 0) String.format(Locale.US, "%.1f", frames * MS_PER_S / streamed) else "-"
         val min = if (windowMin.isNaN()) "-" else String.format(Locale.US, "%.1f", windowMin)
@@ -119,8 +144,13 @@ class RideSummary(private val windowMs: Long = WINDOW_MS) {
         val dogs = if (watchdogs.isEmpty()) "" else watchdogs.entries.joinToString(" ", " (", ")") { "${it.key}=${it.value}" }
         "resumo duration=${duration(nowMs - startMs)} streaming=${duration(streamed)} drops dash=$dashDrops aa=$aaDrops retries dash=$dashFailedTries " +
             "watchdogs=${watchdogs.values.sum()}$dogs frames=$frames fps avg=$avg min=$min gap max=$gap$dark " +
-            "thermal max=${thermalName(thermalMax)} battery ${battery()} marks=$marks"
+            "thermal max=${thermalName(thermalMax)} battery ${battery()} marks=$marks " +
+            "buttons unknown=${unknownButtons.values.sum()}${listed(unknownButtons) { "0x%02X".format(it) }} " +
+            "maneuvers unknown=${unknownManeuvers.values.sum()}${listed(unknownManeuvers) { it.toString() }} no image=${duration(noImageMs)}"
     }
+
+    private fun listed(counts: Map<Int, Int>, name: (Int) -> String): String =
+        if (counts.isEmpty()) "" else counts.entries.joinToString(" ", " (", ")") { "${name(it.key)}=${it.value}" }
 
     /** Closes every whole window that ended by [nowMs]. */
     private fun closeWindows(nowMs: Long) {
@@ -141,6 +171,9 @@ class RideSummary(private val windowMs: Long = WINDOW_MS) {
     companion object {
         const val WINDOW_MS = 5_000L
         private const val MS_PER_S = 1000.0
+        private const val BYTE = 0xFF
+        private const val MANEUVER_PLACES = 2
+        private const val NO_MANEUVER = Int.MIN_VALUE
         private const val S_PER_MIN = 60
         private val THERMAL_NAMES = listOf("none", "light", "moderate", "severe", "critical", "emergency", "shutdown")
 

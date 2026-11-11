@@ -540,11 +540,12 @@ class PainelLigadoUnido(unittest.TestCase):
         ficou = self.textos(self.bloco(self.QUEDA("10:01:00.000"), self.UNIDO("10:01:05.000"), self.IDADE("10:01:05.800", 61), self.STREAM("10:01:07.000")))
         self.assertIn("o painel ficou ligado: o Wi-Fi caiu às 10:01:00 e voltou", ficou[0])
 
-    def test_o_app_que_nao_viu_o_painel_na_varredura_diz_que_o_android_uniu_sozinho(self):
+    def test_o_app_que_nao_viu_o_painel_na_varredura_nao_afirma_de_quem_foi_a_uniao_se_a_linha_nao_diz(self):
         # 07/11 08:12:03: pedido #1 sem o painel na varredura e o Android o uniu 7 s depois, sem `showed up`.
         t = self.textos(self.bloco(pedido("10:01:00.000", 1, "scan of 16 networks, the dash not among them"), self.UNIDO("10:01:07.000"),
                                    self.IDADE("10:01:08.000", 18), self.STREAM("10:01:10.000")))
-        self.assertIn("o app não viu o painel na varredura antes de ele ser unido (o Android o uniu sozinho)", t[0])
+        self.assertIn("o app não viu o painel na varredura antes de ele ser unido (a linha `connected` não diz de quem foi a união", t[0])
+        self.assertNotIn("uniu sozinho", t[0])
 
     def test_sem_a_idade_do_painel_nao_ha_o_que_medir(self):
         self.assertEqual([], self.textos(self.bloco(self.UNIDO("10:01:07.000"), self.STREAM("10:01:10.000"))))

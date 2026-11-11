@@ -27,9 +27,10 @@ class CodecDiagnosticsAreWiredTest {
         assertTrue(stop.contains("CodecMetrics.logBounded(\"decoder\", currentCodecName, held)"))
         assertTrue("before the release", stop.indexOf("CodecMetrics.logBounded") < stop.indexOf("held.release()"))
         assertTrue("the release stays inside BoundedRelease", stop.indexOf("BoundedRelease.run(") < stop.indexOf("held.release()"))
-        val metrics = source("util/CodecMetrics.kt").substringAfter("fun logBounded(")
+        val metrics = source("util/CodecMetrics.kt")
         assertTrue(metrics.contains("BoundedRelease.run("))
-        assertTrue(metrics.contains("joinMs = JOIN_MS"))
+        assertTrue("the public entry waits JOIN_MS", metrics.contains("logBounded(role, name, { read(codec) }, JOIN_MS, log)"))
+        assertTrue(metrics.contains("joinMs = joinMs"))
     }
 
     @Test

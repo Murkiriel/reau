@@ -64,6 +64,12 @@ class REauApp : Application() {
         }
         // The dash's name and password decrypted here, so the main screen finds them ready (its first reads were on the main thread).
         kotlin.concurrent.thread(name = "dash-pairing") { runCatching { com.reau.app.dash.DashPairing.open(this).warm() } }
+        // How the process before this one ended (`exit` line): at every opening of the app, not only when a projection starts. Off the main thread
+        // (it asks Android for the exit history and may keep a trace); the main process only (the debug build's test processes are not the app's).
+        // The projection's start asks again and tells only what came after: the book of what was told is on disk (ExitHistory).
+        if (Application.getProcessName() == packageName) {
+            kotlin.concurrent.thread(name = "exit-history") { runCatching { com.reau.app.data.ExitHistory.reportPrevious(this) } }
+        }
         // The bike Wi-Fi suggestion, in step with the switch and the dash's name (Android keeps it otherwise).
         // (off the main thread: binder calls to the Wi-Fi service)
         DashWifiSuggestions.syncSoon(this)

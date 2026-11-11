@@ -476,7 +476,8 @@ class VideoDecoder {
                     currentCodec.releaseOutputBuffer(outputIndex, true) // render=true → to Surface
                     onDecoded?.invoke((System.nanoTime() - startTime) / 1000 - bufferInfo.presentationTimeUs)
                     lastFrameRenderedMs = SystemClock.elapsedRealtime()
-                    stallWatch.onOutput()
+                    // Debug builds only can say no (FaultInjection.DECODER_STALL): the watch then sees a decoder that gives nothing out.
+                    if (!com.reau.app.debug.FaultInjection.swallowDecoderOutput()) stallWatch.onOutput()
                     consecutiveErrors = 0
                     onFirstFrameListener?.let { it(); onFirstFrameListener = null }
 
@@ -503,6 +504,7 @@ class VideoDecoder {
                         "Decoder stall detected (no output for ${stallWatch.waitingMs(now)}ms, " +
                             "input ${stallWatch.inputGapMs(now)}ms ago). Forcing restart.",
                     )
+                    com.reau.app.debug.FaultInjection.decoderRestarted()
                     scheduleRestart(STALL_RESTART)
                     break
                 }
