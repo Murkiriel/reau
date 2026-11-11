@@ -31,6 +31,17 @@ class ListaTest(unittest.TestCase):
         self.assertEqual([], stale, "update the snippet after a refactor")
 
 
+class WarningsFlagTest(unittest.TestCase):
+    """The build fails on a Kotlin warning; the runner of the mutation tests has to turn that off, or a mutation that leaves a variable unused
+    would count as "did not compile" instead of being run."""
+
+    def test_the_runner_passes_the_property_the_build_reads(self):
+        here = Path(__file__).resolve().parent
+        root = here.parents[1]
+        self.assertIn("reauAllowWarnings", (root / "app" / "build.gradle.kts").read_text(encoding="utf-8"))
+        self.assertIn("-PreauAllowWarnings", (here / "run_unit.py").read_text(encoding="utf-8"))
+
+
 class CommandForTest(unittest.TestCase):
     def test_python_test_files_run_with_unittest_and_jvm_classes_with_gradle(self):
         py = mutacoes.command_for(["test_apk_audit.py"])
@@ -150,12 +161,53 @@ class BytecodeTest(unittest.TestCase):
         self.assertEqual("1", seen)
         self.assertEqual("ok = 1 != 2\n", after)
 
-    def test_the_restored_file_is_a_whole_second_later_than_the_mutated_one(self):
-        program = "import os, sys; open('seen.txt', 'w').write(repr(os.stat('a.py').st_mtime)); sys.exit(1)"
-        caught, seen, restored_at, after = self.run_recording(program)
+    def test_each_run_reads_bytecode_only_from_an_empty_cache_of_its_own(self):
+        program = ("import os, sys; c = os.environ.get('PYTHONPYCACHEPREFIX', ''); "
+                   "open('seen.txt', 'w').write(repr((c, os.path.isdir(c) and not os.listdir(c), os.path.abspath(c).startswith(os.getcwd())))); sys.exit(1)")
+        caught, seen, _, after = self.run_recording(program)
         self.assertEqual(1, caught)
-        self.assertGreaterEqual(restored_at, float(seen) + 1.0)
+        cache, empty, inside_root = eval(seen)
+        self.assertTrue(cache)
+        self.assertTrue(empty)
+        self.assertFalse(inside_root)
         self.assertEqual("ok = 1 != 2\n", after)
+
+    def test_an_original_pyc_of_the_same_size_and_second_does_not_hide_the_mutation(self):
+        """The case that hid three mutations: a .pyc of the original next to a mutated source of the same size and the same whole second."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.py").write_text("ok = 1 != 2\n", encoding="utf-8")
+            import py_compile
+            py_compile.compile(str(root / "a.py"), doraise=True)
+            keep = mutate.ROOT, mutate.PENDING
+            mutate.ROOT, mutate.PENDING = root, root / "build" / "pendentes"
+            stamp = (root / "a.py").stat().st_mtime
+            program = ("import os, sys; os.utime('a.py', (" + repr(stamp) + ", " + repr(stamp) + ")); sys.path.insert(0, '.'); "
+                       "import a; sys.exit(1 if a.ok is False else 0)")
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    caught = mutate.run([("uma", "a.py", "!=", "==")], [sys.executable, "-c", program])
+            finally:
+                mutate.ROOT, mutate.PENDING = keep
+            self.assertEqual(1, caught)
+
+
+    def test_a_script_run_with_dash_i_leaves_no_bytecode_of_the_mutated_source(self):
+        """`python3 -I` ignores PYTHONDONTWRITEBYTECODE and the cache prefix: the .pyc it writes of the mutation must not outlive the run."""
+        program = ("import subprocess, sys; subprocess.run([sys.executable, '-I', '-c', 'import sys; sys.path.insert(0, \".\"); import a'], "
+                   "cwd='.', check=True); sys.exit(1)")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.py").write_text("ok = 1 != 2\n", encoding="utf-8")
+            keep = mutate.ROOT, mutate.PENDING
+            mutate.ROOT, mutate.PENDING = root, root / "build" / "pendentes"
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    caught = mutate.run([("uma", "a.py", "!=", "==")], [sys.executable, "-c", program])
+            finally:
+                mutate.ROOT, mutate.PENDING = keep
+            self.assertEqual(1, caught)
+            self.assertEqual([], list((root / "__pycache__").glob("a.*.pyc")) if (root / "__pycache__").exists() else [])
 
 
 class RecoverTest(unittest.TestCase):

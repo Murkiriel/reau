@@ -15,4 +15,4 @@ data class CardAction(val label: String, val tag: String, val onClick: () -> Uni
 data class Info(val title: String, val text: String)
 
 /** A row's button (Compartilhar, Apagar...): [danger] ones are outlined in red and always ask first. */
-data class RowAction(val label: String, val tag: String, @DrawableRes val icon: Int? = null, val danger: Boolean = false, val onClick: () -> Unit)
+data class RowAction(val label: String, val tag: String, @param:DrawableRes val icon: Int? = null, val danger: Boolean = false, val onClick: () -> Unit)

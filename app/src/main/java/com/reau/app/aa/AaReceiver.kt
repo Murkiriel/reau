@@ -128,6 +128,8 @@ internal class AaReceiver(
         val downstreamBusyMs: () -> Long = { 0L },
         /** How long the video focus stays away when a keyframe is asked for, read at each cycle ([FocusGap]). */
         val focusGapMs: () -> Long = { FocusGap.DEFAULT_MS },
+        /** The changes of the phone's USB, to tell a session that Android Auto closed because of one ([UsbSessionEnd]). */
+        val usb: UsbSessionEnd = UsbSessionEnd.shared,
     )
 
     private val port = options.port
@@ -144,6 +146,7 @@ internal class AaReceiver(
     private val onVideoSilent = options.onVideoSilent
     private val callIn = options.callIn
     private val downstreamBusyMs = options.downstreamBusyMs
+    private val usb = options.usb
 
     @Volatile var state: AaLinkState = AaLinkState.IDLE
         private set
@@ -455,9 +458,11 @@ internal class AaReceiver(
         // Stopped: no dial again, so no wait for it (the second before dialling again used to hold the Desligar,
         // the stop's interrupt swallowed by the video decoder waiting on its own thread).
         if (!isCurrent(mine)) return
+        // Android Auto closes its sessions at every change of the USB: said, and (when the handshake had been answered) dialled again at once.
+        val ending = usb.noteEnd { AaLog.i(it) }
         if (!unanswered.after(handshook)) {
             report(mine, AaLinkState.DROPPED)
-            Thread.sleep(timing.afterDropMs)
+            ending.pauseAfterDrop(timing.afterDropMs) { Thread.sleep(it) }
             return
         }
         // Right after REau's own stop, or from where this process began to dial when a session it did not see may have just

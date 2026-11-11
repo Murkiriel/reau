@@ -7,3 +7,15 @@ updates:
     # Version updates are off on purpose: several libraries are pinned because they were tested on a real dash
     # (see gradle/libs.versions.toml and app/lint.xml). Zero here keeps only Dependabot's security updates.
     open-pull-requests-limit: 0
+
+  # The GitHub Actions of .github/workflows are pinned by commit (full SHA, version in the comment). Dependabot reads those
+  # lines too and opens one pull request when a newer release exists, with the new SHA and the comment together. Nothing
+  # is merged by itself: the maintainer reads the release notes first.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns: ["*"]

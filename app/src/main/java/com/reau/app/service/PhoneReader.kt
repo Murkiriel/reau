@@ -42,6 +42,7 @@ internal object PhoneReader {
 
     /** The link the phone carries its data on now. */
     @SuppressLint("InlinedApi") // the satellite transport is asked only from Android 15
+    @Suppress("DEPRECATION") // allNetworks: the callbacks that replace it do not answer a one-off question
     fun link(context: Context): LinkReading = runCatching {
         val manager = context.getSystemService(ConnectivityManager::class.java)
         val airplane = Settings.Global.getInt(context.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
@@ -61,6 +62,7 @@ internal object PhoneReader {
         }
     }.getOrDefault(LinkReading(LinkKind.OFFLINE))
 
+    @Suppress("DEPRECATION") // connectionInfo: its replacement (a network callback) does not answer a one-off question
     private fun wifi(context: Context): LinkReading {
         val info = runCatching { context.applicationContext.getSystemService(WifiManager::class.java)?.connectionInfo }.getOrNull()
         val name = if (granted(context, Manifest.permission.ACCESS_FINE_LOCATION)) info?.ssid else null
@@ -95,6 +97,7 @@ internal object PhoneReader {
     }
 
     /** The generation of the mobile network by Android's data network type: "5G", "4G", "3G" or "2G"; null for what is none of them. */
+    @Suppress("DEPRECATION") // the CDMA and EVDO types are deprecated and still reported by old networks
     fun generationOf(networkType: Int): String? = when (networkType) {
         TelephonyManager.NETWORK_TYPE_NR -> "5G"
         TelephonyManager.NETWORK_TYPE_LTE, TelephonyManager.NETWORK_TYPE_IWLAN -> "4G"

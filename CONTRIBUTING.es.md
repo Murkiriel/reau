@@ -21,7 +21,7 @@ Con JDK 21 y el Android SDK instalados, desde esta carpeta:
 ```
 
 La primera línea ejecuta las pruebas unitarias; la segunda ejecuta el análisis de código (detekt) y el lint. Corrige lo
-que informen en el código que escribiste, y no agregues nada al baseline de detekt. Algunas pruebas leen archivos del
+que informen en el código que escribiste, y no agregues nada al baseline de detekt. Una advertencia del compilador de Kotlin también rompe la compilación (`allWarningsAsErrors`): corrígela o, en una llamada obsoleta que no se puede evitar, pon al lado un `@Suppress` que diga el motivo. Algunas pruebas leen archivos del
 repositorio (`docs/`, `NOTICE`, los README, los historiales de cambios, `app/src/main/res/`): Gradle sabe que leen esos archivos, así que
 se ejecutan de nuevo solas cuando cambia un texto. Las pruebas instrumentadas (`app/src/androidTest`) necesitan un
 emulador, como dice el README; `scripts/emu/` tiene los scripts.
@@ -46,13 +46,13 @@ verdad, guiado por el código que alcanza cada entrada, define la variable de en
 JAZZER_FUZZ=1 ./gradlew :app:testDebugUnitTest --tests '*ParserFuzzTargets*' --console=plain
 ```
 
-La ejecución deja su corpus de trabajo en `app/.cifuzz-corpus/` y, si una entrada rompió un lector, un archivo `crash-<hash>` en `app/` (los dos
+Con `JAZZER_MAX_DURATION` definida (por ejemplo `5m`), solo el primer objetivo de la ejecución hace fuzz durante ese tiempo y los demás solo repiten sus semillas: ejecuta un objetivo por vez (`--tests '*ParserFuzzTargets.dashPacket'`). La ejecución deja su corpus de trabajo en `app/.cifuzz-corpus/` y, si una entrada rompió un lector, un archivo `crash-<hash>` en `app/` (los dos
 quedan fuera de git). Tras corregir el error, copia ese archivo a la carpeta de semillas del objetivo, para que la misma entrada se pruebe en
 cada ejecución desde entonces. Un objetivo nuevo es un método con `@FuzzTest` que recibe un `ByteArray`, con unas pocas semillas pequeñas
 propias (nunca capturas reales: mira "Datos personales"). Para esto las pruebas unitarias corren en la JUnit Platform (el motor vintage corre las de JUnit 4).
 
 `python3 scripts/dev/mutacoes.py` es la prueba de mutación: cambia una decisión del código cada vez y comprueba que una prueba unitaria falla.
-`--lista` cuenta las mutaciones y `--fatia I/N` ejecuta una porción (el workflow semanal ejecuta diez); una mutación que sobrevive es una prueba
+`--lista` cuenta las mutaciones y `--fatia I/N` ejecuta una porción (el workflow semanal ejecuta diez, y `mutacao-mensal.yml` ejecuta una de doce cada mes, la del número del mes); una mutación que sobrevive es una prueba
 que no guarda esa decisión.
 
 ## Qué no cambiar sin una prueba en la moto

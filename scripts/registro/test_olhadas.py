@@ -63,8 +63,8 @@ class LeiturasTest(unittest.TestCase):
     def test_the_table_stops_at_the_limit_and_says_how_many_are_left(self):
         b = bloco_de(*[look(f"10:{m:02d}:{s:02d}.000", "MAP", 0.95) for m in range(1, 4) for s in range(0, 30)])
         t = olhadas.tabela(b)
-        self.assertEqual(olhadas.LISTA_MAX + 1, len(t))
-        self.assertIn(f"mais {90 - olhadas.LISTA_MAX} leituras", t[-1])
+        self.assertEqual(41, len(t))  # 40 readings listed and one line for the rest: the numbers are written out, not read from the module
+        self.assertIn("mais 50 leituras", t[-1])
 
 
 class TaxaTest(unittest.TestCase):

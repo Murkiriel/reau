@@ -21,7 +21,7 @@ With JDK 21 and the Android SDK installed, from this folder:
 ```
 
 The first line runs the unit tests; the second runs the code analysis (detekt) and the lint. Fix what
-they report in the code you wrote, and do not add anything to the detekt baseline. Some tests read files from the
+they report in the code you wrote, and do not add anything to the detekt baseline. A warning of the Kotlin compiler fails the build too (`allWarningsAsErrors`): fix it, or, for a deprecated call that cannot be avoided, put a `@Suppress` next to it that says why. Some tests read files from the
 repository (`docs/`, `NOTICE`, the READMEs, the changelogs, `app/src/main/res/`): Gradle knows they read those files, so
 they run again by themselves when a text changes. The instrumented tests (`app/src/androidTest`) need an
 emulator, as the README says; `scripts/emu/` has the scripts.
@@ -46,13 +46,13 @@ the code each input reaches, set the environment variable (20 seconds per target
 JAZZER_FUZZ=1 ./gradlew :app:testDebugUnitTest --tests '*ParserFuzzTargets*' --console=plain
 ```
 
-A run leaves its working corpus in `app/.cifuzz-corpus/` and, if an input broke a parser, a `crash-<hash>` file in `app/` (both ignored by
+With `JAZZER_MAX_DURATION` set (for example `5m`) only the first target of a run fuzzes for that long and the others just replay their seeds: run one target at a time (`--tests '*ParserFuzzTargets.dashPacket'`). A run leaves its working corpus in `app/.cifuzz-corpus/` and, if an input broke a parser, a `crash-<hash>` file in `app/` (both ignored by
 git). After fixing the bug, copy that file into the target's seed folder, so the same input is tried in every run from now on. A new
 target is a method with `@FuzzTest` that takes a `ByteArray`, with a few small seeds of its own (never real captures: see "Personal data").
 The unit tests run on the JUnit Platform for this (the vintage engine runs the JUnit 4 ones).
 
 `python3 scripts/dev/mutacoes.py` is the mutation test: it changes one decision of the code at a time and checks that a unit test fails.
-`--lista` counts the mutations and `--fatia I/N` runs one slice of them (the weekly workflow runs ten); a mutation that survives means a test that
+`--lista` counts the mutations and `--fatia I/N` runs one slice of them (the weekly workflow runs ten, and `mutacao-mensal.yml` runs one of twelve each month, the month's number); a mutation that survives means a test that
 does not hold that decision.
 
 ## What not to change without a test on the bike

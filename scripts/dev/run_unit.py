@@ -20,7 +20,8 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 def main(classes):
     # One app since 0.3.0 (no editions): a single test task. The old "--lite" among the classes is ignored.
     classes = [name for name in classes if name != "--lite"]
-    command = [str(GRADLEW), ":app:testDebugUnitTest", "--console=plain"]
+    # -PreauAllowWarnings: the build fails on a compiler warning (app/build.gradle.kts), and a mutation may leave one by itself.
+    command = [str(GRADLEW), ":app:testDebugUnitTest", "--console=plain", "-PreauAllowWarnings"]
     for name in classes:
         command += ["--tests", f"*.{name}"]
     done = subprocess.run(command, cwd=ROOT, env=ENV, capture_output=True, text=True, encoding="utf-8",

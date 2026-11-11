@@ -91,7 +91,7 @@ class JoystickBindingsTest {
     }
 
     @Test
-    fun `a "twice" choice saved before is left out`() {
+    fun `a twice choice saved before is left out`() {
         val read = JoystickBindings.decode("media.center.twice=HOME;media.left.once=HOME")
         assertEquals("media.left.once=HOME", read.encode())
     }

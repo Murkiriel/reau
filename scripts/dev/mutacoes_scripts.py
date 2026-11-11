@@ -174,6 +174,8 @@ MUTATIONS_SCRIPTS = [
     # ── mutate.py: a restore that the .pyc cannot outlive (11/11/2026) ──
     ("mutate: os testes de uma rodada voltam a gravar bytecode", "scripts/dev/mutate.py",
      '"PYTHONDONTWRITEBYTECODE": "1"}', '"PYTHONDONTWRITEBYTECODE": ""}', ["dev/test_mutacoes.py"]),
-    ("mutate: o arquivo restaurado não fica um segundo depois do mutado", "scripts/dev/mutate.py",
-     "when = max(path.stat().st_mtime, mutated_at + 1.0)", "when = path.stat().st_mtime", ["dev/test_mutacoes.py"]),
+    ("mutate: a rodada lê o bytecode da árvore", "scripts/dev/mutate.py",
+     'env={**ENV, "PYTHONPYCACHEPREFIX": cache}', "env=ENV", ["dev/test_mutacoes.py"]),
+    ("mutate: o bytecode do arquivo restaurado fica", "scripts/dev/mutate.py",
+     "            _write_durably(path, raw)\n            _forget_bytecode(path)\n", "            _write_durably(path, raw)\n", ["dev/test_mutacoes.py"]),
 ]

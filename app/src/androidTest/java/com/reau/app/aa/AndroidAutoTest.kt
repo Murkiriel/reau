@@ -57,7 +57,7 @@ class AndroidAutoTest {
     fun openSettingsGoesToAndroidAutosOwnSettingsScreen() {
         val started = mutableListOf<Intent>()
 
-        val opened = AndroidAuto.openSettings(context) { started += it }
+        val opened = AndroidAuto.openSettings(context, start = { started += it })
 
         assertEquals(AndroidAuto.Opened.ANDROID_AUTO_SETTINGS, opened)
         val intent = started.single()
@@ -70,10 +70,10 @@ class AndroidAutoTest {
     fun whenThatScreenCannotBeOpenedTheSystemsPageOfTheAppIsOpenedInstead() {
         val started = mutableListOf<Intent>()
 
-        val opened = AndroidAuto.openSettings(context) {
+        val opened = AndroidAuto.openSettings(context, start = {
             started += it
             if (started.size == 1) throw ActivityNotFoundException("no such activity")
-        }
+        })
 
         assertEquals(AndroidAuto.Opened.APP_DETAILS, opened)
         assertEquals(2, started.size)
@@ -85,20 +85,20 @@ class AndroidAutoTest {
     @Test
     fun aRefusalByTheSystemCountsAsNotOpenedToo() {
         var calls = 0
-        val opened = AndroidAuto.openSettings(context) {
+        val opened = AndroidAuto.openSettings(context, start = {
             calls++
             if (calls == 1) throw SecurityException("not exported")
-        }
+        })
         assertEquals(AndroidAuto.Opened.APP_DETAILS, opened)
     }
 
     @Test
     fun whenNeitherOpensItSaysSoInsteadOfCrashing() {
         var calls = 0
-        val opened = AndroidAuto.openSettings(context) {
+        val opened = AndroidAuto.openSettings(context, start = {
             calls++
             throw ActivityNotFoundException("nothing")
-        }
+        })
         assertEquals(AndroidAuto.Opened.NOTHING, opened)
         assertEquals(2, calls)
     }

@@ -19,6 +19,15 @@ val buildGitCommit: String = providers.exec {
     isIgnoreExitValue = true
 }.standardOutput.asText.map { it.trim().ifEmpty { "?" } }.getOrElse("?")
 
+// A warning of the Kotlin compiler fails the build (main code, JVM tests and instrumented tests alike), as one of lint does ("lint" below).
+// A deprecated call that cannot be avoided says why in a @Suppress next to it. Only the mutation test (scripts/dev/run_unit.py) turns this
+// off, with -PreauAllowWarnings: a mutation breaks a decision on purpose and may leave a variable unused, which is not what it is testing.
+kotlin {
+    compilerOptions {
+        allWarningsAsErrors.set(!providers.gradleProperty("reauAllowWarnings").isPresent)
+    }
+}
+
 android {
     namespace = "com.reau.app"
     compileSdk {

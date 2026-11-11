@@ -17,6 +17,7 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import com.reau.app.aa.UsbSessionEnd
 import com.reau.app.data.RideDiagnostics
 
 /**
@@ -65,6 +66,8 @@ object SystemEvents {
                 val dozing = runCatching { power.isDeviceIdleMode }.getOrNull()
                 val saver = runCatching { power.isPowerSaveMode }.getOrNull()
                 com.reau.app.data.PhoneNow.heard(intent.action.orEmpty(), dozing)
+                // Android Auto closes its sessions at every change of the USB: the receiver is told, to say it and to dial again at once.
+                if (changesTheUsb(intent.action.orEmpty()) { plugged(app) }) UsbSessionEnd.shared.changed()
                 when (val action = intent.action.orEmpty()) {
                     PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED -> log(toggles.doze(dozing))
                     PowerManager.ACTION_POWER_SAVE_MODE_CHANGED -> log(toggles.saver(saver))
@@ -108,6 +111,10 @@ object SystemEvents {
             else -> ""
         }
     }
+
+    /** Whether this broadcast is a change of the USB: its data link ([USB_STATE]), or a charger that is plugged in as a USB one. */
+    internal fun changesTheUsb(action: String, plugged: () -> Int?): Boolean =
+        action == USB_STATE || action == Intent.ACTION_POWER_CONNECTED && plugSuffix(action, plugged()) == " (usb)"
 
     /**
      * The line for the USB data link: `usb connected, configured, adb`, from the extras of the broadcast (each a flag, true when on):

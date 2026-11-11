@@ -21,7 +21,7 @@ Com o JDK 21 e o Android SDK instalados, a partir desta pasta:
 ```
 
 A primeira linha roda os testes de unidade; a segunda roda a análise do código (detekt) e o lint.
-Corrija o que eles apontarem no código que você escreveu e não acrescente nada ao baseline do detekt. Alguns testes leem
+Corrija o que eles apontarem no código que você escreveu e não acrescente nada ao baseline do detekt. Um aviso do compilador Kotlin também derruba o build (`allWarningsAsErrors`): corrija-o ou, numa chamada obsoleta que não dá para evitar, ponha ao lado um `@Suppress` que diga o motivo. Alguns testes leem
 arquivos do repositório (`docs/`, `NOTICE`, os READMEs, os changelogs, `app/src/main/res/`): o Gradle sabe que eles leem
 esses arquivos, então rodam de novo sozinhos quando um texto muda. Os testes instrumentados (`app/src/androidTest`) precisam de um
 emulador, como diz o README; os scripts estão em `scripts/emu/`.
@@ -46,13 +46,13 @@ código que cada entrada alcança, defina a variável de ambiente (20 segundos p
 JAZZER_FUZZ=1 ./gradlew :app:testDebugUnitTest --tests '*ParserFuzzTargets*' --console=plain
 ```
 
-A rodada deixa o corpus de trabalho em `app/.cifuzz-corpus/` e, se uma entrada quebrou um leitor, um arquivo `crash-<hash>` em `app/` (os dois
+Com `JAZZER_MAX_DURATION` definida (por exemplo `5m`), só o primeiro alvo da rodada faz fuzz por esse tempo e os outros só repetem as sementes: rode um alvo por vez (`--tests '*ParserFuzzTargets.dashPacket'`). A rodada deixa o corpus de trabalho em `app/.cifuzz-corpus/` e, se uma entrada quebrou um leitor, um arquivo `crash-<hash>` em `app/` (os dois
 ficam fora do git). Depois de corrigir o erro, copie esse arquivo para a pasta de sementes do alvo, para que a mesma entrada seja tentada em
 toda rodada daí em diante. Um alvo novo é um método com `@FuzzTest` que recebe um `ByteArray`, com poucas sementes pequenas só dele (nunca
 capturas reais: veja "Dados pessoais"). Para isso os testes unitários rodam na JUnit Platform (o motor vintage roda os de JUnit 4).
 
 `python3 scripts/dev/mutacoes.py` é o teste de mutação: muda uma decisão do código por vez e confere que um teste unitário falha. `--lista`
-conta as mutações e `--fatia I/N` roda uma fatia delas (o workflow semanal roda dez); uma mutação que sobrevive é um teste que não guarda
+conta as mutações e `--fatia I/N` roda uma fatia delas (o workflow semanal roda dez, e o `mutacao-mensal.yml` roda uma de doze por mês, a do número do mês); uma mutação que sobrevive é um teste que não guarda
 aquela decisão.
 
 ## O que não mudar sem teste na moto

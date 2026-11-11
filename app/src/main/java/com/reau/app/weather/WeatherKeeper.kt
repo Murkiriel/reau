@@ -238,6 +238,7 @@ object WeatherKeeper {
      * The networks that really reach the internet (validated), the system's default first, the VPNs last; never the dash's
      * Wi-Fi, which has none.
      */
+    @Suppress("DEPRECATION") // allNetworks: the callbacks that replace it do not answer a one-off question
     private fun withInternet(context: Context): List<Network> {
         val manager = context.getSystemService(ConnectivityManager::class.java) ?: return emptyList()
         fun usable(network: Network): Boolean = manager.getNetworkCapabilities(network)?.let {

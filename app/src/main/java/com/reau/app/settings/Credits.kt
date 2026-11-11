@@ -20,12 +20,12 @@ object Credits {
         val name: String,
         val holder: String,
         val licence: String,
-        @StringRes val role: Int,
+        @param:StringRes val role: Int,
         val url: String,
         /** The name as the rider reads it, when the name has a word of the language in it; 0 shows [name]. */
-        @StringRes val nameText: Int = 0,
+        @param:StringRes val nameText: Int = 0,
         /** The holder as the rider reads it, when it has a word of the language in it; 0 shows [holder]. */
-        @StringRes val holderText: Int = 0,
+        @param:StringRes val holderText: Int = 0,
     )
 
     data class Group(val side: Side, val entries: List<Entry>)

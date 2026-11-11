@@ -474,7 +474,8 @@ class DashWifiManager(
         dashSearches.get(prefix, after = { if (it.fresh) DashSighting.sighted() }) { searchDashSsid(prefix) }.name
 
     @SuppressLint("MissingPermission")
-    @Suppress("TooGenericExceptionCaught") // a failed scan lookup is logged and means no SSID
+    // ScanResult.SSID is deprecated: the WifiSsid replacing it needs Android 13, and this app starts at Android 10 (minSdk 29)
+    @Suppress("TooGenericExceptionCaught", "DEPRECATION") // a failed scan lookup is logged and means no SSID
     private fun searchDashSsid(prefix: String): DashFound = try {
         val wifi = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val seen = wifi.scanResults.mapNotNull { r ->
@@ -801,6 +802,7 @@ class DashWifiManager(
     }
 
     /** Log only: whether the phone is joined to a Wi-Fi, and whether the dash's own network is the one ([joinedWifiWords]). */
+    @Suppress("DEPRECATION") // allNetworks: the callbacks that replace it do not answer a one-off question
     private fun joinedWifi(): String? = runCatching {
         val wifiNetworks = cm.allNetworks.filter { cm.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true }
         joinedWifiWords(wifiNetworks.size, network?.let { it in wifiNetworks } == true)
@@ -881,6 +883,7 @@ class DashWifiManager(
      * lets [requestNetwork] reuse a connection the system already made instead of opening a new,
      * possibly-redundant request. */
     @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION") // allNetworks: the callbacks that replace it do not answer a one-off question
     private fun findAlreadyConnectedDashNetwork(): Pair<Network, String>? {
         val activeSsid = readActiveWifiSsid()?.takeIf { matchesPendingSsid(it, pendingSsid, pendingPrefix) } ?: return null
         val wifiNetwork = cm.allNetworks.firstOrNull { candidate ->
@@ -904,6 +907,7 @@ class DashWifiManager(
      * `onUnavailable()`. Null (not false) if the scan itself couldn't be read (e.g. no location
      * permission) — a caller must NOT treat "couldn't check" the same as "confirmed absent". */
     @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION") // ScanResult.SSID, as in searchDashSsid
     private fun pendingSsidSeenInScan(): Boolean? = scanVerdict(
         runCatching { wifi.scanResults.mapNotNull { it.SSID?.trim('"')?.takeIf { s -> s.isNotBlank() } } }.getOrNull(),
         pendingSsid, pendingPrefix,
@@ -1169,6 +1173,7 @@ class DashWifiManager(
 
     /** The last scan as [ScanSeen]s; null when it cannot be read. */
     @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION") // ScanResult.SSID, as in searchDashSsid
     private fun readScan(): List<ScanSeen>? = runCatching {
         wifi.scanResults.mapNotNull { r ->
             r.SSID?.trim('"')?.takeIf { it.isNotBlank() }?.let { ScanSeen(it, r.level, r.frequency, r.timestamp) }
@@ -1286,6 +1291,7 @@ class DashWifiManager(
 
     /** The newest stamp of the dash in the last scan; null for none, an empty scan or one that cannot be read. */
     @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION") // ScanResult.SSID, as in searchDashSsid
     private fun newestSightingUs(): Long? = runCatching {
         wifi.scanResults.filter { r ->
             r.SSID?.trim('"')?.let { it.isNotBlank() && matchesPendingSsid(it, pendingSsid, pendingPrefix) } == true
