@@ -48,6 +48,20 @@ object DashManeuverGlyphs {
     const val FORK_LEFT = 0x06
     const val OFF_RAMP_RIGHT = 0x07       // a side road leaves to the right: the exit ramp
     const val OFF_RAMP_LEFT = 0x08        // a side road leaves to the left
+    /** The start of the route: the official app sends 0x3C (the pin alone) for it, not the straight arrow (not yet seen on the bike). */
+    const val DEPART = 0x3C
+
+    /** The ramps on that the official app draws with their own bytes, left then right (not yet seen on the bike): slight, normal, sharp. */
+    const val ON_RAMP_SLIGHT_LEFT = 0x20
+    const val ON_RAMP_SLIGHT_RIGHT = 0x1F
+    const val ON_RAMP_LEFT = 0x1E
+    const val ON_RAMP_RIGHT = 0x1D
+    const val ON_RAMP_SHARP_LEFT = 0x22
+    const val ON_RAMP_SHARP_RIGHT = 0x21
+
+    /** The slight ramp off ("bear off") the official app draws with its own bytes (not yet seen on the bike): left, right. */
+    const val OFF_RAMP_SLIGHT_LEFT = 0x2E
+    const val OFF_RAMP_SLIGHT_RIGHT = 0x2D
     const val ARRIVE = 0x00
     const val ARRIVE_LEFT = 0x01
     const val ARRIVE_RIGHT = 0x02
@@ -88,7 +102,8 @@ object DashManeuverGlyphs {
         uTurnRight: Boolean? = null,
         drivingSide: DrivingSide = DrivingSide.RIGHT_HAND,
     ): Int = when (type) {
-        ManeuverType.CONTINUE, ManeuverType.DEPART -> STRAIGHT
+        ManeuverType.CONTINUE -> STRAIGHT
+        ManeuverType.DEPART -> DEPART
         ManeuverType.TURN_LEFT -> TURN_LEFT
         ManeuverType.TURN_RIGHT -> TURN_RIGHT
         ManeuverType.SLIGHT_LEFT -> SLIGHT_LEFT

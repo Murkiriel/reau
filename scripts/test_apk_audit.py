@@ -236,6 +236,16 @@ class AgainstTheBaselineTest(unittest.TestCase):
         self.assertIn("Nada gravado", out)
         self.assertEqual(before, os.path.getmtime(self.baseline))
 
+    def test_the_dex_files_of_the_apk_are_read_for_the_texts_only_the_real_debug_code_has(self):
+        # The release's devtools stubs are empty: a .dex that carries the real fault names is the debug code under the stubs' class names.
+        self.run_main(self.apk, "--gravar")
+        real = make_apk(self.tmp.name, dex=b"https://raw.githubusercontent.com/x DECODER_STALL", name="real.apk")
+        code, out = self.run_main(real)
+        self.assertEqual(1, code)
+        self.assertIn("FORMA DE RELEASE ERRADA", out)
+        self.assertIn("texto que só o código de debug de verdade tem: DECODER_STALL", out)
+        self.assertEqual(0, self.run_main(self.apk)[0])
+
     def test_an_invalid_signature_exits_1_even_with_nothing_new_and_is_not_recorded(self):
         self.run_main(self.apk, "--gravar")
         self.signed = False
@@ -363,6 +373,24 @@ class ReleaseShapeTest(unittest.TestCase):
     def test_a_class_of_the_debug_package_fails(self):
         problems = self.shape(classes=self.GOOD_CLASSES + ["com/reau/app/debug/CrashTestActivity"])
         self.assertEqual(["classe que só o debug tem: com/reau/app/debug/CrashTestActivity"], problems)
+
+    def test_the_three_empty_devtools_stubs_of_a_release_pass(self):
+        # The release's ArrowTrial, DebugTriggers and FaultInjection (src/release) are in com.reau.app.devtools, which is not the refused debug package.
+        stubs = ["com/reau/app/devtools/ArrowTrial", "com/reau/app/devtools/DebugTriggers", "com/reau/app/devtools/FaultInjection"]
+        self.assertEqual([], self.shape(classes=self.GOOD_CLASSES + stubs))
+        self.assertEqual([], apk_audit.release_shape(xmltree(RELEASE_COMPONENTS), self.GOOD_CLASSES + stubs, RELEASE_ENTRIES,
+                                                       [b"dex\n035 swallowDecoderOutput muteEncoderOutput"]))
+
+    def test_any_other_class_of_the_devtools_package_fails_the_real_fault_enum_and_a_new_one_included(self):
+        for name in ("com/reau/app/devtools/FaultInjection$Fault", "com/reau/app/devtools/ArrowTrial$Companion",
+                     "com/reau/app/devtools/DebugTriggers$rows$1", "com/reau/app/devtools/Other"):
+            self.assertEqual([f"classe que só o debug tem: {name}"], self.shape(classes=self.GOOD_CLASSES + [name]), name)
+
+    def test_the_real_debug_code_under_the_stubs_names_fails_by_its_texts(self):
+        for text in (b"DECODER_STALL", b"ENCODER_MUTE", b"FOCUS_CYCLE", b"debug trigger fired: x", b"fault injection armed"):
+            problems = apk_audit.release_shape(xmltree(RELEASE_COMPONENTS), self.GOOD_CLASSES, RELEASE_ENTRIES, [b"dex\n035 " + text])
+            self.assertEqual(1, len(problems), text)
+            self.assertIn("texto que só o código de debug de verdade tem", problems[0])
 
     def test_any_compose_tooling_class_fails_the_preview_annotations_included(self):
         for name in ("androidx/compose/ui/tooling/PreviewActivity", "androidx/compose/ui/tooling/ComposeViewAdapter",

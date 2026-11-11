@@ -1,11 +1,11 @@
-package com.reau.app.debug
+package com.reau.app.devtools
 
 import com.reau.app.data.RideDiagnostics
 
 /**
  * Debug builds only: faults the rider cannot make happen on purpose, armed from Ajustes → Depuração ([DebugTriggers]) to see how the app
  * recovers and what the ride log says. The release build has a [FaultInjection] of the same shape that never arms and answers no to every
- * question (`src/release/java/com/reau/app/debug/FaultInjection.kt`), so the three places that ask are plain reads in both builds and
+ * question (`src/release/java/com/reau/app/devtools/FaultInjection.kt`), so the three places that ask are plain reads in both builds and
  * nothing in a release can change them. FaultInjectionAbsenceInReleaseTest holds that.
  *
  * - [Fault.DECODER_STALL]: the video decoder's pictures stop counting as output for the stall watch, so it sees a decoder that takes pictures in

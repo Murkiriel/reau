@@ -27,6 +27,8 @@
     <string name="notif_text_dash_stuck">The dash is on but not accepting the connection. Turn the motorcycle’s ignition off and on again; REau reconnects by itself</string>
     <string name="notif_title_phone_hot">Phone is hot</string>
     <string name="notif_text_phone_hot">The phone is hot (%1$d °C). Take it out of the sun or a closed pocket, or unplug the charger, so it does not slow down</string>
+    <string name="notif_title_bind_refused">Android is refusing the dash’s network</string>
+    <string name="notif_text_bind_refused">Android refused the dash’s Wi-Fi several times in a row. Turn off any VPN and the automatic switch between Wi-Fi and mobile data; if it goes on, turn the phone’s Wi-Fi off and on. REau keeps trying</string>
     <string name="notif_title_no_dash_stopped">Projection turned off</string>
     <plurals name="notif_text_no_dash_stopped">
         <item quantity="one">The dash was gone for %1$d minute, so REau stopped. Turn it on again when the bike is on</item>
@@ -83,6 +85,7 @@
     <string name="action_battery_exemption">Exclude REau from optimization</string>
     <string name="battery_saver_on">Battery saver is on: with the screen off, Android cuts the network and location for background apps (the GPS card of the info ring can then be late). REau keeps going thanks to its pinned notification; if the dash or Android Auto drops, turn battery saver off.</string>
     <string name="action_battery_saver">Open battery saver</string>
+    <string name="action_open_alert_settings">Open alert settings</string>
     <string name="aa_screen_mask">Dash mask: darkens what doesn’t reach the dash’s round glass, using the fit chosen below, and shows where the dash ring is</string>
     <string name="gemini">Gemini by joystick: it listens through the helmet’s Bluetooth headset or, without one, the phone’s microphone. On by default, but the microphone stays closed until its permission is granted (Permissions shortcut). This switch is what makes the \"Gemini\" action on the Joystick page work, and a change applies the next time you turn on.</string>
     <string name="aa_screen_view_only">View only: touch here doesn’t reach Android Auto. The dash keeps receiving the picture normally.</string>
@@ -191,11 +194,11 @@
     <string name="perm_answer_calls_title">Answer calls</string>
     <string name="perm_answer_calls_why">Answers and hangs up calls with the dash joystick, with the \"Answer calls\" switch on.</string>
     <string name="perm_phone_state_title">Phone state</string>
-    <string name="perm_phone_state_why">Tells REau whether the phone is ringing or in a call so the joystick acts at the right time, without reading numbers or the call list.</string>
+    <string name="perm_phone_state_why">Tells REau whether the phone rings or is in a call, so the joystick acts at the right time, and the network generation (4G, 5G) for the dash, without reading numbers or calls.</string>
     <string name="perm_microphone_title">Microphone</string>
     <string name="perm_microphone_why">Carries your voice from the helmet’s Bluetooth headset (or the phone) to Android Auto for Gemini, with the \"Gemini\" switch on, and REau doesn’t store the audio.</string>
     <string name="perm_location_title">Location (approximate and precise)</string>
-    <string name="perm_location_why">Lets Android give REau the Wi-Fi list to find the dash, even with the app behind another one, without reading your position; with \"Use location\" on, the last position for the sun-based theme.</string>
+    <string name="perm_location_why">Lets REau find the dash in the Wi-Fi list behind another app; with \"Use location\", the position rounded to 11 km for sun and weather, and the GPS heading on the ring.</string>
     <string name="perm_internet_title">Open network connections</string>
     <string name="perm_internet_why">Android requires it for any connection, but REau uses the internet only for the optional weather (Open-Meteo) and, when you tap it, the update check (GitHub).</string>
     <string name="perm_network_state_title">View networks</string>
@@ -222,7 +225,7 @@
     <string name="perm_battery_request_why">Lets REau show Android’s request to leave battery optimization, and on its own it changes nothing.</string>
     <string name="perm_library_title">Internal library permission</string>
     <string name="perm_library_why">Added by an Android library (AndroidX) that REau uses, to protect the app’s internal notices, and it gives access to nothing on the phone.</string>
-    <string name="ride_log">Diagnostic log (on by default): records on the phone itself what happens in REau, to find bugs later; nothing leaves the phone unless you share it. When off, REau records nothing (neither the detailed log nor the copy of the system messages about REau); what was already recorded stays until you delete it (or until the period set in \"Automatically delete\" ends)</string>
+    <string name="ride_log">Diagnostic log (on by default): records on the phone itself what happens in REau, to find bugs later; nothing leaves the phone unless you share it. When off, REau records nothing (neither the detailed log nor the copy of the system messages about REau), except the app’s crash report, which is written on the phone even then, stays only on the phone and never leaves by itself; what was already recorded stays until you delete it (or until the period set in \"Automatically delete\" ends)</string>
     <string name="delete_logs_title">Delete the logs?</string>
     <string name="delete_logs_text">Deletes all the logs stored on the phone and the last shared file. If the log is on, it starts again in a new file. This can’t be undone.</string>
     <string name="delete_logs_recordings_text">Deletes all the logs stored on the phone, the last shared file and the recordings of the video and of the Android Auto sessions. If the log is on, it starts again in a new file. This can’t be undone.</string>
@@ -237,7 +240,7 @@
     <string name="about_data_web_title">The browser (only if you turn it on)</string>
     <string name="about_data_web">With \"Turn on the network server\" on (off by default), anyone on your network who enters the PIN sees the Android Auto picture, unencrypted, so don’t use it on strangers’ networks.</string>
     <string name="about_data_stays_title">What stays on the phone</string>
-    <string name="about_data_stays">The diagnostic log has no position, streets, songs or caller; the optional recordings (off by default) hold them; both stay on the phone and leave only through \"Share\".</string>
+    <string name="about_data_stays">The diagnostic log has no position, streets, songs or caller; optional recordings (off by default) do; all stay on the phone, the crash report even with log off, and leave only through \"Share\".</string>
     <string name="about_data_kept_title">What REau remembers about the dash</string>
     <string name="about_data_kept">The dash’s Wi-Fi name and password and what it reported, encrypted with a key kept by Android, and the rounded position and last weather, if they exist, in the app’s folder.</string>
     <string name="about_data_control_title">What you control</string>
@@ -342,6 +345,10 @@
     <string name="warn_battery_saver_title">Battery saver is on</string>
     <string name="warn_location_title">Location is off on the phone</string>
     <string name="warn_location">With Android’s Location switched off, the phone does not return the Wi-Fi scan, so REau can’t see the dash’s network and may take longer to join it; the GPS card of the info ring and the theme by the sun don’t work either. Turn Location on in Android’s quick settings.</string>
+    <string name="warn_alerts_muted_title">Dash alerts are muted</string>
+    <string name="warn_alerts_muted">Android plays the “Dash alerts” channel without sound or vibration, so a stuck dash, a refused network or a hot phone would not be heard. Open its settings and give it sound.</string>
+    <string name="warn_alerts_blocked_title">Dash alerts are blocked</string>
+    <string name="warn_alerts_blocked">Android blocks REau’s alerts (all notifications, or the “Dash alerts” channel), so a stuck dash, a refused network or a hot phone would not be warned. Open the settings and allow them.</string>
     <string name="warn_vpn_title">A VPN is holding REau back</string>
     <string name="warn_vpn">With REau inside the VPN, Android won’t let it use the dash’s Wi-Fi. In the VPN app, leave REau out (\"split tunneling\") and fully reconnect the VPN.</string>
     <string name="warn_taken_title">Dash in use</string>
@@ -568,10 +575,12 @@
     <string name="record_sessions_title">Record Android Auto sessions</string>
     <string name="record_sessions_sub">Saves the map and the route</string>
     <string name="record_sessions_info">Records everything Android Auto sends in one connection (picture, route, music, caller, messages), keeping the last 50 to 100 MB, 3 to 15 minutes of ride (768 MB in the debug build). Off by default in the app you install to ride and on in the debug build, it reveals where you rode: it stays in the app’s folder and only leaves if you use \"Share › With recordings\". Recordings add up to 200 MB (1024 MB in the debug build) and go by the period in \"Automatically delete those older than\"; applies the next time you turn on.</string>
+    <string name="recordings_notice">Careful: the recordings contain the map, that is, where you rode, and the names of who calls. They stay on the phone.</string>
     <string name="detailed_title">Detailed log</string>
     <string name="detailed_sub">Much larger file</string>
     <string name="share_title">Share</string>
     <string name="share_sub">Leaves the phone only when you tap here</string>
+    <string name="share_recordings_notice">Careful: “With recordings” sends out the map (where you rode) and the names of who calls. Share it only with someone you trust.</string>
     <string name="share_logs_short">Logs</string>
     <string name="share_recordings_short">With recordings (large)</string>
     <string name="delete_title">Delete</string>

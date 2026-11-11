@@ -69,12 +69,26 @@ internal fun Warning(warning: Warning, state: MainUiState, onOpenAndroidAutoSett
             warn, R.drawable.ic_ms_error, stringResource(R.string.warn_location_title), stringResource(R.string.warn_location),
             null, null, tag = "location_warning",
         )
+        Warning.ALERTS_MUTED, Warning.ALERTS_BLOCKED -> AlertWarning(warning, extras.onOpenAlertSettings)
         Warning.NAME_NEEDED -> WarningCard(
             StatusKind.ERROR, R.drawable.ic_ms_error, stringResource(R.string.warn_name_title), stringResource(R.string.dash_name_warning),
             null, CardAction(stringResource(R.string.action_open_bike_data_short), "name_open_settings", extras.onOpenWifi),
             tag = "dash_name_warning",
         )
     }
+}
+
+/** The card for the alert channel muted or blocked in Android, with the way to Android's page of the channel. */
+@Composable
+private fun AlertWarning(warning: Warning, onOpenAlertSettings: () -> Unit) {
+    val muted = warning == Warning.ALERTS_MUTED
+    WarningCard(
+        StatusKind.CONNECTING, R.drawable.ic_ms_error,
+        stringResource(if (muted) R.string.warn_alerts_muted_title else R.string.warn_alerts_blocked_title),
+        stringResource(if (muted) R.string.warn_alerts_muted else R.string.warn_alerts_blocked),
+        null, CardAction(stringResource(R.string.action_open_alert_settings), "open_alert_settings", onOpenAlertSettings),
+        tag = if (muted) "alerts_muted_warning" else "alerts_blocked_warning",
+    )
 }
 
 /** The "Android Auto does not answer" card: how to restart its server, in Android Auto's own menu. */

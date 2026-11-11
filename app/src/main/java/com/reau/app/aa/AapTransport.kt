@@ -112,7 +112,7 @@ class AapTransport(
     /** Once a second: lets out a keyframe request that had to wait. */
     internal fun keyframeTick() {
         // Debug builds only: a press of "Focus cycle" asks for the keyframe now, through the same gate as a stalled picture would.
-        if (com.reau.app.debug.FaultInjection.takeFocusCycle()) {
+        if (com.reau.app.devtools.FaultInjection.takeFocusCycle()) {
             AaLog.w("AapTransport: a keyframe asked for by the debug build's focus cycle trigger")
             triggerFocusCycleRecovery()
         }

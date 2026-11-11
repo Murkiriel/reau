@@ -270,8 +270,18 @@ internal class LiveSides(
                     onBindResult = wifi::bindResult
                     wifi.onNetworkAvailable = { bikeNetworkAvailable() }
                     // A dash that stays in the scan and refuses every join (its Wi-Fi hung): the rider is told what clears it.
+                    // The notice is a sound on the phone, which a helmet and a jacket may muffle: three beeps also go to the phone's output (the headset).
                     wifi.onDashStuck = { stuck ->
-                        if (stuck) ProjectionNotification.showDashStuck(context) else ProjectionNotification.clearDashStuck(context)
+                        if (stuck) {
+                            ProjectionNotification.showDashStuck(context)
+                            com.reau.app.aa.StuckDashTone.play(scope, log = { RideDiagnostics.log("audio", it) })
+                        } else {
+                            ProjectionNotification.clearDashStuck(context)
+                        }
+                    }
+                    // Android refusing the dash's network again and again: the rider is told what to look at.
+                    wifi.onBindRefused = { refused ->
+                        if (refused) ProjectionNotification.showBindRefused(context) else ProjectionNotification.clearBindRefused(context)
                     }
                     // A reconnection the manager has under way is joined, not replaced.
                     joining = WifiDashLinkUp.Joining({ wifi.reconnectUnderWay() }, log = { RideDiagnostics.log("wifi", it) })
@@ -328,11 +338,11 @@ internal class LiveSides(
     // The bike's speed for the stream's log, from Android Auto's route.
     private val navSpeed = com.reau.app.stream.NavSpeed()
 
-    // The distances to the dash in miles and feet or in metres: what the dash says it is set to, else the phone's region; said in the log when it changes.
+    // The distances to the dash in miles and feet or in metres: what the dash says it is set to, else the country of the phone's own locales (not the app's language); said in the log when it changes.
     private var navImperialSaid: Boolean? = null
     private fun navImperial(): Boolean {
         val panel = DashReadings.settings.value.distance
-        val region = java.util.Locale.getDefault().country
+        val region = com.reau.app.dash.nav.NavUnits.phoneRegion(appContext)
         val imperial = com.reau.app.dash.nav.NavUnits.imperial(panel, region)
         if (imperial != navImperialSaid) {
             navImperialSaid = imperial

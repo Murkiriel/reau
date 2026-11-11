@@ -42,7 +42,7 @@ class DiagnosticsExportHeaderTest {
         File(diag, "ride-2.log").writeText("two")
         val out = tmp.newFolder("out")
         val header = reportHeader(app, "connection experiments ON: x")
-        val zip = DiagnosticsExport.export(listOf("" to diag), out, freeBytes = { Long.MAX_VALUE }, header = header)!!
+        val zip = DiagnosticsExport.export(listOf("" to diag), out, freeBytes = { Long.MAX_VALUE }, extras = DiagnosticsExport.ExportExtras(header))!!
         ZipFile(zip).use { zf ->
             val names = zf.entries().asSequence().map { it.name }.toList()
             assertEquals(listOf(DiagnosticsExport.HEADER_ENTRY, "ride-1.log", "ride-2.log"), names)
@@ -63,6 +63,6 @@ class DiagnosticsExportHeaderTest {
     @Test
     fun `a header alone is not worth a zip, with no log there is nothing to export`() {
         val diag = tmp.newFolder("diag3")
-        assertNull(DiagnosticsExport.export(listOf("" to diag), tmp.newFolder("out3"), freeBytes = { Long.MAX_VALUE }, header = "x"))
+        assertNull(DiagnosticsExport.export(listOf("" to diag), tmp.newFolder("out3"), freeBytes = { Long.MAX_VALUE }, extras = DiagnosticsExport.ExportExtras("x")))
     }
 }

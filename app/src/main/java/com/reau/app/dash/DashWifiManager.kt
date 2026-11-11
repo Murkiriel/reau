@@ -437,6 +437,12 @@ class DashWifiManager(
      */
     @Volatile var onDashStuck: ((Boolean) -> Unit)? = null
 
+    /**
+     * Told `true` when Android refused the sockets of the dash's network [BindRefusals.TELL_AT] times in a row (EPERM) and `false` when that is
+     * over (a bind worked, or the rider switched off): the service shows or takes away the rider's notice.
+     */
+    var onBindRefused: ((Boolean) -> Unit)? by bindRefusals::onTold
+
     // ── Public API ────────────────────────────────────────────────────────
 
     /**

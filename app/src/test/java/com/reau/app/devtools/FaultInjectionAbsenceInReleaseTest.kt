@@ -1,4 +1,4 @@
-package com.reau.app.debug
+package com.reau.app.devtools
 
 import java.io.File
 import org.junit.Assert.assertEquals
@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The debug build's triggers (items 11 and 20 of the 11/11/2026 list: the warnings fired by hand, the faults injected) never exist in a release.
+ * The debug build's triggers (the warnings fired by hand, the faults injected) never exist in a release.
  * Held three ways: the real code is only in `src/debug` and the release source set has a stub that cannot arm anything; the code in `src/main` that
  * reaches them reads and nothing more; and nothing in `src/main` names what only the debug build has. (A release built from this tree was also
  * looked at for the debug strings: the report of the work says how.)
@@ -15,8 +15,8 @@ import org.junit.Test
 class FaultInjectionAbsenceInReleaseTest {
     private val root = File("src")
     private fun text(path: String) = File(root, path).readText()
-    private val debugDir = "debug/java/com/reau/app/debug"
-    private val releaseDir = "release/java/com/reau/app/debug"
+    private val debugDir = "debug/java/com/reau/app/devtools"
+    private val releaseDir = "release/java/com/reau/app/devtools"
 
     private fun mainSources(): List<File> = File(root, "main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
 
@@ -26,6 +26,18 @@ class FaultInjectionAbsenceInReleaseTest {
         assertEquals(listOf("ArrowTrial.kt", "DebugTriggers.kt", "FaultInjection.kt"), names)
         val all = File(root, "release").walkTopDown().filter { it.isFile }.map { it.relativeTo(root).path }.sorted().toList()
         assertEquals(all.toString(), 3, all.size)
+    }
+
+    @Test
+    fun `the release stubs are in the devtools package, not in the debug one that the APK audit refuses`() {
+        // The first CI run failed here: the stubs were in com.reau.app.debug, and apk_audit.py refuses every class of that package in a release.
+        // The three classes sit in com.reau.app.devtools (empty stubs in a release; the audit lets through those three names and no other class of it).
+        for (name in listOf("ArrowTrial", "DebugTriggers", "FaultInjection")) {
+            val stub = text("$releaseDir/$name.kt")
+            assertTrue("$name: ${stub.lines().first()}", stub.lines().first() == "package com.reau.app.devtools")
+            assertTrue(text("$debugDir/$name.kt").lines().first() == "package com.reau.app.devtools")
+        }
+        assertFalse(File(root, "release/java/com/reau/app/debug").exists())
     }
 
     @Test

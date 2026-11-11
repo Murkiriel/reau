@@ -32,7 +32,7 @@ class ConnectionExperimentsAreWiredTest {
         assertTrue(loop.contains("if (timed != null) watchForAMuteEncoder(g, timed, SystemClock.elapsedRealtime())"))
         val watch = loop.substringAfter("private fun watchForAMuteEncoder").substringBefore("private fun adaptBitrate")
         assertTrue("no watch, nothing done", watch.contains("val watch = muteWatch ?: return"))
-        assertTrue(watch.contains("watch.onPoll(nowMs, timed.submitted, if (com.reau.app.debug.FaultInjection.muteEncoderOutput()) 0 else timed.frames)"))
+        assertTrue(watch.contains("watch.onPoll(nowMs, timed.submitted, if (com.reau.app.devtools.FaultInjection.muteEncoderOutput()) 0 else timed.frames)"))
         assertTrue(watch.contains("if (verdict == EncoderMuteWatch.Verdict.REBUILD) rebuild(g.rebuildAction())"))
         assertTrue("the watch ends with the stream", loop.substringAfter("fun stop()").substringBefore("private fun poll").contains("muteWatch = null"))
     }

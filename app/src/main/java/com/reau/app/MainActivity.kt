@@ -103,6 +103,9 @@ class MainActivity : ComponentActivity() {
     private var vpnHoldsREau by mutableStateOf(false)
     private var locationOff by mutableStateOf(false)
 
+    // Whether the alert channel would be heard (read at each return to the screen): muted or blocked in Android, the main screen says so.
+    private var alertLevel by mutableStateOf(com.reau.app.service.AlertChannelState.Level.LOUD)
+
     // Whether the old "lite" app is installed (read at each return to the screen), for the main screen's card and note.
     private var otherEditionInstalled by mutableStateOf(false)
 
@@ -125,6 +128,9 @@ class MainActivity : ComponentActivity() {
         },
         learn = { learnDashName() },
     )
+
+    /** The phone is in use and unlocked (no lock screen showing); when `KeyguardManager` cannot be had it counts as locked. */
+    private fun phoneUnlocked(): Boolean = (getSystemService(KEYGUARD_SERVICE) as? android.app.KeyguardManager)?.isKeyguardLocked == false
 
     // The terms of use come before every question of Android's (the location, for the Wi-Fi list, is one).
     private fun termsAcceptedNow() = !com.reau.app.settings.Terms.needsAcceptance(com.reau.app.settings.TermsStore.open(this).accepted())
@@ -317,9 +323,20 @@ class MainActivity : ComponentActivity() {
             battery,
             startedAtMs = startedAt, dashName = dashName, permissionsMissing = permissionsMissing(settings), vpnHoldsREau = vpnHoldsREau,
             locationOff = locationOff,
+            alertLevel = alertLevel,
             otherEditionInstalled = otherEditionInstalled,
             weatherOn = settings.dashWeather,
         )
+
+    /** Reads whether the alert channel would be heard; the ride log says it when it changes (and the main screen's card follows [alertLevel]). */
+    private fun readAlertLevel() {
+        val level = com.reau.app.service.AlertChannelState.read(this)
+        if (level != alertLevel) {
+            val line = com.reau.app.service.AlertChannelState.line(level)
+            if (line != null) RideDiagnostics.warn("ui", line) else RideDiagnostics.log("ui", "alerts: the alert channel would be heard again")
+        }
+        alertLevel = level
+    }
 
     /** "Faltam N": only what the functions switched on need (the others are optional on the permissions page). */
     private fun permissionsMissing(settings: REauSettings) = com.reau.app.settings.AppPermissions.missing(
@@ -332,6 +349,7 @@ class MainActivity : ComponentActivity() {
         onShowAndroidAuto = onShowAndroidAuto,
         onAskBatteryExemption = { com.reau.app.ui.BatteryWatch.askExemption(this) },
         onOpenBatterySaver = { com.reau.app.ui.BatteryWatch.openSaver(this) },
+        onOpenAlertSettings = { com.reau.app.ui.AlertSettings.open(this) },
     )
 
     /** What follows a change in the settings: the log, the Wi-Fi suggestion, a running refit. */
@@ -387,7 +405,14 @@ class MainActivity : ComponentActivity() {
 
     private fun quickStart(intent: Intent?) {
         val projection = ProjectionService.projection.value
-        if (!com.reau.app.service.QuickStart.switchesOn(intent?.action, projection, termsAcceptedNow())) return
+        val unlocked = phoneUnlocked()
+        if (intent?.action == com.reau.app.service.QuickStart.ACTION && !unlocked) {
+            // Opened over a lock screen: the app opens, nothing is switched on, and the action is not kept for when the phone is unlocked later.
+            intent.action = null
+            RideDiagnostics.log("ui", "the shortcut or the tile was used with the phone locked: the app opened, the projection was not switched on")
+            return
+        }
+        if (!com.reau.app.service.QuickStart.switchesOn(intent?.action, projection, termsAcceptedNow(), unlocked)) return
         // Handled once: a rotation or a recreation of the activity must not switch it on again.
         intent?.action = null
         RideDiagnostics.log("ui", "the rider switched the projection on from the shortcut or the tile")
@@ -436,6 +461,7 @@ class MainActivity : ComponentActivity() {
         battery = com.reau.app.ui.BatteryWatch.read(this)
         vpnHoldsREau = com.reau.app.dash.NetworkBlock.vpnHolds(this)
         locationOff = com.reau.app.ui.LocationSwitch.read(this)
+        readAlertLevel()
         otherEditionInstalled = OtherEdition.installed(this)
         permissionRows = PermissionRows.read(this)
         learnDashName()

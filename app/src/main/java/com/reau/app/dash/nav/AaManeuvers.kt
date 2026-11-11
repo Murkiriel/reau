@@ -9,7 +9,7 @@ import kotlin.math.roundToInt
  *
  * The maneuver type is Android Auto's NavigationManeuver.NavigationType wire number; each one becomes the dash glyph
  * of the catalog ([DashManeuverGlyphs], the glyph table observed on the dash, still to be checked
- * on the bike): turns by sharpness and side, ramps as the turn they are, keep-left/right and forks as the Y fork, merges
+ * on the bike): turns by sharpness and side, ramps on and off with the bytes the official app gives them (the start of the route too), keep-left/right and forks as the Y fork, merges
  * through the catalog's own rule, roundabouts with their exit (counter-clockwise, as right-hand traffic goes, unless
  * Android Auto says clockwise), ferries, arrivals. Anything else is the hidden bubble here, which the session never
  * sends while guiding (DashSession.ringManeuver keeps the last drawable maneuver); rerouting shows the spinning
@@ -40,20 +40,26 @@ object AaManeuvers {
 
     // Android Auto's NavigationType numbers, by what the dash draws for them.
     private val BY_TYPE: Map<Int, Int> = buildMap {
-        for (t in listOf(1, 2, 29, 36)) put(t, DashManeuverGlyphs.STRAIGHT) // depart, name change, merge (no side), straight
+        for (t in listOf(2, 29, 36)) put(t, DashManeuverGlyphs.STRAIGHT) // name change, merge (no side), straight
+        put(1, DashManeuverGlyphs.DEPART) // the start of the route: the pin alone, as the official app sends it
         put(3, DashManeuverGlyphs.FORK_LEFT)
         put(4, DashManeuverGlyphs.FORK_RIGHT)
         put(25, DashManeuverGlyphs.FORK_LEFT)
         put(26, DashManeuverGlyphs.FORK_RIGHT)
-        // Turns (5..10), ramps on (13..18) and the slight ramps off (21, 22): slight, normal, sharp, each left then right.
-        // The normal ramp off (23 left, 24 right) is the side road that leaves, not a turn: see below.
+        // Turns (5..10): slight, normal, sharp, each left then right.
         val turns = listOf(
             DashManeuverGlyphs.SLIGHT_LEFT, DashManeuverGlyphs.SLIGHT_RIGHT, DashManeuverGlyphs.TURN_LEFT,
             DashManeuverGlyphs.TURN_RIGHT, DashManeuverGlyphs.SHARP_LEFT, DashManeuverGlyphs.SHARP_RIGHT,
         )
         turns.forEachIndexed { i, glyph -> put(5 + i, glyph) }
-        turns.forEachIndexed { i, glyph -> put(13 + i, glyph) }
-        turns.take(2).forEachIndexed { i, glyph -> put(21 + i, glyph) }
+        // Ramps on (13..18), the same order, with the bytes the official app gives them (not yet seen on the bike).
+        listOf(
+            DashManeuverGlyphs.ON_RAMP_SLIGHT_LEFT, DashManeuverGlyphs.ON_RAMP_SLIGHT_RIGHT, DashManeuverGlyphs.ON_RAMP_LEFT,
+            DashManeuverGlyphs.ON_RAMP_RIGHT, DashManeuverGlyphs.ON_RAMP_SHARP_LEFT, DashManeuverGlyphs.ON_RAMP_SHARP_RIGHT,
+        ).forEachIndexed { i, glyph -> put(13 + i, glyph) }
+        // The slight ramps off (21 left, 22 right) are the "bear off"; the normal ones (23, 24) are the side road that leaves: see below.
+        put(21, DashManeuverGlyphs.OFF_RAMP_SLIGHT_LEFT)
+        put(22, DashManeuverGlyphs.OFF_RAMP_SLIGHT_RIGHT)
         put(23, DashManeuverGlyphs.OFF_RAMP_LEFT)
         put(24, DashManeuverGlyphs.OFF_RAMP_RIGHT)
         put(11, DashManeuverGlyphs.UTURN_LEFT)
@@ -110,7 +116,7 @@ object AaManeuvers {
     private const val HALF_MINUTE_S = 30L
 
     /**
-     * The time left from the arrival time text ("08:01") and [now]: Waze never says it in seconds. The text is
+     * The time left from the arrival time text ("08:01", or "2:35 PM" in 12 hours) and [now]: Waze never says it in seconds. The text is
      * to the minute, so the arrival is taken at the middle of its minute ("08:01" is 08:01:30) and the answer is rounded to whole
      * minutes: from hh:mm:00 the dash said 1 min less than Waze in all 6 checks in use (11 for 12, ..., 1
      * for 2), from the middle it says what Waze says in all 6. An arrival that has just passed is 0, not a day; a text that is no time
@@ -144,7 +150,8 @@ object AaManeuvers {
         return DashNav(
             glyph,
             primary, primaryUnit, total, totalUnit,
-            guidance.estimatedTimeAtArrival.takeIf { CLOCK.matches(it) },
+            // The arrival as a 24-hour clock: a 12-hour one ("2:35 PM") is turned into "14:35"; one already in 24 hours goes as it was said.
+            guidance.estimatedTimeAtArrival.let { eta -> eta.takeIf { CLOCK.matches(it) } ?: DashCommands.clock24(eta) },
             guidance.road,
             guidance.timeToArrivalSeconds.takeIf { it >= 0 } ?: remainingFromEta(guidance.estimatedTimeAtArrival, now) ?: DashCommands.REMAINING_OMIT,
             next,

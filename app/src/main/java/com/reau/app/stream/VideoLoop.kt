@@ -297,9 +297,9 @@ internal class VideoLoop(
     private fun watchForAMuteEncoder(g: StreamGovernor, timed: PendingFrames.Stats, nowMs: Long) {
         val watch = muteWatch ?: return
         // Debug builds only can hide the frames out (FaultInjection.ENCODER_MUTE): the watch then sees an encoder that gives nothing out.
-        val verdict = watch.onPoll(nowMs, timed.submitted, if (com.reau.app.debug.FaultInjection.muteEncoderOutput()) 0 else timed.frames)
+        val verdict = watch.onPoll(nowMs, timed.submitted, if (com.reau.app.devtools.FaultInjection.muteEncoderOutput()) 0 else timed.frames)
         if (verdict == EncoderMuteWatch.Verdict.FINE) return
-        com.reau.app.debug.FaultInjection.encoderVerdictGiven()
+        com.reau.app.devtools.FaultInjection.encoderVerdictGiven()
         log("${RideDiagnostics.WARN}${EncoderMuteWatch.line(verdict, watch.lastWaitFrames, watch.rebuilds)}")
         if (verdict == EncoderMuteWatch.Verdict.REBUILD) rebuild(g.rebuildAction())
     }

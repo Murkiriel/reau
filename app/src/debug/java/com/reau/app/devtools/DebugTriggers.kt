@@ -1,4 +1,4 @@
-package com.reau.app.debug
+package com.reau.app.devtools
 
 import android.content.Context
 import android.content.Intent
@@ -11,7 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import com.reau.app.R
 import com.reau.app.data.RideDiagnostics
-import com.reau.app.debug.FaultInjection.Fault
+import com.reau.app.devtools.FaultInjection.Fault
 import com.reau.app.service.DashLink
 import com.reau.app.service.Phase
 import com.reau.app.service.ProjectionNotification

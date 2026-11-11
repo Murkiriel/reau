@@ -68,8 +68,11 @@ internal object RefusalRetry {
 internal class BindRefusals {
     enum class Step { ASK_AGAIN, BACK_OFF }
 
-    /** [inARow]: refusals since the last bind that worked, this one included; [sameNetwork]: the network is the one refused before. */
-    data class Verdict(val step: Step, val inARow: Int, val sameNetwork: Boolean, val backoffMs: Long) {
+    /**
+     * [inARow]: refusals since the last bind that worked, this one included; [sameNetwork]: the network is the one refused before; [tell]: this
+     * is the refusal at which the rider is told (the [TELL_AT]th in a row, once per run: the next ones in the same run are not told again).
+     */
+    data class Verdict(val step: Step, val inARow: Int, val sameNetwork: Boolean, val backoffMs: Long, val tell: Boolean = false) {
         /** The log line: what was refused, whose the network was ([owner], [NetworkOwner.words]), what REau does about it. */
         fun line(network: Any?, owner: String? = null): String = "binding the socket to network $network was refused (EPERM, #$inARow in a row" +
             (if (sameNetwork) ", the same network again" else "") + (if (owner != null) ", $owner" else "") + "): the network is dropped and " +
@@ -82,26 +85,69 @@ internal class BindRefusals {
     private var inARow = 0
     private var last: Any? = null
     private var phoneQuick = 0
+    private var told = false
 
-    @Synchronized
+    /**
+     * Told `true` at the refusal that tells the rider ([TELL_AT] in a row) and `false` when that is over ([bound]): the service shows or takes
+     * away the notice. Called outside the lock, after the line of the log.
+     */
+    @Volatile var onTold: ((Boolean) -> Unit)? = null
+
     fun refused(network: Any?, phoneJoined: Boolean = false): Verdict {
+        val verdict = synchronized(this) { countRefusal(network, phoneJoined) }
+        if (verdict.tell) {
+            com.reau.app.data.RideDiagnostics.warn("wifi", tellLine(verdict.inARow))
+            onTold?.invoke(true)
+        }
+        return verdict
+    }
+
+    private fun countRefusal(network: Any?, phoneJoined: Boolean): Verdict {
         inARow++
+        val tell = !told && inARow >= TELL_AT
+        if (tell) told = true
         val same = last != null && last == network
         last = network
         val quick = inARow == 1 || (phoneJoined && !same && phoneQuick < PHONE_QUICK_MAX)
         if (quick && inARow > 1) phoneQuick++
-        return if (quick) Verdict(Step.ASK_AGAIN, inARow, same, 0L) else Verdict(Step.BACK_OFF, inARow, same, backoffMs(inARow))
+        return if (quick) Verdict(Step.ASK_AGAIN, inARow, same, 0L, tell) else Verdict(Step.BACK_OFF, inARow, same, backoffMs(inARow), tell)
     }
 
-    /** A socket was bound to the network (or the session opened): the refusals so far were not a pattern. */
-    @Synchronized
-    fun bound() {
-        inARow = 0
-        last = null
-        phoneQuick = 0
+    /**
+     * A socket was bound to the network (or the session opened, or the rider switched off): the refusals so far were not a pattern. When the
+     * rider had been told ([Verdict.tell]) the notice is taken away ([onTold] with `false`, after a line of the log). True then.
+     */
+    fun bound(): Boolean {
+        val wasTold = synchronized(this) {
+            val was = told
+            inARow = 0
+            last = null
+            phoneQuick = 0
+            told = false
+            was
+        }
+        if (wasTold) {
+            com.reau.app.data.RideDiagnostics.log(
+                "wifi", "a socket was bound again (or REau was switched off): the notice of the refused network is taken away",
+            )
+            onTold?.invoke(false)
+        }
+        return wasTold
     }
 
     companion object {
+        /**
+         * Refusals in a row at which the rider is told. A refusal that is only a network still being set up goes away at the first or second
+         * try (the quick one, then the 15 s one); the fourth in a row comes at least 45 s after the second (15 s and 30 s of back off between
+         * them) without a single bind in between: the dash's network refused again and again (the ride log of 31/10/2026 had the same dead
+         * network handed back every 30 s for 4.5 minutes), which only the rider can clear (a VPN, the phone's switch to mobile data).
+         */
+        const val TELL_AT = 4
+
+        /** The log line of the refusal that tells the rider. */
+        fun tellLine(inARow: Int): String =
+            "binding the socket to the dash's network was refused $inARow times in a row (EPERM): rider told Android is refusing the network"
+
         /** The quick tries, after the first refusal, that a refusal of a network the phone joined by itself earns (a different network each). */
         const val PHONE_QUICK_MAX = 1
         const val BACKOFF_BASE_MS = 15_000L

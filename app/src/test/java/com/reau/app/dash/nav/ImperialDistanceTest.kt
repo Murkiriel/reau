@@ -168,6 +168,48 @@ class ImperialDistanceTest {
     }
 
     @Test
+    fun `before the dash speaks the unit follows the country of the phone's locales, in the order the rider ranked them`() {
+        fun unit(vararg tags: String) = NavUnits.imperial(null, NavUnits.regionOf(tags.map { java.util.Locale.forLanguageTag(it) }))
+        assertTrue(unit("en-US"))
+        assertTrue(unit("pt-US"))
+        assertTrue(unit("en-GB", "pt-BR"))
+        assertFalse(unit("pt-BR"))
+        assertFalse(unit("pt-BR", "en-US"))
+        assertFalse(unit("es-ES"))
+        assertTrue("a first locale with no country gives way to the next that has one", unit("en", "en-US"))
+        assertFalse("no locale at all", unit())
+        assertFalse("none has a country", unit("en", "pt"))
+        assertEquals("US", NavUnits.regionOf(listOf(java.util.Locale.forLanguageTag("en-US"))))
+        assertEquals("", NavUnits.regionOf(emptyList()))
+    }
+
+    @Test
+    fun `the app's language, which changes the default locale, does not change the region read from the phone's locales`() {
+        val saved = java.util.Locale.getDefault()
+        try {
+            val phone = listOf(java.util.Locale.forLanguageTag("en-US"))
+            // The rider has the phone in the United States and the app in Portuguese (or Spanish, or with no country at all).
+            for (appLanguage in listOf(java.util.Locale.forLanguageTag("pt-BR"), java.util.Locale.forLanguageTag("es"), java.util.Locale.forLanguageTag("en"))) {
+                java.util.Locale.setDefault(appLanguage)
+                assertTrue(appLanguage.toLanguageTag(), NavUnits.imperial(null, NavUnits.regionOf(phone)))
+            }
+            // And the other way: the phone in Brazil, the app in English as spoken in the United States.
+            java.util.Locale.setDefault(java.util.Locale.forLanguageTag("en-US"))
+            assertFalse(NavUnits.imperial(null, NavUnits.regionOf(listOf(java.util.Locale.forLanguageTag("pt-BR")))))
+        } finally {
+            java.util.Locale.setDefault(saved)
+        }
+    }
+
+    @Test
+    fun `the service reads the region of the phone, and no longer the default locale that the app's language moves`() {
+        val sides = java.io.File("src/main/java/com/reau/app/service/LiveSides.kt").readText()
+        assertTrue(sides.contains("NavUnits.phoneRegion(appContext)"))
+        assertFalse(sides.contains("Locale.getDefault().country"))
+        assertTrue("the dash's unit still comes first", sides.contains("NavUnits.imperial(panel, region)"))
+    }
+
+    @Test
     fun `the log line says the unit and why`() {
         assertEquals(
             "nav distances in feet and tenths of a mile (the dash says miles)",

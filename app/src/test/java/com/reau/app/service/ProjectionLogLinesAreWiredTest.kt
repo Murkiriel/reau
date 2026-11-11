@@ -58,7 +58,7 @@ class ProjectionLogLinesAreWiredTest {
     @Test
     fun `the exported report carries the header with the experiments line, and the permissions did not grow`() {
         val export = source("util/DiagnosticsExport.kt")
-        assertTrue(export, "export(sources, dir, header = reportHeader(app, read.getOrNull(), readable = read.isSuccess))" in export)
+        assertTrue(export, "ExportExtras(reportHeader(app, read.getOrNull(), readable = read.isSuccess), listOf(dashName))" in export)
         val manifest = File("src/main/AndroidManifest.xml").readText()
         // No permission was added for the Wi-Fi events: the ones the app already holds.
         assertFalse("READ_LOGS" in manifest || "ACCESS_FINE_LOCATION" in source("service/WifiEvents.kt"))
@@ -75,11 +75,11 @@ class ProjectionLogLinesAreWiredTest {
 
     @Test
     fun `the debug warnings fire the real notices, and the phone hot one fires above its threshold`() {
-        val debug = File("src/debug/java/com/reau/app/debug/DebugTriggers.kt").readText()
+        val debug = File("src/debug/java/com/reau/app/devtools/DebugTriggers.kt").readText()
         assertTrue("\"dash stuck\" -> ProjectionNotification.showDashStuck(context)" in debug)
         assertTrue("\"phone hot\" -> ProjectionNotification.showPhoneHot(context, HOT_TEMP_C)" in debug)
         assertTrue("\"no dash stop\" -> ProjectionNotification.showStoppedNoDash(context, 1)" in debug)
         assertTrue("the alert channel's page", "Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS" in debug && "ProjectionNotification.ALERT_CHANNEL_ID" in debug)
-        assertTrue("the hot notice is above the threshold", com.reau.app.debug.DebugTriggers.HOT_TEMP_C >= BatteryHeatWatch.HOT_C)
+        assertTrue("the hot notice is above the threshold", com.reau.app.devtools.DebugTriggers.HOT_TEMP_C >= BatteryHeatWatch.HOT_C)
     }
 }

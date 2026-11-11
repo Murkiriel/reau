@@ -20,7 +20,7 @@ class DashManeuverGlyphsTest {
     fun `every maneuver type maps to its catalog byte`() {
         val expected = mapOf(
             ManeuverType.CONTINUE to 0x09,       // straight arrow (NOT 0x0B: that one draws roundabout exit 1)
-            ManeuverType.DEPART to 0x09,
+            ManeuverType.DEPART to 0x3C,       // the pin alone, as the official app sends it for the start of the route
             ManeuverType.TURN_LEFT to 0x14,
             ManeuverType.TURN_RIGHT to 0x15,
             ManeuverType.SLIGHT_LEFT to 0x18,

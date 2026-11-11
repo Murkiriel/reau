@@ -23,6 +23,8 @@ data class MainUiState(
     val vpnHoldsREau: Boolean = false,
     /** Android's Location switch is off although REau has the permission. */
     val locationOff: Boolean = false,
+    /** Whether the alert channel (stuck dash, refused network, hot phone) would be heard, or is muted or blocked in Android. */
+    val alertLevel: com.reau.app.service.AlertChannelState.Level = com.reau.app.service.AlertChannelState.Level.LOUD,
     /** The old "lite" app is installed too ([com.reau.app.OtherEdition]): it may be holding Android Auto's server, and it can be uninstalled. */
     val otherEditionInstalled: Boolean = false,
     /** REau's own version, under Android Auto's at the foot. */
@@ -61,6 +63,8 @@ data class MainExtras(
     /** Android's dialog to leave REau out of battery optimization, and battery saver's settings. */
     val onAskBatteryExemption: () -> Unit = {},
     val onOpenBatterySaver: () -> Unit = {},
+    /** Android's settings page of the alert channel (or of the app's notifications), when the alerts are muted or blocked. */
+    val onOpenAlertSettings: () -> Unit = {},
     /** The permissions page and "O REau e os seus dados", from the main screen. */
     val onOpenPermissions: () -> Unit = {},
     val onOpenAboutData: () -> Unit = {},

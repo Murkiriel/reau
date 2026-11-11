@@ -260,19 +260,34 @@ object DashCommands {
     }
 
     /**
-     * The four digits of an arrival time for the card (05 08): "1845" as it is, or the clock as Waze says it ("08:01", "9:05"); anything
-     * that is no time of day is null. Waze says the second form; read as the first only, the card would keep the
-     * template's "03:03" for the whole ride.
+     * The four digits of an arrival time for the card (05 08): "1845" as it is, or the clock as Waze says it ("08:01", "9:05"), or a
+     * 12-hour clock ("2:35 PM", see [clock24]), which is turned into the 24-hour one first; anything that is no time of day is null. Waze says
+     * the second form; read as the first only, the card would keep the template's "03:03" for the whole ride.
      */
     fun etaDigits(text: String?): String? {
+        val clock = text?.let { ETA_PLAIN.matchEntire(it) ?: ETA_CLOCK.matchEntire(it) ?: clock24(it)?.let(ETA_CLOCK::matchEntire) }
+        val (h, m) = clock?.destructured ?: return null
+        return if (h.toInt() > ETA_MAX_HOUR || m.toInt() > ETA_MAX_MINUTE) null else h.padStart(2, '0') + m
+    }
+
+    /**
+     * A 12-hour arrival time as the 24-hour one the dash takes: "2:35 PM" is "14:35", "12:05 AM" is "00:05", "12:30 PM" is "12:30". The
+     * suffix is AM or PM in either case, with or without a space (a plain, a no-break or a narrow no-break one: the phone's own formatter
+     * puts the last two between the time and the suffix) and with dots ("p.m.", "p. m."; Spanish writes it so). A text with no AM/PM suffix, or
+     * with an hour past 12 or minutes past 59 ("14:35 PM"), gives null: [etaDigits] reads the 24-hour clock as it is.
+     */
+    fun clock24(text: String?): String? {
         if (text == null) return null
-        val (h, m) = (ETA_PLAIN.matchEntire(text) ?: ETA_CLOCK.matchEntire(text))?.destructured ?: return null
-        if (h.toInt() > ETA_MAX_HOUR || m.toInt() > ETA_MAX_MINUTE) return null
-        return h.padStart(2, '0') + m
+        val (h, m, meridiem) = ETA_TWELVE.matchEntire(text.trim())?.destructured ?: return null
+        if (h.toInt() > ETA_TWELVE_HOURS || m.toInt() > ETA_MAX_MINUTE) return null
+        val hour = h.toInt() % ETA_TWELVE_HOURS + if (meridiem.equals("p", ignoreCase = true)) ETA_TWELVE_HOURS else 0
+        return "%02d:%s".format(java.util.Locale.US, hour, m)
     }
 
     private val ETA_PLAIN = Regex("""(\d{2})(\d{2})""")
     private val ETA_CLOCK = Regex("""(\d{1,2}):(\d{2})""")
+    private val ETA_TWELVE = Regex("""(\d{1,2}):(\d{2})[\s\u00A0\u202F]*([AaPp])\.?[\s\u00A0\u202F]*[Mm]\.?""")
+    private const val ETA_TWELVE_HOURS = 12
     private const val ETA_MAX_HOUR = 23
     private const val ETA_MAX_MINUTE = 59
 

@@ -33,6 +33,9 @@ class GlyphEvidenceTest {
         for (b in 0x14..0x19) put(b, Evidence.SCAN_ONLY)               // turns
         for (b in listOf(0x1A, 0x3D)) put(b, Evidence.SCAN_ONLY)       // U-turns
         put(0x1C, Evidence.SCAN_ONLY)                                  // recalculating
+        for (b in 0x1D..0x22) put(b, Evidence.SCAN_ONLY)               // ramps on, as the official app draws them
+        for (b in listOf(0x2D, 0x2E)) put(b, Evidence.SCAN_ONLY)       // slight ramps off ("bear off"), as the official app draws them
+        put(0x3C, Evidence.SCAN_ONLY)                                  // the start of the route
         for (b in listOf(0x3E, 0x3F)) put(b, Evidence.SCAN_ONLY)       // ferry, level crossing
         put(0x42, Evidence.SCAN_ONLY)                                  // lost signal
     }

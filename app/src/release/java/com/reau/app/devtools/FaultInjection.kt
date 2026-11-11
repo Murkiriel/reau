@@ -1,4 +1,4 @@
-package com.reau.app.debug
+package com.reau.app.devtools
 
 /**
  * The release build's [FaultInjection] (the real one is in `src/debug`): the same questions, always no, and nothing that arms. Nothing of the

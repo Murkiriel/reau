@@ -630,6 +630,8 @@ class ProjectionService : Service() {
         val heat = BatteryHeatWatch()
         // Said once for this projection: the reader does not ask for the thermal headroom in this build (the lines have no headroom=).
         RideDiagnostics.log("device", com.reau.app.data.ThermalHeadroomNote.LINE)
+        // Said once for this projection: the alert channel muted or blocked in Android (the main screen says it too).
+        AlertChannelState.line(AlertChannelState.read(this))?.let { RideDiagnostics.warn("projection", it) }
         deviceLook?.cancel(false)
         deviceLook = worker.scheduleWithFixedDelay({
             runCatching {

@@ -22,6 +22,7 @@ object ProjectionNotification {
     private const val ID_NO_DASH = 5302
     private const val ID_DASH_STUCK = 5303
     private const val ID_PHONE_HOT = 5304
+    private const val ID_BIND_REFUSED = 5305
     private const val CHANNEL_ID = "reau_projection"
 
     /** The channel of the notices that must be heard with the phone's screen off in a pocket: high importance, sound and vibration. */
@@ -197,6 +198,35 @@ object ProjectionNotification {
             .setAutoCancel(true)
             .build()
         context.getSystemService(NotificationManager::class.java).notify(ID_DASH_STUCK, notification)
+    }
+
+    /**
+     * Told once per run of refusals ([BindRefusals.TELL_AT] in a row), in the alert channel: Android keeps refusing the dash's network (a VPN, a
+     * "smart" switch to mobile data, a network set aside), and REau alone cannot clear that. [clearBindRefused] takes it away when a bind works.
+     */
+    fun showBindRefused(context: Context) {
+        createAlertChannel(context)
+        val open = PendingIntent.getActivity(
+            context, 0, Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE,
+        )
+        val text = context.getString(R.string.notif_text_bind_refused)
+        val notification = Notification.Builder(context, ALERT_CHANNEL_ID)
+            .setContentTitle(context.getString(R.string.notif_title_bind_refused))
+            .setContentText(text)
+            .setStyle(Notification.BigTextStyle().bigText(text))
+            .setSmallIcon(R.drawable.ic_stat_reau)
+            .setCategory(Notification.CATEGORY_STATUS)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setColor(WARNING)
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        context.getSystemService(NotificationManager::class.java).notify(ID_BIND_REFUSED, notification)
+    }
+
+    /** A socket was bound to the dash's network (or the projection is off): the notice of [showBindRefused] goes. */
+    fun clearBindRefused(context: Context) {
+        context.getSystemService(NotificationManager::class.java).cancel(ID_BIND_REFUSED)
     }
 
     /**

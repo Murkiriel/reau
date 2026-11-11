@@ -89,7 +89,9 @@ fun MainScreen(
                         .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    for (warning in MainLook.warnings(p, state.battery, state.vpnHoldsREau, state.otherEditionInstalled, state.locationOff)) {
+                    val warnings = MainLook.warnings(p, state.battery, state.vpnHoldsREau, state.otherEditionInstalled, state.locationOff) +
+                        MainLook.alertWarnings(state.alertLevel)
+                    for (warning in warnings) {
                         Warning(warning, state, onOpenAndroidAutoSettings, extras)
                     }
                     BridgeCard(

@@ -11,7 +11,7 @@ Confere também (28 a 30/10/2026, plano 20) que as bibliotecas nativas de arm64-
 Marca em destaque o que lembra rastreio, anúncio, cobrança ou atualizador (Firebase, Crashlytics, ads, billing...).
 
 Confere também a "forma de release" do APK (28/10/2026), que não vem da linha de base e sim do código deste script: o APK
-não é depurável; não traz nenhuma classe de com/reau/app/debug/, nem de androidx/compose/ui/tooling/ (nem as
+não é depurável; não traz nenhuma classe de com/reau/app/debug/, nem de com/reau/app/devtools/ fora dos três stubs vazios (ArrowTrial, DebugTriggers, FaultInjection), nem de androidx/compose/ui/tooling/ (nem as
 anotações @Preview: a biblioteca ui-tooling-preview é compileOnly) nem de androidx/compose/ui/test; só declara os componentes da lista
 (EXPORTED_COMPONENTS e UNEXPORTED_COMPONENTS), e só os de EXPORTED_COMPONENTS são exportados; e traz o perfil de base
 (assets/dexopt/baseline.prof). Num APK de debug essa conferência não vale: use --apk-debug.
@@ -145,6 +145,15 @@ UNEXPORTED_COMPONENTS = frozenset({
 # Classes (nomes internos, com "/") que um APK de produção não pode ter: as telas de teste do debug e as ferramentas do Compose.
 # Nada de androidx/compose/ui/tooling/, nem as anotações @Preview de .../tooling/preview/ (a ui-tooling-preview só entra no debug).
 FORBIDDEN_CLASS_PREFIXES = ("com/reau/app/debug/", "androidx/compose/ui/tooling/", "androidx/compose/ui/test")
+# O pacote das três classes que o código principal chama nos dois builds (ArrowTrial, DebugTriggers, FaultInjection): no debug são as de
+# verdade; na release, versões vazias (src/release). Esse pacote NÃO está em FORBIDDEN_CLASS_PREFIXES (a primeira corrida do CI, 11/11/2026,
+# falhou porque os stubs estavam em com/reau/app/debug/), mas só passam aqui as três classes pelo nome: qualquer outra do pacote, e qualquer
+# classe aninhada (o FaultInjection$Fault do debug, por exemplo), é código de debug de verdade e reprova.
+DEVTOOLS_PREFIX = "com/reau/app/devtools/"
+DEVTOOLS_STUBS = frozenset({DEVTOOLS_PREFIX + "ArrowTrial", DEVTOOLS_PREFIX + "DebugTriggers", DEVTOOLS_PREFIX + "FaultInjection"})
+# Textos que só as versões de verdade têm (os nomes das falhas injetadas e a linha do registro dos gatilhos): se estiverem no .dex, o
+# pacote devtools da release não é o de stubs vazios, mesmo que os nomes das classes batam.
+DEVTOOLS_REAL_ONLY_STRINGS = (b"DECODER_STALL", b"ENCODER_MUTE", b"FOCUS_CYCLE", b"debug trigger fired", b"fault injection armed")
 BASELINE_PROFILE = "assets/dexopt/baseline.prof"
 COMPONENT_TAGS = ("activity", "activity-alias", "service", "receiver", "provider")
 
@@ -242,9 +251,9 @@ def parse_manifest(text: str) -> dict:
             "components": components}
 
 
-def release_shape(manifest: str, classes: list[str], entries: list[str]) -> list[str]:
-    """O que o APK tem de errado para ser o de produção; vazio quando está certo. Puro: recebe o manifesto, as classes e
-    os nomes do zip."""
+def release_shape(manifest: str, classes: list[str], entries: list[str], dex_texts: list[bytes] | None = None) -> list[str]:
+    """O que o APK tem de errado para ser o de produção; vazio quando está certo. Puro: recebe o manifesto, as classes, os
+    nomes do zip e, se houver, o conteúdo dos .dex (para achar texto que só o código de debug de verdade traz)."""
     problems = []
     try:
         parsed = parse_manifest(manifest)
@@ -262,6 +271,11 @@ def release_shape(manifest: str, classes: list[str], entries: list[str]) -> list
     for name in sorted(set(classes)):
         if name.startswith(FORBIDDEN_CLASS_PREFIXES):
             problems.append(f"classe que só o debug tem: {name}")
+        elif name.startswith(DEVTOOLS_PREFIX) and name not in DEVTOOLS_STUBS:
+            problems.append(f"classe que só o debug tem: {name}")
+    for text in DEVTOOLS_REAL_ONLY_STRINGS:
+        if any(text in dex for dex in dex_texts or []):
+            problems.append(f"texto que só o código de debug de verdade tem: {text.decode()}")
     for entry in entries:
         if entry.startswith(FORBIDDEN_CLASS_PREFIXES):
             problems.append(f"arquivo que só o debug tem: {entry}")
@@ -319,7 +333,8 @@ def main() -> int:
         try:
             with zipfile.ZipFile(args.apk) as z:
                 entries = z.namelist()
-            shape = release_shape(manifest_text(aapt2, args.apk), apk_classes(args.apk), entries)
+                dex_texts = [z.read(n) for n in entries if re.fullmatch(r"classes\d*\.dex", n)]
+            shape = release_shape(manifest_text(aapt2, args.apk), apk_classes(args.apk), entries, dex_texts)
         except (ValueError, subprocess.CalledProcessError, zipfile.BadZipFile) as e:
             shape = [f"não deu para ler o APK: {e}"]
         if shape:

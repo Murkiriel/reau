@@ -16,7 +16,7 @@ object MainLook {
     /** The warnings, in display order; each is shown only while its trouble lasts. */
     enum class Warning {
         SERVER_OFF, UNRESPONSIVE, CLOSING_PREVIOUS, OTHER_EDITION, NOT_CALLING, NO_VIDEO,
-        BATTERY_EXEMPTION, BATTERY_SAVER, DASH_TAKEN, NAME_NEEDED, VPN, LOCATION_OFF,
+        BATTERY_EXEMPTION, BATTERY_SAVER, DASH_TAKEN, NAME_NEEDED, VPN, LOCATION_OFF, ALERTS_MUTED, ALERTS_BLOCKED,
     }
 
     fun androidAutoKind(p: Projection): StatusKind = when {
@@ -95,6 +95,12 @@ object MainLook {
         Warning.NAME_NEEDED.takeIf { p.dash == DashLink.NAME_NEEDED },
         Warning.VPN.takeIf { vpn },
         Warning.LOCATION_OFF.takeIf { locationOff },
+    )
+
+    /** The card for the alert channel when it would not be heard ([AlertChannelState]: muted, or blocked in Android); after the others, nothing when loud. */
+    fun alertWarnings(level: com.reau.app.service.AlertChannelState.Level): List<Warning> = listOfNotNull(
+        Warning.ALERTS_MUTED.takeIf { level == com.reau.app.service.AlertChannelState.Level.MUTED },
+        Warning.ALERTS_BLOCKED.takeIf { level == com.reau.app.service.AlertChannelState.Level.BLOCKED },
     )
 
     /**

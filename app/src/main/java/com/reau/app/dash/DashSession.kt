@@ -616,14 +616,14 @@ class DashSession(
     }
 
     /** The ring's glyph while guiding: the maneuver itself (hiding it never worked). A debug build's arrow test sends its own byte (see [shownNav]). */
-    private fun ringGlyph(n: NavFigures): Int = com.reau.app.debug.ArrowTrial.byte() ?: bubbleManeuver(ringOn, n.maneuver)
+    private fun ringGlyph(n: NavFigures): Int = com.reau.app.devtools.ArrowTrial.byte() ?: bubbleManeuver(ringOn, n.maneuver)
 
     /**
      * The figures the cards and the nav packet are made from: the guidance's, or, while a debug build's arrow test is on
-     * ([com.reau.app.debug.ArrowTrial], which a release does not have: it answers none there), a card with that arrow alone and no distance, even with no
+     * ([com.reau.app.devtools.ArrowTrial], which a release does not have: it answers none there), a card with that arrow alone and no distance, even with no
      * guidance. Nothing else reads this: the ring's own logic goes on with [nav].
      */
-    private fun shownNav(): NavFigures? = com.reau.app.debug.ArrowTrial.byte()?.let { trial ->
+    private fun shownNav(): NavFigures? = com.reau.app.devtools.ArrowTrial.byte()?.let { trial ->
         nav ?: NavFigures(
             trial, 0, DashCommands.NAV_UNIT_METERS, 0, DashCommands.NAV_UNIT_METERS, null, "", DashCommands.REMAINING_OMIT, DashCommands.NEXT_MANEUVER_NONE,
         )

@@ -1,7 +1,7 @@
-package com.reau.app.debug
+package com.reau.app.devtools
 
 import com.reau.app.data.RideDiagnostics
-import com.reau.app.debug.FaultInjection.Fault
+import com.reau.app.devtools.FaultInjection.Fault
 import com.reau.app.stream.EncoderMuteWatch
 import java.io.File
 import org.junit.After
@@ -14,7 +14,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
 /**
- * The debug build's fault injection (item 20 of the 11/11/2026 list; sources in `src/debug`): what arming each fault changes for the three places that
+ * The debug build's fault injection (sources in `src/debug`): what arming each fault changes for the three places that
  * ask, that each is served once, and what the ride log says. The release build has none of it (FaultInjectionAbsenceInReleaseTest).
  */
 class FaultInjectionTest {

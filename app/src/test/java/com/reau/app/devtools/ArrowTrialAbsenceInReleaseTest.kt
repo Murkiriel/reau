@@ -1,4 +1,4 @@
-package com.reau.app.debug
+package com.reau.app.devtools
 
 import java.io.File
 import org.junit.Assert.assertEquals
@@ -14,7 +14,7 @@ class ArrowTrialAbsenceInReleaseTest {
 
     @Test
     fun `the release ArrowTrial can only answer none`() {
-        val stub = code("release/java/com/reau/app/debug/ArrowTrial.kt")
+        val stub = code("release/java/com/reau/app/devtools/ArrowTrial.kt")
         assertTrue(stub, "fun byte(): Int? = null" in stub)
         assertFalse(stub, "next" in stub || "previous" in stub || "stop" in stub || "StateFlow" in stub || "var " in stub || "RideDiagnostics" in stub)
         assertEquals("the only function", 1, Regex("""\bfun\b""").findAll(stub).count())
@@ -37,7 +37,7 @@ class ArrowTrialAbsenceInReleaseTest {
 
     @Test
     fun `the screen of the arrow test is only in the debug source`() {
-        assertTrue(File(root, "debug/java/com/reau/app/debug/DebugTriggers.kt").readText().contains("debug_arrow_next"))
-        assertFalse(File(root, "release/java/com/reau/app/debug/DebugTriggers.kt").readText().contains("debug_arrow"))
+        assertTrue(File(root, "debug/java/com/reau/app/devtools/DebugTriggers.kt").readText().contains("debug_arrow_next"))
+        assertFalse(File(root, "release/java/com/reau/app/devtools/DebugTriggers.kt").readText().contains("debug_arrow"))
     }
 }

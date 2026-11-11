@@ -1,4 +1,4 @@
-package com.reau.app.debug
+package com.reau.app.devtools
 
 import com.reau.app.dash.DashSession
 import com.reau.app.dash.DashDump

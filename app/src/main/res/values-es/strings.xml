@@ -26,6 +26,8 @@
     <string name="notif_text_dash_stuck">El tablero está encendido pero no acepta la conexión. Apaga y vuelve a encender el contacto de la moto; REau se reconecta sola</string>
     <string name="notif_title_phone_hot">El celular está caliente</string>
     <string name="notif_text_phone_hot">El celular está caliente (%1$d °C). Sácalo del sol o del bolsillo cerrado, o desconecta el cargador, para que no reduzca el rendimiento</string>
+    <string name="notif_title_bind_refused">Android rechaza la red del tablero</string>
+    <string name="notif_text_bind_refused">Android rechazó el Wi-Fi del tablero varias veces seguidas. Apaga cualquier VPN y el cambio automático entre Wi-Fi y datos móviles; si sigue, apaga y enciende el Wi-Fi del celular. REau sigue intentando</string>
     <string name="notif_title_no_dash_stopped">Proyección apagada</string>
     <plurals name="notif_text_no_dash_stopped">
         <item quantity="one">El tablero no apareció durante %1$d minuto, así que REau se detuvo. Vuelve a encender la proyección cuando enciendas la moto</item>
@@ -83,6 +85,7 @@
     <string name="action_battery_exemption">Excluir a REau de la optimización</string>
     <string name="battery_saver_on">El ahorro de batería está activado: con la pantalla apagada, Android corta la red y la ubicación de las apps en segundo plano (la tarjeta de GPS del anillo de información puede entonces llegar con retraso). REau sigue funcionando gracias a su notificación fija; si el tablero o Android Auto se cae, desactiva el ahorro de batería.</string>
     <string name="action_battery_saver">Abrir el ahorro de batería</string>
+    <string name="action_open_alert_settings">Abrir los ajustes de los avisos</string>
     <string name="aa_screen_mask">Máscara del tablero: oscurece lo que no llega al cristal redondo del tablero, según el ajuste elegido abajo, y muestra dónde está el aro del tablero</string>
     <string name="gemini">Gemini con el joystick: escucha por el auricular Bluetooth del casco o, sin uno, por el micrófono del teléfono. Viene activado, pero el micrófono sigue cerrado hasta que se conceda el permiso (acceso Permisos). Este interruptor es lo que hace funcionar la acción \"Gemini\" de la página del joystick, y un cambio se aplica la próxima vez que enciendas.</string>
     <string name="aa_screen_view_only">Solo vista: tocar aquí no llega a Android Auto. El tablero sigue recibiendo la imagen con normalidad.</string>
@@ -191,11 +194,11 @@
     <string name="perm_answer_calls_title">Contestar llamadas</string>
     <string name="perm_answer_calls_why">Contesta y cuelga llamadas con el joystick del tablero, con el interruptor \"Contestar llamadas\" activado.</string>
     <string name="perm_phone_state_title">Estado del teléfono</string>
-    <string name="perm_phone_state_why">Dice a REau si el teléfono suena o está en una llamada para que el joystick actúe en el momento correcto, sin leer números ni la lista de llamadas.</string>
+    <string name="perm_phone_state_why">Dice a REau si el teléfono suena o está en llamada, para que el joystick actúe a tiempo, y la generación de red (4G, 5G) para el tablero, sin leer números ni llamadas.</string>
     <string name="perm_microphone_title">Micrófono</string>
     <string name="perm_microphone_why">Lleva tu voz del auricular Bluetooth del casco (o del teléfono) a Android Auto para Gemini, con el interruptor \"Gemini\" activado, y REau no guarda el audio.</string>
     <string name="perm_location_title">Ubicación (aproximada y precisa)</string>
-    <string name="perm_location_why">Deja que REau vea la lista de Wi-Fi de Android para encontrar el tablero, detrás de otra app, sin leer tu posición; con \"Usar la ubicación\", la posición del tema según el sol.</string>
+    <string name="perm_location_why">Deja que REau halle el tablero en el Wi-Fi tras otra app; con \"Usar la ubicación\", la posición redondeada a 11 km para sol y clima, y el rumbo GPS del anillo.</string>
     <string name="perm_internet_title">Abrir conexiones de red</string>
     <string name="perm_internet_why">Android la exige para cualquier conexión, pero REau solo usa internet para el clima opcional (Open-Meteo) y, cuando lo tocas, para la búsqueda de actualizaciones (GitHub).</string>
     <string name="perm_network_state_title">Ver las redes</string>
@@ -222,7 +225,7 @@
     <string name="perm_battery_request_why">Permite a REau mostrar la solicitud de Android para salir de la optimización de batería, y por sí solo no cambia nada.</string>
     <string name="perm_library_title">Permiso interno de una librería</string>
     <string name="perm_library_why">La añade una librería de Android (AndroidX) que REau usa, para proteger los avisos internos de la app, y no da acceso a nada del teléfono.</string>
-    <string name="ride_log">Registro de diagnóstico (activado por defecto): graba en el propio teléfono lo que pasa en REau, para encontrar errores después; nada sale del teléfono si no lo compartes. Cuando está apagado, REau no graba nada (ni el registro detallado ni la copia de los mensajes del sistema sobre REau); lo que ya se grabó queda hasta que lo borres (o hasta que termine el plazo de \"Borrar automáticamente\")</string>
+    <string name="ride_log">Registro de diagnóstico (activado por defecto): graba en el propio teléfono lo que pasa en REau, para encontrar errores después; nada sale del teléfono si no lo compartes. Cuando está apagado, REau no graba nada (ni el registro detallado ni la copia de los mensajes del sistema sobre REau), salvo el informe de caída de la app, que se graba en el teléfono aun así, queda solo en él y no sale por sí solo; lo que ya se grabó queda hasta que lo borres (o hasta que termine el plazo de \"Borrar automáticamente\")</string>
     <string name="delete_logs_title">¿Borrar los registros?</string>
     <string name="delete_logs_text">Borra todos los registros guardados en el teléfono y el último archivo compartido. Si el registro está activado, empieza de nuevo en un archivo nuevo. Esto no se puede deshacer.</string>
     <string name="delete_logs_recordings_text">Borra todos los registros guardados en el teléfono, el último archivo compartido y las grabaciones del video y de las sesiones de Android Auto. Si el registro está activado, empieza de nuevo en un archivo nuevo. Esto no se puede deshacer.</string>
@@ -237,7 +240,7 @@
     <string name="about_data_web_title">El navegador (solo si lo activas)</string>
     <string name="about_data_web">Solo con \"Encender el servidor de red\" (apagado por defecto), quien esté en la misma red e ingrese el PIN ve la imagen de Android Auto sin cifrado; evita redes de desconocidos.</string>
     <string name="about_data_stays_title">Qué se queda en el teléfono</string>
-    <string name="about_data_stays">El registro de diagnóstico no tiene posición, calles, canciones ni quién llama; las grabaciones opcionales (desactivadas por defecto) sí lo guardan; ambos solo salen del teléfono por \"Compartir\".</string>
+    <string name="about_data_stays">El registro no tiene posición, calles, canciones ni quién llama; las grabaciones opcionales (desactivadas por defecto) sí; quedan en el teléfono, el informe de caída aun sin registro, y solo salen por \"Compartir\".</string>
     <string name="about_data_kept_title">Qué recuerda REau del tablero</string>
     <string name="about_data_kept">Nombre y contraseña del Wi-Fi del tablero y lo que informó, cifrados con una clave de Android, y la posición redondeada y el último clima, si existen, en la carpeta de la app.</string>
     <string name="about_data_control_title">Qué controlas tú</string>
@@ -330,6 +333,10 @@
     <string name="warn_battery_saver_title">El ahorro de batería está activado</string>
     <string name="warn_location_title">La ubicación está apagada en el teléfono</string>
     <string name="warn_location">Con la Ubicación de Android apagada, el teléfono no devuelve la búsqueda de redes Wi-Fi, así que REau no puede ver la red del tablero y puede tardar más en unirse a ella; la tarjeta de GPS del anillo de información y el tema según el sol tampoco funcionan. Activa la Ubicación en los ajustes rápidos de Android.</string>
+    <string name="warn_alerts_muted_title">Los avisos del tablero están en silencio</string>
+    <string name="warn_alerts_muted">Android reproduce el canal “Avisos del tablero” sin sonido ni vibración, así que un tablero trabado, una red rechazada o un celular caliente no se oirían. Abre sus ajustes y dale sonido.</string>
+    <string name="warn_alerts_blocked_title">Los avisos del tablero están bloqueados</string>
+    <string name="warn_alerts_blocked">Android bloquea los avisos de REau (todas las notificaciones, o el canal “Avisos del tablero”), así que un tablero trabado, una red rechazada o un celular caliente no se avisarían. Abre los ajustes y permítelos.</string>
     <string name="warn_vpn_title">Una VPN frena a REau</string>
     <string name="warn_vpn">Con REau dentro de la VPN, Android no le deja usar el Wi-Fi del tablero. En la app de la VPN, deja a REau fuera (\"split tunneling\") y reconecta la VPN por completo.</string>
     <string name="warn_taken_title">Tablero en uso</string>
@@ -557,10 +564,12 @@
     <string name="record_sessions_title">Grabar las sesiones de Android Auto</string>
     <string name="record_sessions_sub">Guarda el mapa y la ruta</string>
     <string name="record_sessions_info">Graba todo lo que Android Auto envía en una conexión (imagen, ruta, música, quién llama, mensajes), guardando los últimos 50 a 100 MB, 3 a 15 minutos de ruta (768 MB en la compilación de depuración). Desactivada por defecto en la app que instalas para rodar (activada en la de depuración), revela por dónde rodaste: queda en la carpeta de la app y solo sale si usas \"Compartir › Con grabaciones\". Suman hasta 200 MB (1024 MB en la de depuración) y salen por el plazo de \"Borrar automáticamente los más antiguos que\"; se aplica la próxima vez que enciendas.</string>
+    <string name="recordings_notice">Atención: las grabaciones contienen el mapa, es decir, por dónde rodaste, y los nombres de quien llama. Quedan solo en el teléfono.</string>
     <string name="detailed_title">Registro detallado</string>
     <string name="detailed_sub">Archivo mucho más grande</string>
     <string name="share_title">Compartir</string>
     <string name="share_sub">Sale del teléfono solo cuando tocas aquí</string>
+    <string name="share_recordings_notice">Atención: “Con grabaciones” saca del teléfono el mapa (por dónde rodaste) y los nombres de quien llama. Compártelo solo con alguien de confianza.</string>
     <string name="share_logs_short">Registros</string>
     <string name="share_recordings_short">Con grabaciones (grande)</string>
     <string name="delete_title">Borrar</string>

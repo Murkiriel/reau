@@ -46,28 +46,20 @@ object DiagnosticsExport {
     }
 
     /** The first entry of an exported zip: what the app was and which connection experiments were on when it was exported. */
-    internal const val HEADER_ENTRY = "report-header.txt"
+    internal const val HEADER_ENTRY = MaskedZip.HEADER_ENTRY
 
-    /** As [zipDir], for several folders in one zip: each source's files go under its name ("" for the top). With a [header], it is the first entry. */
-    internal fun zipDirs(sources: List<Pair<String, File>>, destZip: File, header: String? = null): Int {
-        val entries = sources.flatMap { (name, dir) ->
-            val prefix = if (name.isEmpty()) "" else "$name/"
-            dir.listFiles()?.filter { it.isFile }.orEmpty().sortedBy { it.name }.map { prefix + it.name to it }
-        }
-        ZipOutputStream(FileOutputStream(destZip)).use { zos ->
-            if (header != null) {
-                zos.putNextEntry(ZipEntry(HEADER_ENTRY))
-                zos.write(header.toByteArray(Charsets.UTF_8))
-                zos.closeEntry()
-            }
-            for ((entry, f) in entries) {
-                zos.putNextEntry(ZipEntry(entry))
-                FileInputStream(f).use { it.copyTo(zos) }
-                zos.closeEntry()
-            }
-        }
-        return entries.size + if (header != null) 1 else 0
-    }
+    /**
+     * As [zipDir], for several folders in one zip: each source's files go under its name ("" for the top). With a [header], it is the first entry.
+     * The files of the top ("" : the text logs) go through [LogMask], the same masking as the collection script's (the dash's Wi-Fi name, the MACs
+     * and the other networks' names), with [maskNames] (more names to hide wherever they stand) added to the ones the logs themselves say; the
+     * recordings (`video`, `sessions`) are binary and go as they are. [mask] false only for a caller that wants the raw files.
+     */
+    internal fun zipDirs(
+        sources: List<Pair<String, File>>, destZip: File, header: String? = null, mask: Boolean = true, maskNames: Collection<String> = emptySet(),
+    ): Int = MaskedZip.write(sources, destZip, header, mask, maskNames)
+
+    /** What [export] adds to the zip besides the files: the [header] (its first entry) and the [maskNames] to hide wherever they stand in the logs. */
+    internal class ExportExtras(val header: String? = null, val maskNames: Collection<String> = emptySet())
 
     /** There is not the room the zip may take (the recordings alone can be hundreds of MB): nothing was written. */
     class NotEnoughSpace(val needed: Long, val free: Long) : IOException("not enough free space to export the logs ($free of $needed bytes)")
@@ -94,8 +86,9 @@ object DiagnosticsExport {
         dir: File,
         freeBytes: (File) -> Long = ::freeOn,
         nowMs: Long = System.currentTimeMillis(),
-        header: String? = null,
+        extras: ExportExtras = ExportExtras(),
     ): File? {
+        val header = extras.header
         val files = filesOf(sources)
         if (files.isEmpty()) return null
         val needed = files.sumOf { it.length() } + (header?.length ?: 0) + SPACE_MARGIN
@@ -105,7 +98,7 @@ object DiagnosticsExport {
         val part = File(dir, "$ZIP_PREFIX.part")
         var count = 0
         try {
-            count = zipDirs(sources, part, header)
+            count = zipDirs(sources, part, header, maskNames = extras.maskNames)
         } finally {
             if (count == 0) part.delete()           // failed halfway, or nothing went in
         }
@@ -149,7 +142,10 @@ object DiagnosticsExport {
         val read = runCatching {
             com.reau.app.settings.SettingsInUse.experimentsLine(com.reau.app.settings.SettingsStore.open(context).load())
         }
-        return export(sources, dir, header = reportHeader(app, read.getOrNull(), readable = read.isSuccess))
+        // The paired dash's own Wi-Fi name is hidden wherever it stands, even if it does not start the way a dash's does.
+        val dashName = runCatching { com.reau.app.dash.DashPairing.open(context).ssid }.getOrNull().orEmpty()
+        val extras = ExportExtras(reportHeader(app, read.getOrNull(), readable = read.isSuccess), listOf(dashName))
+        return export(sources, dir, extras = extras)
     }
 
     /** Ajustes' button: the zip written off the main thread, then the share sheet (or a word that there is nothing yet). */

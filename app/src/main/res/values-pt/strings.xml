@@ -26,6 +26,8 @@
     <string name="notif_text_dash_stuck">O painel está ligado mas não aceita a conexão. Desligue e ligue a ignição da moto; o REau reconecta sozinho</string>
     <string name="notif_title_phone_hot">O celular está quente</string>
     <string name="notif_text_phone_hot">O celular está quente (%1$d °C). Tire-o do sol ou do bolso fechado, ou desligue o carregador, para ele não reduzir o desempenho</string>
+    <string name="notif_title_bind_refused">O Android está recusando a rede do painel</string>
+    <string name="notif_text_bind_refused">O Android recusou o Wi-Fi do painel várias vezes seguidas. Desligue qualquer VPN e a troca automática entre Wi-Fi e dados móveis; se continuar, desligue e ligue o Wi-Fi do celular. O REau segue tentando</string>
     <string name="notif_title_no_dash_stopped">Projeção desligada</string>
     <plurals name="notif_text_no_dash_stopped">
         <item quantity="one">O painel ficou %1$d minuto fora do ar, então o REau parou. Ligue de novo quando a moto estiver ligada</item>
@@ -83,6 +85,7 @@
     <string name="action_battery_exemption">Deixar o REau fora da otimização</string>
     <string name="battery_saver_on">Economia de bateria ligada: com a tela apagada, o Android corta a rede e a localização de quem está em segundo plano (o cartão de GPS do anel de informações pode atrasar). O REau segue pela notificação fixa; se o painel ou o Android Auto cair, desligue a economia.</string>
     <string name="action_battery_saver">Abrir a economia de bateria</string>
+    <string name="action_open_alert_settings">Abrir configurações dos avisos</string>
     <string name="aa_screen_mask">Máscara do painel: escurece o que não chega ao vidro redondo do painel, com o encaixe escolhido abaixo, e mostra onde fica o anel do painel</string>
     <string name="gemini">Gemini pelo joystick: ele ouve pelo fone Bluetooth do capacete ou, sem ele, pelo microfone do celular. Vem ligado, mas o microfone fica fechado até a permissão ser liberada (atalho Permissões). É esta chave que faz funcionar a ação \"Gemini\" da página do Joystick, e uma mudança vale na próxima vez que ligar.</string>
     <string name="aa_screen_view_only">Só para ver: o toque aqui não chega ao Android Auto. O painel continua recebendo a imagem normalmente.</string>
@@ -191,11 +194,11 @@
     <string name="perm_answer_calls_title">Atender ligações</string>
     <string name="perm_answer_calls_why">Atende e desliga ligações pelo joystick do painel, com a chave \"Atender ligação\" ligada.</string>
     <string name="perm_phone_state_title">Estado do telefone</string>
-    <string name="perm_phone_state_why">Diz ao REau se o telefone toca ou está em ligação para o joystick agir na hora certa, sem ler números nem a lista de ligações.</string>
+    <string name="perm_phone_state_why">Diz ao REau se o telefone toca ou está em ligação, para o joystick agir na hora certa, e a geração da rede (4G, 5G) para o painel, sem ler números nem ligações.</string>
     <string name="perm_microphone_title">Microfone</string>
     <string name="perm_microphone_why">Leva a sua voz do fone Bluetooth do capacete (ou do celular) ao Android Auto para o Gemini, com a chave \"Gemini\" ligada, e o REau não guarda o áudio.</string>
     <string name="perm_location_title">Localização (aproximada e precisa)</string>
-    <string name="perm_location_why">Deixa o REau ver a lista de Wi-Fi do Android para achar o painel, mesmo atrás de outro app, sem ler a posição; com \"Usar a localização\", a posição do tema pelo sol.</string>
+    <string name="perm_location_why">Deixa o REau achar o painel no Wi-Fi atrás de outro app; com \"Usar a localização\", a posição arredondada a 11 km para sol e clima, e o rumo pelo GPS no anel.</string>
     <string name="perm_internet_title">Abrir conexões de rede</string>
     <string name="perm_internet_why">O Android a exige para qualquer conexão, mas o REau só usa a internet para o clima opcional (Open-Meteo) e, quando você toca, para a verificação de atualização (GitHub).</string>
     <string name="perm_network_state_title">Ver as redes</string>
@@ -222,7 +225,7 @@
     <string name="perm_battery_request_why">Deixa o REau mostrar o pedido do Android para sair da otimização de bateria, e sozinha não muda nada.</string>
     <string name="perm_library_title">Permissão interna de biblioteca</string>
     <string name="perm_library_why">Acrescentada por uma biblioteca do Android (AndroidX) que o REau usa, para proteger avisos internos do app, e não dá acesso a nada do celular.</string>
-    <string name="ride_log">Registro de diagnóstico (ligado por padrão): grava no próprio celular o que acontece no REau, para achar defeitos depois; nada sai do celular sem você compartilhar. Desligado, o REau não grava nada (nem o registro detalhado, nem a cópia das mensagens do sistema sobre o REau); o que já foi gravado fica até você apagar (ou até o prazo de \"Apagar sozinho\")</string>
+    <string name="ride_log">Registro de diagnóstico (ligado por padrão): grava no próprio celular o que acontece no REau, para achar defeitos depois; nada sai do celular sem você compartilhar. Desligado, o REau não grava nada (nem o registro detalhado, nem a cópia das mensagens do sistema sobre o REau), exceto o relatório de queda do app, que é gravado no celular mesmo assim, fica só nele e não sai sozinho; o que já foi gravado fica até você apagar (ou até o prazo de \"Apagar sozinho\")</string>
     <string name="delete_logs_title">Apagar os registros?</string>
     <string name="delete_logs_text">Apaga todos os registros guardados no celular e o último arquivo compartilhado. Se o registro estiver ligado, ele recomeça num arquivo novo. Não dá para desfazer.</string>
     <string name="delete_logs_recordings_text">Apaga todos os registros guardados no celular, o último arquivo compartilhado e as gravações do vídeo e das sessões do Android Auto. Se o registro estiver ligado, ele recomeça num arquivo novo. Não dá para desfazer.</string>
@@ -237,7 +240,7 @@
     <string name="about_data_web_title">O navegador (só se você ligar)</string>
     <string name="about_data_web">Só com \"Ligar o servidor de rede\" (desligado de fábrica), quem estiver na mesma rede e digitar o PIN vê a imagem do Android Auto sem criptografia; evite redes de estranhos.</string>
     <string name="about_data_stays_title">O que fica no celular</string>
-    <string name="about_data_stays">O registro de diagnóstico não tem posição, ruas, músicas nem quem liga; as gravações opcionais (desligadas por padrão) guardam tudo isso; ambos só saem do celular em \"Compartilhar\".</string>
+    <string name="about_data_stays">O registro de diagnóstico não tem posição, ruas, músicas nem quem liga; as gravações opcionais (desligadas por padrão) sim; ficam no celular, o relatório de queda mesmo sem registro; só saem em \"Compartilhar\".</string>
     <string name="about_data_kept_title">O que o REau lembra do painel</string>
     <string name="about_data_kept">Nome e senha do Wi-Fi do painel e o que ele informou, cifrados por uma chave do Android, e a posição arredondada e o último clima, se existirem, na pasta do app.</string>
     <string name="about_data_control_title">O que você controla</string>
@@ -329,6 +332,10 @@
     <string name="warn_battery_saver_title">Economia de bateria ligada</string>
     <string name="warn_location_title">A localização está desligada no celular</string>
     <string name="warn_location">Com a Localização do Android desligada, o celular não devolve a busca de Wi-Fi, então o REau não enxerga a rede do painel e pode demorar mais para entrar nela; o cartão de GPS do anel de informações e o tema pelo sol também não funcionam. Ligue a Localização nas configurações rápidas do Android.</string>
+    <string name="warn_alerts_muted_title">Os avisos do painel estão mudos</string>
+    <string name="warn_alerts_muted">O Android toca o canal “Avisos do painel” sem som nem vibração, então um painel travado, uma rede recusada ou um celular quente não seriam ouvidos. Abra as configurações dele e dê som.</string>
+    <string name="warn_alerts_blocked_title">Os avisos do painel estão bloqueados</string>
+    <string name="warn_alerts_blocked">O Android bloqueia os avisos do REau (todas as notificações, ou o canal “Avisos do painel”), então um painel travado, uma rede recusada ou um celular quente não seriam avisados. Abra as configurações e permita.</string>
     <string name="warn_vpn_title">Uma VPN está segurando o REau</string>
     <string name="warn_vpn">Com o REau dentro da VPN, o Android não deixa ele usar o Wi-Fi da moto. No app da VPN, deixe o REau de fora (dividir túnel, ou \"split tunneling\") e reconecte a VPN para valer.</string>
     <string name="warn_taken_title">Painel ocupado</string>
@@ -556,10 +563,12 @@
     <string name="record_sessions_title">Gravar as sessões do Android Auto</string>
     <string name="record_sessions_sub">Guarda o mapa e o trajeto</string>
     <string name="record_sessions_info">Grava tudo o que o Android Auto manda numa conexão (imagem, rota, música, quem liga, mensagens), guardando os últimos 50 a 100 MB, 3 a 15 minutos de trajeto (768 MB na build de debug). Desligada por padrão no app que você instala para andar e ligada na build de debug, revela por onde você andou: fica na pasta do app e só sai se você usar \"Compartilhar › Com gravações\". Somam no máximo 200 MB (1024 MB na build de debug) e saem pelo prazo de \"Apagar sozinho os mais velhos que\"; vale na próxima vez que ligar.</string>
+    <string name="recordings_notice">Atenção: as gravações contêm o mapa, ou seja, por onde você andou, e os nomes de quem liga. Ficam só no celular.</string>
     <string name="detailed_title">Registro detalhado</string>
     <string name="detailed_sub">Arquivo bem maior</string>
     <string name="share_title">Compartilhar</string>
     <string name="share_sub">Sai do celular só quando você toca aqui</string>
+    <string name="share_recordings_notice">Atenção: “Com gravações” leva para fora o mapa (por onde você andou) e os nomes de quem liga. Compartilhe só com quem você confia.</string>
     <string name="share_logs_short">Registros</string>
     <string name="share_recordings_short">Com gravações (grande)</string>
     <string name="delete_title">Apagar</string>
