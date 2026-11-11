@@ -54,6 +54,7 @@ import com.reau.app.ui.components.REauTopBar
 import com.reau.app.ui.components.StatsOverlayPreview
 import com.reau.app.ui.components.hairline
 import com.reau.app.ui.theme.Grafite
+import com.reau.app.ui.theme.REauSpace
 import com.reau.app.video.ButtonOverlay
 import com.reau.app.video.PhonePreview
 import com.reau.app.video.StatsOverlay
@@ -173,7 +174,7 @@ private fun MaskChip(mask: AaScreenMask) {
     val shape = RoundedCornerShape(20.dp)
     val what = stringResource(R.string.aa_screen_mask)
     Row(
-        Modifier.heightIn(min = 40.dp).clip(shape).background(if (mask.on) colors.primary.copy(alpha = 0.12f) else Color.Transparent)
+        Modifier.heightIn(min = REauSpace.touch).clip(shape).background(if (mask.on) colors.primary.copy(alpha = 0.12f) else Color.Transparent)
             .border(1.dp, if (mask.on) colors.primary else barInk.copy(alpha = 0.55f), shape)
             .toggleable(value = mask.on, role = Role.Switch, onValueChange = mask.onChange)
             .semantics { contentDescription = what }.padding(horizontal = 12.dp).testTag("aa_screen_mask_switch"),

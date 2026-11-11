@@ -59,12 +59,19 @@ class SettingsScreenNowTest {
         Row("no_dash_stop", "Desligar sozinho sem o painel", "Turn off by itself without the dash"),
     )
 
+    /**
+     * The experimental switches that restart the stream or act on the running one at once (10/11/2026: LiveTuning) carry the chip too; the other
+     * experimental ones count from the next connection or the next start, and carry none.
+     */
+    private val experimentsWithChip = listOf("exp_rtp_pacing", "exp_adaptive_bitrate", "exp_encoder_watch")
+
     /** The rows that wait for the next start, are fixed, or are not settings at all (their buttons): no chip. */
     private val withoutChip = listOf(
         "dash_caller", "dash_music", "gemini", "aa_server_auto",
         "record_video", "record_sessions",
         "fps", "bitrate", "bitrate_mode", "keyframe", "maneuver_fps_profile", "speed_fps_profile",
         "open_joystick", "card_now", "view_logs", "share", "delete",
+        "exp_debug_dscp", "exp_wifi_bind", "exp_wifi_band", "exp_start_guard", "exp_focus_gap", "exp_night_memory",
     )
 
     private data class Row(val tag: String, val titlePt: String, val titleEn: String)
@@ -106,8 +113,11 @@ class SettingsScreenNowTest {
         show(english = false)
         compose.openDebug()
         for (row in withChip) chip(row.tag).performScrollTo().assertIsDisplayed().assertTextEquals("NA HORA")
+        for (tag in experimentsWithChip) chip(tag).performScrollTo().assertIsDisplayed().assertTextEquals("NA HORA")
         for (tag in withoutChip) chip(tag).assertDoesNotExist()
-        assertEquals("every chip of the screen is in the list", withChip.map { it.tag }.sorted(), chipTags().sorted())
+        assertEquals(
+            "every chip of the screen is in the list", (withChip.map { it.tag } + experimentsWithChip).sorted(), chipTags().sorted(),
+        )
     }
 
     // ── the chip fits ──────────────────────────────────────────────────────────────────────────────────────

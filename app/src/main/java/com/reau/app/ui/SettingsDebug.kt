@@ -46,6 +46,7 @@ import com.reau.app.ui.components.StatusKind
 import com.reau.app.ui.components.SwitchRow
 import com.reau.app.ui.components.color
 import com.reau.app.ui.components.hairline
+import com.reau.app.ui.theme.REauSpace
 
 /**
  * "Depuração": folded for the session until tapped; the ride log and the recordings, the detailed log, seeing,
@@ -167,12 +168,12 @@ private fun DeleteDialog(withRecordings: Boolean, onCancel: () -> Unit, onDelete
         text = { Text(stringResource(if (withRecordings) R.string.delete_logs_recordings_text else R.string.delete_logs_text)) },
         confirmButton = {
             OutlinedButton(
-                onDelete, Modifier.heightIn(min = 44.dp).testTag("delete_confirm"), shape = MaterialTheme.shapes.small,
+                onDelete, Modifier.heightIn(min = REauSpace.touch).testTag("delete_confirm"), shape = MaterialTheme.shapes.small,
                 border = BorderStroke(1.dp, colors.error), colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
             ) { Text(stringResource(R.string.action_delete)) }
         },
         dismissButton = {
-            TextButton(onCancel, Modifier.heightIn(min = 44.dp).testTag("delete_cancel")) {
+            TextButton(onCancel, Modifier.heightIn(min = REauSpace.touch).testTag("delete_cancel")) {
                 Text(stringResource(R.string.action_cancel), color = colors.onSurfaceVariant)
             }
         },

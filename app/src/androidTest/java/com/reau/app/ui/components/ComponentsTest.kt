@@ -2,6 +2,7 @@ package com.reau.app.ui.components
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertContentDescriptionContains
@@ -147,7 +148,7 @@ class ComponentsTest {
     fun theMainButtonIsLigarAndThenDesligarWithItsTime() {
         var on by mutableStateOf(false)
         var pressed = 0
-        show { PrimaryPowerButton(on, if (on) "04:12" else null, { pressed++ }) }
+        show { PrimaryPowerButton(on, { if (on) "04:12" else null }, { pressed++ }) }
         compose.onNodeWithTag("toggle").assertTextContains("Ligar").performClick()
         assertEquals(1, pressed)
         on = true
@@ -158,7 +159,7 @@ class ComponentsTest {
     @Test
     fun theMainButtonWhileTurningOffIsDisabledAndSaysDesligando() {
         var pressed = 0
-        show { PrimaryPowerButton(false, null, { pressed++ }, stopping = true) }
+        show { PrimaryPowerButton(false, { null }, { pressed++ }, stopping = true) }
         compose.onNodeWithTag("toggle").assertTextContains("Desligando", substring = true).assertIsNotEnabled().performClick()
         assertEquals("a tap that cannot start anything is not taken", 0, pressed)
     }
@@ -167,15 +168,38 @@ class ComponentsTest {
     fun theBridgeCardCarriesTheHeadlineAndBothSides() {
         show {
             BridgeCard(
-                "Transmitindo", "Waze no painel · 6 quadros/s",
+                "Transmitindo", { "Waze no painel · 6 quadros/s" },
                 BridgeSide("Android Auto", "Ativo", StatusKind.OK, "side_android_auto"),
                 BridgeSide("Painel", "Pronto", StatusKind.OK, "side_dash"),
-                on = true, elapsed = "00:07", onToggle = {},
+                on = true, elapsed = { "00:07" }, onToggle = {},
             )
         }
         compose.onNodeWithTag("status").assertTextEquals("Transmitindo")
         compose.onNodeWithTag("side_android_auto").assertTextContains("ANDROID AUTO").assertTextContains("Ativo")
         compose.onNodeWithTag("side_dash").assertTextContains("PAINEL").assertTextContains("Pronto")
+    }
+
+    /**
+     * What ticks each second (the time on Desligar, the seconds since the dash went) reaches the screen through functions read only where
+     * the text is drawn. That the card around is no longer composed again is not provable here: it is the compiler's skipping, which a
+     * test of the screen cannot count without the tooling's observer.
+     */
+    @Test
+    fun aSecondOfTheClockUpdatesTheTimeAndTheLineUnderTheHeadline() {
+        val clock = mutableLongStateOf(0L)
+        show {
+            BridgeCard(
+                "Transmitindo", { "Perdido há ${clock.longValue} s" },
+                BridgeSide("Android Auto", "Ativo", StatusKind.OK, "side_android_auto"),
+                BridgeSide("Painel", "Pronto", StatusKind.OK, "side_dash"),
+                on = true, elapsed = { ComponentLogic.elapsed(clock.longValue * 1000) }, onToggle = {},
+            )
+        }
+        compose.onNodeWithTag("elapsed", useUnmergedTree = true).assertTextEquals("00:00")
+        compose.onNodeWithTag("status_sub").assertTextEquals("Perdido há 0 s")
+        clock.longValue = 3
+        compose.onNodeWithTag("elapsed", useUnmergedTree = true).assertTextEquals("00:03")
+        compose.onNodeWithTag("status_sub").assertTextEquals("Perdido há 3 s")
     }
 
     @Test
@@ -206,10 +230,10 @@ class ComponentsTest {
     fun aChangeOfTheHeadlineIsReadOutByTheScreenReaderButNotTheLineUnderIt() {
         show {
             BridgeCard(
-                "Transmitindo", "Perdido há 12 s",
+                "Transmitindo", { "Perdido há 12 s" },
                 BridgeSide("Android Auto", "Ativo", StatusKind.OK, "side_android_auto"),
                 BridgeSide("Painel", "Pronto", StatusKind.OK, "side_dash"),
-                on = true, elapsed = "00:07", onToggle = {},
+                on = true, elapsed = { "00:07" }, onToggle = {},
             )
         }
         val live = androidx.compose.ui.semantics.SemanticsProperties.LiveRegion

@@ -30,9 +30,16 @@ internal class BandChoice {
      * For the manager, with the [builder] of request number [request] it is about to make: decides ([forRequest]) and, when the band is
      * asked, names it on the builder and writes the ride log's line. Without the band the builder is left as it was and nothing is written.
      */
-    fun nameOn(builder: WifiNetworkSpecifier.Builder, on: Boolean, request: Int) {
-        if (!forRequest(on, Build.VERSION.SDK_INT) || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
-        builder.setBand(ScanResult.WIFI_BAND_24_GHZ)
+    fun nameOn(builder: WifiNetworkSpecifier.Builder, on: Boolean, request: Int) =
+        nameOn(on, Build.VERSION.SDK_INT, request) {
+            // Already so by [nameOn]'s own check; written out where the lint can see it.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) builder.setBand(ScanResult.WIFI_BAND_24_GHZ)
+        }
+
+    /** [nameOn] with the Android's version ([sdk]) and the naming of the band ([name], called only when the band is asked) handed in. */
+    internal fun nameOn(on: Boolean, sdk: Int, request: Int, name: () -> Unit) {
+        if (!forRequest(on, sdk) || sdk < Build.VERSION_CODES.S) return
+        name()
         RideDiagnostics.log("wifi", requestLine(request))
     }
 

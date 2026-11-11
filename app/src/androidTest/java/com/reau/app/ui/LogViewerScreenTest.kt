@@ -3,6 +3,7 @@ package com.reau.app.ui
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -38,13 +39,19 @@ class LogViewerScreenTest {
         }
         File(dir, "crash-20261008-080000.txt").apply { writeText("an old trace\n"); setLastModified(1_000) }
         compose.setContent { LogViewerScreen(dir, onBack = { back++ }, onShare = { shared++ }) }
+        // The files are read off the main thread, which the test clock does not wait for.
+        waitForTag("log_file_0")
     }
+
+    private fun waitForTag(tag: String) =
+        compose.waitUntil(WAIT_MS) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
 
     @Test
     fun theFilesNewestFirstAndOneOpensAtItsEnd() {
         compose.onNodeWithTag("log_file_0").assertTextContains("ride-20261009-080000.log", substring = true)
         compose.onNodeWithTag("log_file_1").assertTextContains("crash-20261008-080000.txt", substring = true)
         compose.onNodeWithTag("log_file_0").performClick()
+        waitForTag("log_text")
         // 12,000 lines are ~350 KB: more than the 256 KB shown, so the start is left out and it says so.
         compose.onNodeWithTag("log_skipped").assertIsDisplayed().assertTextContains("KB", substring = true)
         compose.onNodeWithTag("log_text").performScrollTo().assertTextContains("line 12000", substring = true)
@@ -53,8 +60,10 @@ class LogViewerScreenTest {
     @Test
     fun backGoesFromTheFileToTheListThenOut() {
         compose.onNodeWithTag("log_file_1").performClick()
+        waitForTag("log_text")
         compose.onNodeWithTag("log_text").assertTextContains("an old trace", substring = true)
         compose.onNodeWithTag("back").performClick()
+        waitForTag("log_file_0")
         compose.onNodeWithTag("log_file_0").assertIsDisplayed()
         assertEquals(0, back)
         compose.onNodeWithTag("back").performClick()
@@ -70,5 +79,9 @@ class LogViewerScreenTest {
         compose.onNodeWithTag("log_viewer_title").assertTextContains("Registro")
         compose.onNodeWithTag("log_file_1").performClick()
         compose.onNodeWithTag("log_viewer_title").assertTextContains("Fim do arquivo")
+    }
+
+    private companion object {
+        const val WAIT_MS = 5_000L
     }
 }

@@ -1,26 +1,26 @@
 package com.reau.app.service
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
 /**
  * The service, the loop and the session need Android to run, so the lines that carry each experimental switch to the code it gates are read
- * from the source, as [DashRecoveryIsWiredTest] does. The decisions themselves are in RtpPacingTest, BitrateAdapterTest, DashSessionBindRetryTest,
- * DashSocketDscpTest and ProjectionLocksTest.
+ * from the source, as [DashRecoveryIsWiredTest] does. The decisions themselves are in RtpPacingTest, BitrateAdapterTest, ProjectionLocksTest;
+ * the mapping of the settings to the loop is VideoLoopSettingsTest's, the marks of the sockets DashSocketDscpTest's (the socket is opened on the
+ * loopback and its log line read), and the retries of a refused bind DashSessionBindRetryTest's (a fake socket factory, counted).
+ *
+ * What stays here is class (c): the loop, the service and the Wi-Fi lock are built from Android's MediaCodec, Service and WifiManager.
  */
 class ConnectionExperimentsAreWiredTest {
     private val live = File("src/main/java/com/reau/app/service/LiveSides.kt").readText()
     private val loop = File("src/main/java/com/reau/app/stream/VideoLoop.kt").readText()
     private val service = File("src/main/java/com/reau/app/service/ProjectionService.kt").readText()
-    private val session = File("src/main/java/com/reau/app/dash/DashSession.kt").readText()
-    private val socket = File("src/main/java/com/reau/app/dash/DashSocket.kt").readText()
 
     @Test
-    fun `the stream's two experiments go from the settings to the loop, at the start and at a new stream, and the bitrate is the effective one`() {
-        assertTrue(Regex("""rtpPacing = settings\.experimentRtpPacing""").findAll(live).count() == 2)
-        assertTrue(Regex("""adaptiveBitrate = settings\.experimentAdaptiveBitrate""").findAll(live).count() == 2)
-        assertTrue(Regex("""bitrateBps = settings\.effectiveStreamBitrateBps""").findAll(live).count() == 2)
+    fun `the settings reach the loop at the start and at a new stream, and the loop builds its two experiments from them`() {
+        assertEquals("the projection starts with the rider's settings and a new stream takes them up again", 2, Regex("""\.withRider\(settings\)""").findAll(live).count())
         assertTrue(loop.contains("RtpPacing.whenOn(settings.rtpPacing)"))
         assertTrue(loop.contains("BitrateAdapter.whenOn(settings.adaptiveBitrate)"))
         assertTrue(loop.contains("pacing = pacing,"))
@@ -28,7 +28,6 @@ class ConnectionExperimentsAreWiredTest {
 
     @Test
     fun `the mute encoder watch goes from the settings to the loop, which rebuilds only on its word and only with the switch on`() {
-        assertTrue(Regex("""encoderMuteWatch = settings\.experimentEncoderWatch""").findAll(live).count() == 2)
         assertTrue(loop.contains("muteWatch = EncoderMuteWatch.whenOn(settings.encoderMuteWatch)"))
         assertTrue(loop.contains("if (timed != null) watchForAMuteEncoder(g, timed, SystemClock.elapsedRealtime())"))
         val watch = loop.substringAfter("private fun watchForAMuteEncoder").substringBefore("private fun adaptBitrate")
@@ -49,14 +48,6 @@ class ConnectionExperimentsAreWiredTest {
     fun `the debug marks and the bind retries read the live settings of the rider`() {
         assertTrue(live.contains("DashSocket(it, markInDebug = SettingsStore.open(context).load().experimentDebugDscp)"))
         assertTrue(live.contains("bindRetry = { tuned?.experimentWifiBind == true }"))
-        assertTrue(socket.contains("priorityMarks(markInDebug = markInDebug)"))
-    }
-
-    @Test
-    fun `the session retries the bind before it tells the holder of the network, and in a coroutine`() {
-        assertTrue(session.contains("private suspend fun socketWithBindRetries("))
-        assertTrue(session.contains("socketWithBindRetries(mine, network)"))
-        assertTrue(session.contains("BindRetry.again(bindRetry(), refusal, retries)"))
     }
 
     @Test

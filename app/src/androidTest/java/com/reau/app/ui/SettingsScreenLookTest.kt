@@ -51,7 +51,7 @@ class SettingsScreenLookTest {
 
     @Test
     fun everyLongTextOfTodayIsWholeBehindItsInfo() {
-        compose.infoSays("use_location", "só funciona depois que a permissão de localização")
+        compose.infoSays("use_location", "só funciona com a permissão de localização")
         compose.infoSays("use_location", "nunca vai ao registro")
         compose.infoSays("dash_music", "o joystick padrão não tem")
         compose.infoSays("answer_calls", "WhatsApp e outros apps de voz")

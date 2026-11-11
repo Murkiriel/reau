@@ -9,8 +9,9 @@ import java.io.File
 
 /**
  * What a rider who cannot look closely, or who listens to the screen (TalkBack), is given: a permission that is only optional is not painted
- * as an error; every page's title and the terms' sections are headings; a warning that appears is announced; and the name of the dash is
- * not written to the encrypted store three times for every letter typed.
+ * as an error; every page's title and the terms' sections are headings; a warning that appears is announced. (The name of the dash not being
+ * written to the encrypted store three times for every letter typed is SavePairingTest's.) The semantics of a composable are class (c):
+ * only a test of the screen on a device reads them, so the source is.
  */
 class ReadableScreensTest {
     private fun source(path: String) = File("src/main/java/com/reau/app/$path").readText()
@@ -35,15 +36,6 @@ class ReadableScreensTest {
     @Test
     fun `a warning that comes up on the main screen is announced`() {
         assertTrue(source("ui/components/Cards.kt").contains("semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }"))
-    }
-
-    @Test
-    fun `typing the dash's name writes only what changed`() {
-        val save = source("MainActivity.kt").substringAfter("private fun savePairing(").substringBefore("return typed")
-        assertTrue(save.contains("if (typed.ssidPrefix != pairingStore.ssidPrefix) pairingStore.ssidPrefix = typed.ssidPrefix"))
-        assertTrue(save.contains("if (typed.password != pairingStore.password) pairingStore.password = typed.password"))
-        assertTrue(save.contains("if (typed.ssid != pairingStore.ssid) pairingStore.ssid = typed.ssid"))
-        assertEquals("no write that is not behind a comparison", 3, Regex("""pairingStore\.\w+ = """).findAll(save).count())
     }
 
     @Test

@@ -91,10 +91,15 @@ object WeatherKeeper {
     /** Older than this the weather is not told to the dash any more (three hours): better none than an old one. */
     const val USABLE_MS = 3 * 60 * 60_000L
 
+    private const val MINUTE_MS = 60_000L
+
     private val lock = Mutex()
     private val snapshotState = MutableStateFlow<Snapshot?>(null)
     private val whyState = MutableStateFlow(Why.NONE)
     @Volatile private var cachedPlace: DayNight.Place? = null
+
+    /** The waits after failed requests; touched only inside [lock]. */
+    private val backoff = WeatherBackoff()
 
     /** The last weather kept, from this run or an earlier one; null with none. */
     val snapshot: StateFlow<Snapshot?> get() = snapshotState
@@ -126,6 +131,7 @@ object WeatherKeeper {
         snapshotState.value = null
         whyState.value = Why.NONE
         cachedPlace = null
+        backoff.reset()
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { clear() }
     }
 
@@ -145,7 +151,9 @@ object WeatherKeeper {
     /**
      * Fetches when the weather kept is older than [maxAgeMs] ([REFRESH_MS]; [OPEN_GAP_MS] when REau was just opened) or from
      * another place. With "Clima no painel" and the info ring both off it does nothing at all: never a request, never a trace. With "Usar a
-     * localização" off, or no place learned yet, it says so ([why]) and fetches nothing.
+     * localização" off, or no place learned yet (or the location permission revoked: [SunPlace.saved] gives none), it says so ([why]) and fetches nothing.
+     * After a request that failed it waits longer each time ([WeatherBackoff]: 1, 2, 4, 8, then 15 minutes) when [respectBackoff] is set, as the
+     * projection's minute-by-minute look sets it; opening REau or its Clima screen asks at once, and its failure counts too.
      */
     @Suppress("CyclomaticComplexMethod") // one branch per field or case of the format it reads or writes
     suspend fun refreshIfStale(
@@ -153,18 +161,16 @@ object WeatherKeeper {
         nowMs: Long = System.currentTimeMillis(),
         maxAgeMs: Long = REFRESH_MS,
         monoNowMs: Long = MonotonicClock.nowMs(),
+        respectBackoff: Boolean = false,
     ) = lock.withLock {
         val app = context.applicationContext
         val settings = SettingsStore.open(app).load()
         if (!settings.weatherWanted) return@withLock
         attach(app)
         val place = SunPlace.saved(app, settings.useLocation)
-        if (place == null) {
-            whyState.value = Why.NO_PLACE
-            return@withLock
-        }
-        val kept = snapshotState.value
-        if (kept != null && cachedPlace == place && kept.ageMs(nowMs, monoNowMs) < maxAgeMs) return@withLock
+        val gate = WeatherGate(maxAgeMs, respectBackoff, backoff).verdict(place, snapshotState.value, cachedPlace, nowMs, monoNowMs)
+        if (gate == WeatherGate.Verdict.NO_PLACE) whyState.value = Why.NO_PLACE
+        if (gate != WeatherGate.Verdict.GO || place == null) return@withLock
         val networks = withInternet(app)
         if (networks.isEmpty()) {
             whyState.value = Why.NO_NETWORK
@@ -192,7 +198,8 @@ object WeatherKeeper {
         if (!SettingsStore.open(app).load().weatherWanted) return@withLock
         if (forecast?.current == null) {
             whyState.value = Why.FAILED
-            RideDiagnostics.log("weather", "the weather service gave nothing usable")
+            val wait = backoff.failed(monoNowMs)
+            RideDiagnostics.log("weather", "the weather service gave nothing usable (${backoff.failures} in a row): next try in ${wait / MINUTE_MS} min")
             return@withLock
         }
         // Air quality is a separate host, asked through the network that worked; a failure there leaves only that card out.
@@ -202,6 +209,7 @@ object WeatherKeeper {
         snapshotState.value = Snapshot(forecast, nowMs, air, monoAtMs = MonotonicClock.nowMs())
         cachedPlace = place
         whyState.value = Why.NONE
+        backoff.succeeded()
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
             putString(KEY_JSON, json)
             putString(KEY_AIR, airJson?.takeIf { air != null })

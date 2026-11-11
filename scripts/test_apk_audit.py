@@ -9,6 +9,7 @@ import io
 import json
 import os
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -157,6 +158,18 @@ class PermissionsTest(unittest.TestCase):
         self.assertEqual(["android.permission.INTERNET", "com.reau.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"], found)
 
 
+class CertificateTest(unittest.TestCase):
+    def test_the_certificate_of_a_failed_apksigner_is_not_valid_and_of_a_good_one_is(self):
+        def run(code):
+            done = subprocess.CompletedProcess([], code, stdout="Signer #1 certificate DN: CN=x\nother\n", stderr="DOES NOT VERIFY")
+            with mock.patch.object(apk_audit.subprocess, "run", return_value=done):
+                return apk_audit.certificate("apksigner", "a.apk")
+        self.assertEqual(("Signer #1 certificate DN: CN=x", True), run(0))
+        text, ok = run(1)
+        self.assertFalse(ok)
+        self.assertIn("FALHOU apksigner: DOES NOT VERIFY", text)
+
+
 class AgainstTheBaselineTest(unittest.TestCase):
 
     def setUp(self):
@@ -166,8 +179,9 @@ class AgainstTheBaselineTest(unittest.TestCase):
         self.baseline = os.path.join(self.tmp.name, "baseline.json")
         self.perms = ["android.permission.INTERNET"]
         self.manifest = RELEASE_MANIFEST
+        self.signed = True
         for name, value in (("BASELINE", self.baseline), ("find_sdk", lambda: "sdk"),
-                            ("build_tool", lambda sdk, name: name), ("certificate", lambda signer, apk: "cert"),
+                            ("build_tool", lambda sdk, name: name), ("certificate", lambda signer, apk: ("cert", self.signed)),
                             ("permissions", lambda aapt2, apk: list(self.perms)),
                             ("manifest_text", lambda aapt2, apk: self.manifest)):
             patcher = mock.patch.object(apk_audit, name, value)
@@ -221,6 +235,21 @@ class AgainstTheBaselineTest(unittest.TestCase):
         self.assertEqual(1, code)
         self.assertIn("Nada gravado", out)
         self.assertEqual(before, os.path.getmtime(self.baseline))
+
+    def test_an_invalid_signature_exits_1_even_with_nothing_new_and_is_not_recorded(self):
+        self.run_main(self.apk, "--gravar")
+        self.signed = False
+        code, out = self.run_main(self.apk)
+        self.assertEqual(1, code)
+        self.assertIn("Nada novo", out)
+        self.assertIn("ASSINATURA INVÁLIDA", out)
+        before = os.path.getmtime(self.baseline)
+        code, out = self.run_main(self.apk, "--gravar")
+        self.assertEqual(1, code)
+        self.assertIn("Nada gravado", out)
+        self.assertEqual(before, os.path.getmtime(self.baseline))
+        # A debug APK is audited by its signature too.
+        self.assertEqual(1, self.run_main(self.apk, "--apk-debug")[0])
 
     def test_a_debug_apk_can_be_audited_without_the_release_shape(self):
         self.run_main(self.apk, "--gravar")

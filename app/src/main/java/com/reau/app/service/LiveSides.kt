@@ -179,18 +179,10 @@ internal class LiveSides(
                             ),
                     ),
                     video = VideoLoop.Settings(
-                        ceilingFps = settings.fpsCeiling,
-                        clockSlowPercent = settings.clockSlowPercent,
-                        bitrateBps = settings.effectiveStreamBitrateBps,
-                        bitrateMode = settings.bitrateMode,
-                        keyframeSec = settings.keyframeSec,
-                        lightScreenFps = REauSettings.lightScreenFps(),
-                        rtpPacing = settings.experimentRtpPacing, adaptiveBitrate = settings.experimentAdaptiveBitrate,
-                        encoderMuteWatch = settings.experimentEncoderWatch,
                         recordFrames = if (settings.recordVideo && folder != null) RECORD_FRAMES else 0,
                         recordDir = folder?.let { File(it, "video") },
                         recordRolling = true,
-                    ),
+                    ).withRider(settings),
                     linkUp = { ctx, scope -> phoneLinkUp(ctx, scope) },
                     mapping = settings.mappingFor(com.reau.app.aa.AaScreens.watch.screen.value),
                     online = { phoneOnline(context) },
@@ -205,7 +197,7 @@ internal class LiveSides(
                         val now = SettingsStore.open(context).load()
                         InfoRingFeed.frame(context, rotation, now.useLocation, night = isNightNow(context, now), options = now.infoRingOptions)
                     },
-                    refreshWeather = { com.reau.app.weather.WeatherKeeper.refreshIfStale(context) },
+                    refreshWeather = { com.reau.app.weather.WeatherKeeper.refreshIfStale(context, respectBackoff = true) },
                     readings = com.reau.app.dash.DashReadings,
                     ringStep = PrefsRingStep(context),
                     zoomMemory = PrefsZoom(context),
@@ -476,7 +468,7 @@ internal class LiveSides(
         }
         if (started && receiver != null) scope.launch { watchAppVideo() }
         scope.launch { ProjectionMachine.dashLinks(session.state).collect { report(ProjectionEvent.DashChanged(it)) } }
-        // The weather for the dash: looked at every minute, fetched at most every quarter of an hour.
+        // The weather for the dash: looked at every minute, fetched at most every quarter of an hour, and after a failure with a growing wait (WeatherBackoff).
         scope.launch {
             while (isActive) {
                 if (tuned?.weatherWanted == true) runCatching { setup.refreshWeather() }
@@ -488,9 +480,7 @@ internal class LiveSides(
         // compositor draws it only when it changes.
         scope.launch {
             val rotation = com.reau.app.weather.InfoRingRotation()
-            var frame: com.reau.app.weather.RingFrame? = null
-            var tick = 0
-            var ringFailures = 0
+            val ring = InfoRingFeed.Loop(RING_TICKS_PER_LOOK, stopGps = { GpsWatch.stop() }, warn = { RideDiagnostics.warn("ring", it) })
             var inPlace = false
             val posts = InfoRingFeed.Posts()
             while (isActive) {
@@ -499,15 +489,7 @@ internal class LiveSides(
                     inPlace = place
                     compositor.setInfoRingPlace(place)
                 }
-                val on = started && InfoRingFeed.shown(tuned?.infoRing == true, session.infoVisible)
-                if (!on) {
-                    frame = null
-                    tick = 0
-                    GpsWatch.stop()
-                } else if (tick++ % RING_TICKS_PER_LOOK == 0) {
-                    frame = runCatching { setup.infoRing(rotation) }
-                        .onFailure { e -> InfoRingFeed.failureLine(e, ringFailures++)?.let { RideDiagnostics.warn("ring", it) } }.getOrNull()
-                }
+                val frame = ring.step(started && InfoRingFeed.shown(tuned?.infoRing == true, session.infoVisible)) { setup.infoRing(rotation) }
                 if (posts.changed(frame)) compositor.setInfoRing(frame)
                 delay(InfoRingFeed.pollMs(tuned?.infoRing == true))
             }
@@ -869,13 +851,7 @@ internal class LiveSides(
 
         /** The pace: the stream to the dash starts again with it (a keyframe first), the dash staying connected. */
         fun newStream(settings: REauSettings) {
-            videoSettings = videoSettings.copy(
-                ceilingFps = settings.fpsCeiling, clockSlowPercent = settings.clockSlowPercent,
-                bitrateBps = settings.effectiveStreamBitrateBps, bitrateMode = settings.bitrateMode, keyframeSec = settings.keyframeSec,
-                lightScreenFps = REauSettings.lightScreenFps(),
-                rtpPacing = settings.experimentRtpPacing, adaptiveBitrate = settings.experimentAdaptiveBitrate,
-                encoderMuteWatch = settings.experimentEncoderWatch,
-            )
+            videoSettings = videoSettings.withRider(settings)
             val running = loop ?: return
             running.stop()
             loop = newLoop()

@@ -29,6 +29,28 @@ class LogFilesTest {
     }
 
     @Test
+    fun `the entries carry each file's name, time and size, read once, newest first, so the screen draws without touching a file`() {
+        val d = tmp.newFolder("diag-entries")
+        File(d, "ride-20261001-080000.log").apply { writeText("abc"); setLastModified(1_000) }
+        File(d, "crash-20261001-090000.txt").apply { writeText("0123456789"); setLastModified(2_000) }
+        File(d, "notes.txt").writeText("x")
+        val entries = LogFiles.entries(d)
+        assertEquals(listOf("crash-20261001-090000.txt", "ride-20261001-080000.log"), entries.map { it.name })
+        assertEquals(listOf(2_000L, 1_000L), entries.map { it.lastModifiedMs })
+        assertEquals(listOf(10L, 3L), entries.map { it.lengthBytes })
+        assertEquals(LogFiles.list(d), entries.map { it.file })
+        // What was read stays as it was read: the file grows afterwards and the entry does not change under the screen.
+        entries[1].file.appendText("more")
+        assertEquals(3L, entries[1].lengthBytes)
+    }
+
+    @Test
+    fun `no folder files, or a folder that is not one, is an empty list`() {
+        assertEquals(emptyList<LogFiles.Entry>(), LogFiles.entries(tmp.newFolder("empty")))
+        assertEquals(emptyList<LogFiles.Entry>(), LogFiles.entries(File(tmp.root, "missing")))
+    }
+
+    @Test
     fun `a small file is read whole`() {
         val f = tmp.newFile("ride-a.log").apply { writeText("one\ntwo\n") }
         val tail = LogFiles.tail(f, maxBytes = 1_000)

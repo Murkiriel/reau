@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -83,6 +84,10 @@ class ScreensBothThemesTest {
                 screen = content
                 night = dark
                 compose.waitForIdle()
+                // The log list reads its files off the main thread: wait for the first row before taking the picture.
+                if (name == "log") {
+                    compose.waitUntil(5_000) { compose.onAllNodesWithTag("log_file_0").fetchSemanticsNodes().isNotEmpty() }
+                }
                 val picture = compose.onRoot().captureToImage().asAndroidBitmap()
                 assertTrue(name, picture.width > 0 && picture.height > 0)
                 File(out, "${name}_${if (dark) "escuro" else "claro"}.png").outputStream().use { picture.compress(Bitmap.CompressFormat.PNG, 100, it) }

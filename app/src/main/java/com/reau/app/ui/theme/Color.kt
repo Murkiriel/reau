@@ -23,6 +23,12 @@ val StatusInfo = Color(0xFF4A82C3)
 // under the 4.5:1 small text needs. A lighter red on the dark theme and a darker one on the light theme; the status icons keep StatusErro.
 val ErroTextoNoEscuro = Color(0xFFE86A6A)
 val ErroTextoNoClaro = Color(0xFFB3261E)
+// The other states as TEXT in the dark theme (a card's title, "Granted", "Servidor ligado"): the brand's green (4.0:1 on Carvão), orange
+// (4.3:1) and blue (4.2:1) are under the 4.5:1 small text needs. Lighter ones for the letters; the icons and borders keep the brand's,
+// which read at 3:1 or more on every ground. In the light theme the letters are Grafite (the icon carries the colour).
+val SucessoTextoNoEscuro = Color(0xFF52A25A)
+val AtencaoTextoNoEscuro = Color(0xFFD2802F)
+val InfoTextoNoEscuro = Color(0xFF6296D0)
 
 // Blends worked out beforehand (Material 3 wants solid colours)
 private val OuroSobreGrafite12 = Color(0xFF2B2510)  // Ouro 12% over Grafite
@@ -70,9 +76,16 @@ data class REauStatusColors(
     /** Chrome: the top bar in the light theme, the tabs' track. */
     val chrome: Color = Carvao,
     val onChrome: Color = Marfim,
+    /** The states as text (see [com.reau.app.ui.components.textColor]): 4.5:1 on every ground of the theme. */
+    val successText: Color = SucessoTextoNoEscuro,
+    val warningText: Color = AtencaoTextoNoEscuro,
+    val infoText: Color = InfoTextoNoEscuro,
+    val errorText: Color = ErroTextoNoEscuro,
 )
 
 val REauStatusDark = REauStatusColors(idle = OuroSuave)
-val REauStatusLight = REauStatusColors(idle = Grafite62SobreMarfim)
+val REauStatusLight = REauStatusColors(
+    idle = Grafite62SobreMarfim, successText = Grafite, warningText = Grafite, infoText = Grafite, errorText = Grafite,
+)
 
 val LocalREauStatus = staticCompositionLocalOf { REauStatusDark }

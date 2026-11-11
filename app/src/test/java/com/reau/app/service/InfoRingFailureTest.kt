@@ -17,8 +17,9 @@ class InfoRingFailureTest {
     }
 
     @Test
-    fun `the loop counts the failures and writes the line`() {
+    fun `the loop is handed the warning of the ride log under the ring's tag`() {
+        // What the loop does with a failure (counts it, tells the first) runs in InfoRingLoopTest; here only what it is handed, which needs the service.
         val live = File("src/main/java/com/reau/app/service/LiveSides.kt").readText()
-        assertTrue(live.contains(".onFailure { e -> InfoRingFeed.failureLine(e, ringFailures++)?.let { RideDiagnostics.warn(\"ring\", it) } }.getOrNull()"))
+        assertTrue(live.contains("warn = { RideDiagnostics.warn(\"ring\", it) })"))
     }
 }

@@ -35,7 +35,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.reau.app.R
 import com.reau.app.dash.DashReadings
 import com.reau.app.service.SunPlace
@@ -335,7 +334,7 @@ private fun ChartGroup(daily: List<DailyWeather>, u: WeatherUnits) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 daily.forEachIndexed { i, d ->
                     // The day of the month (the date's last two characters), every other one when crowded.
-                    if (daily.size <= 8 || i % 2 == 0) Text(d.dateIso.takeLast(2), style = REauMono.copy(fontSize = 10.sp), color = low)
+                    if (daily.size <= 8 || i % 2 == 0) Text(d.dateIso.takeLast(2), style = REauMono, color = low)
                 }
             }
         }

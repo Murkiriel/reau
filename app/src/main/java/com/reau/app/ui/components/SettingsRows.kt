@@ -132,10 +132,8 @@ fun SegmentedRow(
     tag: String = "",
 ) {
     SettingRow(title, sub, now, info, null, tag, Modifier, tag, below = {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            options.forEachIndexed { i, (label, optionTag) ->
-                Segment(label, i == selected, optionTag, Modifier.weight(1f)) { onSelect(i) }
-            }
+        SegmentRow {
+            options.forEachIndexed { i, (label, optionTag) -> Segment(label, i == selected, optionTag, Modifier) { onSelect(i) } }
         }
     })
 }

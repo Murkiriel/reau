@@ -31,6 +31,15 @@ class ListaTest(unittest.TestCase):
         self.assertEqual([], stale, "update the snippet after a refactor")
 
 
+class CommandForTest(unittest.TestCase):
+    def test_python_test_files_run_with_unittest_and_jvm_classes_with_gradle(self):
+        py = mutacoes.command_for(["test_apk_audit.py"])
+        self.assertEqual(["-m", "unittest", "discover"], py[2:5] if py[1] == "-B" else py[1:4])
+        self.assertIn("test_apk_audit.py", py)
+        self.assertTrue(mutacoes.command_for(["SunPlaceTest"])[1].endswith("run_unit.py"))
+        self.assertEqual("SunPlaceTest", mutacoes.command_for(["SunPlaceTest"])[-1])
+
+
 class FatiaTest(unittest.TestCase):
     def test_slices_cover_the_list_once(self):
         items = list(range(23))

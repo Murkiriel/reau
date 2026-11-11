@@ -508,7 +508,7 @@ private const val KB = 1024
 /** How often the screens' theme asks the sun again. */
 
 /** The dash's name and password as the rider typed them; the pairing now. */
-private fun savePairing(pairingStore: DashPairing, typed: PairingUi): PairingUi {
+internal fun savePairing(pairingStore: DashPairing, typed: PairingUi): PairingUi {
     // Only what changed: each write is a round of the Keystore on this thread, and this runs at every letter typed in the name.
     if (typed.ssidPrefix != pairingStore.ssidPrefix) pairingStore.ssidPrefix = typed.ssidPrefix
     if (typed.password != pairingStore.password) pairingStore.password = typed.password

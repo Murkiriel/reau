@@ -62,7 +62,7 @@ class MainActivityCardTest {
         assertTrue("the card mode", ProjectionService.projection.value.card)
         compose.waitUntil(5_000) { runCatching { compose.onNodeWithTag("side_picture").assertTextContains("wallpaper de legibilidade") }.isSuccess }
 
-        compose.onNodeWithTag("toggle").performScrollTo().performClick()
+        compose.onNodeWithTag("toggle").performClick()
         compose.waitUntil(10_000) { ProjectionService.projection.value.phase == Phase.STOPPED }
         compose.waitUntil(5_000) { runCatching { compose.onNodeWithTag("card").assertTextEquals("Mandar o wallpaper") }.isSuccess }
     }

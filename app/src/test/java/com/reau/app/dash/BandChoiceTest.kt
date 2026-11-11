@@ -63,6 +63,39 @@ class BandChoiceTest {
         assertTrue(BandChoice.UNANSWERED_LINE.endsWith("the next one is made without the band"))
     }
 
+    /** What [BandChoice.nameOn] does for a request: whether it names the band, and the line it writes to the ride log (the tests run on a stand-in for Android 12's request). */
+    private fun nameOn(choice: BandChoice, on: Boolean, sdk: Int, request: Int): Pair<Int, List<String>> {
+        val logFile = java.nio.file.Files.createTempFile("band-choice", ".log").toFile()
+        com.reau.app.data.RideDiagnostics.testOnlySetFile(logFile)
+        try {
+            var named = 0
+            choice.nameOn(on, sdk, request) { named++ }
+            com.reau.app.data.RideDiagnostics.logAndWait("end", "marker", timeoutMs = 10_000)
+            return named to logFile.readLines().filter { "request #" in it }
+        } finally {
+            com.reau.app.data.RideDiagnostics.testOnlyReset()
+            logFile.delete()
+        }
+    }
+
+    @Test
+    fun `a request that names the band says so in the log, and one that does not writes nothing`() {
+        val (named, lines) = nameOn(choice, on = true, sdk = 34, request = 7)
+        assertEquals("the band is named once", 1, named)
+        assertEquals(1, lines.size)
+        assertTrue(lines[0], lines[0].endsWith(BandChoice.requestLine(7)))
+        assertEquals(0 to emptyList<String>(), nameOn(BandChoice(), on = false, sdk = 34, request = 8))
+        assertEquals("Android 11 does not take the band", 0 to emptyList<String>(), nameOn(BandChoice(), on = true, sdk = 30, request = 9))
+    }
+
+    @Test
+    fun `the request after one that ended unanswered does not name the band, and the one after that does again`() {
+        assertEquals(1, nameOn(choice, on = true, sdk = 34, request = 1).first)
+        choice.endedUnanswered()
+        assertEquals(0 to emptyList<String>(), nameOn(choice, on = true, sdk = 34, request = 2))
+        assertEquals(1, nameOn(choice, on = true, sdk = 34, request = 3).first)
+    }
+
     @Test
     fun `the manager decides the band only for a request it really makes, sets it on Android 12 and later, and tells the choice when the request ends unanswered`() {
         val manager = File("src/main/java/com/reau/app/dash/DashWifiManager.kt").readText()
@@ -71,11 +104,8 @@ class BandChoiceTest {
         val decide = ask.indexOf("bandChoice.nameOn(specBuilder, band24(), requests)")
         assertTrue("after the network the phone already joined is taken", reuse in 0 until decide)
         assertEquals("the band is decided once, there", 1, Regex("""bandChoice\.(nameOn|forRequest)\(""").findAll(ask).count())
-        val choice = File("src/main/java/com/reau/app/dash/BandChoice.kt").readText()
-        val nameOn = choice.substringAfter("fun nameOn(").substringBefore("fun endedUnanswered()")
-        assertTrue(nameOn.contains("if (!forRequest(on, Build.VERSION.SDK_INT) || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return"))
-        assertTrue(nameOn.contains("builder.setBand(ScanResult.WIFI_BAND_24_GHZ)"))
         assertTrue("the request's own line is as it always was", ask.contains("\", first approval\" else \"\"})\")"))
+        assertTrue("the band is named on the request's builder", File("src/main/java/com/reau/app/dash/BandChoice.kt").readText().contains("builder.setBand(ScanResult.WIFI_BAND_24_GHZ)"))
         val unavailable = manager.substringAfter("override fun onUnavailable()").substringBefore("override fun onLosing")
         assertTrue(unavailable.contains("bandChoice.endedUnanswered()"))
         assertTrue("with no switch given, a manager never names the band", manager.contains("private val band24: () -> Boolean = { false },"))

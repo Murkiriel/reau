@@ -6,6 +6,7 @@ import com.reau.app.dash.BitrateMode
 import com.reau.app.dash.DashConfig
 import com.reau.app.dash.video.DashEncoder
 import com.reau.app.dash.video.PendingFrames
+import com.reau.app.settings.REauSettings
 import com.reau.app.util.CodecErrors
 import com.reau.app.util.StageStats
 import com.reau.app.video.DashCompositor
@@ -93,7 +94,24 @@ internal class VideoLoop(
         val adaptiveBitrate: Boolean = false,
         /** Experimental ([com.reau.app.settings.REauSettings.experimentEncoderWatch]): an encoder gone mute without failing is rebuilt ([EncoderMuteWatch]). */
         val encoderMuteWatch: Boolean = false,
-    )
+    ) {
+        /**
+         * These settings with what the rider's own settings decide of the stream: the rate ceiling and clock, the bitrate (the experimental
+         * adaptive one asks for its own target, [REauSettings.effectiveStreamBitrateBps]), its mode and keyframe interval, the light-screen pace and
+         * the three experimental switches. What a projection starts with and what a new stream takes up, the same.
+         */
+        fun withRider(rider: REauSettings): Settings = copy(
+            ceilingFps = rider.fpsCeiling,
+            clockSlowPercent = rider.clockSlowPercent,
+            bitrateBps = rider.effectiveStreamBitrateBps,
+            bitrateMode = rider.bitrateMode,
+            keyframeSec = rider.keyframeSec,
+            lightScreenFps = REauSettings.lightScreenFps(),
+            rtpPacing = rider.experimentRtpPacing,
+            adaptiveBitrate = rider.experimentAdaptiveBitrate,
+            encoderMuteWatch = rider.experimentEncoderWatch,
+        )
+    }
 
     private var encoder: DashEncoder? = null
     private var output: RtpOutput? = null

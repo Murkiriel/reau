@@ -41,7 +41,7 @@ class DashRecoveryIsWiredTest {
         assertTrue(live.contains("onBindResult = wifi::bindResult"))
         assertTrue(live.contains("ProjectionNotification.showDashStuck(context)"))
         assertTrue(live.contains("ProjectionNotification.clearDashStuck(context)"))
-        assertTrue("told before the failure", session.indexOf("onBindResult?.invoke(network, true)") < session.indexOf("fail(NetworkBlock.describe(e), mine)"))
+        // That the session tells it before it reports the failure runs in DashSessionBindRefusalTest.
     }
 
     @Test

@@ -33,18 +33,19 @@ import androidx.compose.ui.unit.sp
 import com.reau.app.R
 import com.reau.app.ui.theme.REauCounterValue
 import com.reau.app.ui.theme.REauMono
+import com.reau.app.ui.theme.REauSpace
 
-/** The settings' compact counter: 40 dp buttons and the value in mono (tags `<tag>_minus`, `<tag>_value`, `<tag>_plus`). */
+/** The settings' compact counter: 48 dp buttons and the value in mono (tags `<tag>_minus`, `<tag>_value`, `<tag>_plus`). */
 @Composable
 fun CompactStepper(value: String, tag: String, onMinus: () -> Unit, onPlus: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        StepButton(Modifier.size(40.dp), "${tag}_minus", onMinus, icon = R.drawable.ic_ms_remove, description = R.string.cd_less)
+        StepButton(Modifier.size(REauSpace.touch), "${tag}_minus", onMinus, icon = R.drawable.ic_ms_remove, description = R.string.cd_less)
         Text(
             value, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurface,
             style = REauMono.copy(fontSize = 15.sp, fontWeight = FontWeight.Medium),
             modifier = Modifier.widthIn(min = 58.dp).testTag("${tag}_value"),
         )
-        StepButton(Modifier.size(40.dp), "${tag}_plus", onPlus, icon = R.drawable.ic_ms_add, description = R.string.cd_more)
+        StepButton(Modifier.size(REauSpace.touch), "${tag}_plus", onPlus, icon = R.drawable.ic_ms_add, description = R.string.cd_more)
     }
 }
 
@@ -75,20 +76,23 @@ fun FineStepper(
                 Text(label, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = MaterialTheme.colorScheme.onSurface)
                 if (info != null) InfoButton(info, "${tag}_info")
             }
-            Text(hint, style = REauMono.copy(fontSize = 11.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(hint, style = REauMono, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            StepButton(Modifier.width(54.dp).height(44.dp), "${tag}_minus$bigStep", press(-bigStep), text = "−$bigStep")
-            StepButton(Modifier.width(44.dp).height(44.dp), "${tag}_minus", press(-step), icon = R.drawable.ic_ms_remove, description = R.string.cd_less)
+            StepButton(Modifier.width(BIG_STEP_WIDTH).height(REauSpace.touch), "${tag}_minus$bigStep", press(-bigStep), text = "−$bigStep")
+            StepButton(Modifier.size(REauSpace.touch), "${tag}_minus", press(-step), icon = R.drawable.ic_ms_remove, description = R.string.cd_less)
             Text(
                 format(value), maxLines = 1, softWrap = false, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurface,
                 style = REauCounterValue, modifier = Modifier.weight(1f).testTag("${tag}_value"),
             )
-            StepButton(Modifier.width(44.dp).height(44.dp), "${tag}_plus", press(step), icon = R.drawable.ic_ms_add, description = R.string.cd_more)
-            StepButton(Modifier.width(54.dp).height(44.dp), "${tag}_plus$bigStep", press(bigStep), text = "+$bigStep")
+            StepButton(Modifier.size(REauSpace.touch), "${tag}_plus", press(step), icon = R.drawable.ic_ms_add, description = R.string.cd_more)
+            StepButton(Modifier.width(BIG_STEP_WIDTH).height(REauSpace.touch), "${tag}_plus$bigStep", press(bigStep), text = "+$bigStep")
         }
     }
 }
+
+/** The −10 and +10 buttons' width: 48 dp tall like every touch target, a little wider for the three characters. */
+private val BIG_STEP_WIDTH = 56.dp
 
 /** A counter's button: Grafite, radius 12, a thin Ouro suave border; an icon (− +) or a mono text (−10 +10). */
 @Composable

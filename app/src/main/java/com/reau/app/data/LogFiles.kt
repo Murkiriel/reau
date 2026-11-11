@@ -13,10 +13,18 @@ object LogFiles {
     /** The end of a file: [text], and how many bytes before it were left out. */
     data class Tail(val text: String, val skippedBytes: Long)
 
+    /** A log file as the list shows it: read once (one look at the disk), so that drawing the list touches no file. */
+    data class Entry(val file: File, val name: String, val lastModifiedMs: Long, val lengthBytes: Long)
+
     private const val NEWLINE: Byte = 0x0A
 
     fun list(dir: File): List<File> =
         dir.listFiles { f -> f.isFile && DiagSpace.isLog(f.name) }.orEmpty().sortedByDescending { it.lastModified() }
+
+    /** [list] with each file's name, time and size read once, newest first; for the screen to ask off the main thread and draw without reading files. */
+    fun entries(dir: File): List<Entry> =
+        dir.listFiles { f -> f.isFile && DiagSpace.isLog(f.name) }.orEmpty()
+            .map { Entry(it, it.name, it.lastModified(), it.length()) }.sortedByDescending { it.lastModifiedMs }
 
     fun tail(file: File, maxBytes: Int): Tail = RandomAccessFile(file, "r").use { raf ->
         val length = raf.length()

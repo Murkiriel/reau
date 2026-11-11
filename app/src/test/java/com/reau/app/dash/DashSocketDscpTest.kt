@@ -77,4 +77,32 @@ class DashSocketDscpTest {
         val socket = DatagramSocket().apply { close() }
         assertEquals(false, DashSocket.mark(socket, DashSocket.TOS_CONTROL))
     }
+
+    /** The ride log's line of the marking of the sockets, as a [DashSocket] with [markInDebug] writes it when it opens (the tests run the debug build). */
+    private fun markingLine(markInDebug: Boolean): String {
+        val logFile = java.nio.file.Files.createTempFile("dash-socket-marks", ".log").toFile()
+        com.reau.app.data.RideDiagnostics.testOnlySetFile(logFile)
+        try {
+            DashSocket(markInDebug = markInDebug).close()
+            val deadline = System.currentTimeMillis() + 10_000
+            while (System.currentTimeMillis() < deadline && "sockets marked" !in logFile.readText()) Thread.sleep(20)
+            return logFile.readLines().single { "sockets marked for Wi-Fi priority" in it }
+        } finally {
+            com.reau.app.data.RideDiagnostics.testOnlyReset()
+            logFile.delete()
+        }
+    }
+
+    @Test
+    fun `a socket opened with the experimental switch on marks itself in a debug build and says so in the log`() {
+        assertTrue(com.reau.app.BuildConfig.DEBUG)
+        val line = markingLine(markInDebug = true)
+        assertTrue(line, "control CS6=true video AF41=true (debug build, by the experimental switch)" in line)
+    }
+
+    @Test
+    fun `a socket opened with the switch off sends unmarked in a debug build and says so in the log`() {
+        val line = markingLine(markInDebug = false)
+        assertTrue(line, "none (debug build: no priority marking)" in line)
+    }
 }

@@ -30,7 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.reau.app.R
 import com.reau.app.ui.theme.LocalREauDark
-import com.reau.app.ui.theme.REauMono
+import com.reau.app.ui.theme.REauMonoCompact
+import com.reau.app.ui.theme.REauSpace
 
 /**
  * A permission: the [name], its technical name in mono, and at the right its state ([state], with a green tick when
@@ -62,12 +63,12 @@ fun PermissionRow(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(name, style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp), color = colors.onSurface)
-                tech?.let { Text(it, style = REauMono.copy(fontSize = 11.sp, lineHeight = 14.sp), color = colors.onSurfaceVariant) }
+                tech?.let { Text(it, style = REauMonoCompact, color = colors.onSurfaceVariant) }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 MsIcon(if (granted) R.drawable.ic_ms_check_circle else R.drawable.ic_ms_cancel, 18.dp, tone)
                 Text(
-                    state, color = if (dark) tone else colors.onSurface, modifier = Modifier.testTag("${tag}_state"),
+                    state, color = permissionTone(granted, optional).textColor(), modifier = Modifier.testTag("${tag}_state"),
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp, fontWeight = FontWeight.Medium),
                 )
             }
@@ -80,7 +81,7 @@ fun PermissionRow(
             )
             if (!granted && onAsk != null) {
                 OutlinedButton(
-                    onAsk, Modifier.heightIn(min = 44.dp).testTag(askTag), shape = MaterialTheme.shapes.small,
+                    onAsk, Modifier.heightIn(min = REauSpace.touch).testTag(askTag), shape = MaterialTheme.shapes.small,
                     border = BorderStroke(1.dp, if (dark) colors.primary else colors.secondary),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = if (dark) colors.primary else colors.onSurface),
                 ) { Text(stringResource(R.string.action_grant), style = MaterialTheme.typography.labelLarge) }
@@ -131,9 +132,9 @@ fun CreditRow(name: String, line: String, role: String, onCopy: () -> Unit, tag:
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(name, style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp), color = colors.onSurface)
-            if (line.isNotEmpty()) Text(line, style = REauMono.copy(fontSize = 11.5.sp, lineHeight = 15.sp), color = colors.onSurfaceVariant)
+            if (line.isNotEmpty()) Text(line, style = REauMonoCompact, color = colors.onSurfaceVariant)
             Text(role, style = MaterialTheme.typography.bodySmall, color = colors.onSurface.copy(alpha = 0.8f))
-            shown?.let { Text(it, style = REauMono.copy(fontSize = 11.5.sp, lineHeight = 15.sp), color = colors.onSurfaceVariant) }
+            shown?.let { Text(it, style = REauMonoCompact, color = colors.onSurfaceVariant) }
         }
         MsIcon(R.drawable.ic_ms_content_copy, 20.dp, colors.onSurfaceVariant, description = stringResource(R.string.cd_copy))
     }

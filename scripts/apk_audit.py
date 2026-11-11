@@ -17,7 +17,7 @@ anotações @Preview: a biblioteca ui-tooling-preview é compileOnly) nem de and
 (assets/dexopt/baseline.prof). Num APK de debug essa conferência não vale: use --apk-debug.
 
 Sai com 1 se aparecer permissão, biblioteca, .so ou host que a linha de base não tem (algo novo entrou no APK: olhar
-antes de instalar) ou se a forma de release falhar; 0 se nada mudou; 2 se faltou ferramenta ou arquivo. Uma mudança
+antes de instalar), se a forma de release falhar ou se a assinatura for inválida; 0 se nada mudou; 2 se faltou ferramenta ou arquivo. Uma mudança
 conferida e aceita entra na linha de base com --gravar (que se recusa a gravar um APK de forma errada).
 
 Uso (da raiz do repo):
@@ -100,10 +100,13 @@ def permissions(aapt2: str, apk: str) -> list[str]:
     return sorted(found)
 
 
-def certificate(apksigner: str, apk: str) -> str:
+def certificate(apksigner: str, apk: str) -> tuple[str, bool]:
+    """The certificate lines to print and whether the signature is valid (apksigner exits 0): an invalid one is a problem, not a pass."""
     r = subprocess.run([apksigner, "verify", "--print-certs", apk], capture_output=True, text=True, env=java_env())
     lines = [l for l in r.stdout.splitlines() if "certificate DN" in l or "SHA-256 digest" in l]
-    return "\n".join(lines) if r.returncode == 0 else f"FALHOU apksigner: {r.stderr.strip()[:300]}"
+    if r.returncode == 0:
+        return "\n".join(lines), True
+    return f"FALHOU apksigner: {r.stderr.strip()[:300]}", False
 
 
 def scan_zip(apk: str) -> tuple[list[str], list[str], list[str]]:
@@ -302,7 +305,10 @@ def main() -> int:
     with open(args.apk, "rb") as fh:
         data = fh.read()
     print(f"APK: {args.apk}\nTamanho: {len(data):,} bytes\nSHA-256: {hashlib.sha256(data).hexdigest()}")
-    print(certificate(apksigner, args.apk))
+    cert_text, signed = certificate(apksigner, args.apk)
+    print(cert_text)
+    if not signed:
+        print("\nASSINATURA INVÁLIDA: o APK não passa no apksigner.")
     libraries, natives, hosts = scan_zip(args.apk)
     current = {"permissions": permissions(aapt2, args.apk), "libraries": libraries, "native_libs": natives,
                "hosts": hosts}
@@ -338,8 +344,8 @@ def main() -> int:
             print(f"  ! {f}")
 
     if args.gravar:
-        if shape or pages:
-            print("\nNada gravado: o APK não tem a forma de release ou tem biblioteca nativa que não carrega com 16 KB.")
+        if shape or pages or not signed:
+            print("\nNada gravado: o APK não tem a forma de release, tem biblioteca nativa que não carrega com 16 KB ou tem assinatura inválida.")
             return 1
         with open(BASELINE, "w", encoding="utf-8", newline="\n") as fh:
             json.dump(current, fh, indent=2, ensure_ascii=False)
@@ -363,7 +369,7 @@ def main() -> int:
                 print(f"  + {k}: {v}")
         return 1
     print("\nNada novo em relação à linha de base.")
-    return 1 if shape or pages else 0
+    return 1 if shape or pages or not signed else 0
 
 
 if __name__ == "__main__":

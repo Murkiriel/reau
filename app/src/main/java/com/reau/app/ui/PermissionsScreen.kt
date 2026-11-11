@@ -24,7 +24,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.reau.app.R
 import com.reau.app.settings.AppPermissions
 import com.reau.app.settings.AppPermissions.Kind
@@ -103,7 +102,7 @@ private fun Group(
             )
             Text(
                 stringResource(R.string.permissions_count, rows.count { it.granted }, rows.size),
-                style = REauMono.copy(fontSize = 11.sp), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = REauMono, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Column(Modifier.fillMaxWidth().clip(shape).background(MaterialTheme.colorScheme.surfaceContainer).border(1.dp, hairline(0.18f), shape)) {

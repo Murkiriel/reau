@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,6 +51,8 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * "Ver o registro": what the logs hold, inside the app, without sharing them. The log files of [dir] newest first, how
@@ -76,9 +79,16 @@ fun LogViewerScreen(dir: File?, onBack: () -> Unit, onShare: () -> Unit = {}) {
     }
 }
 
+/**
+ * The list of files. What the files hold (names, times, sizes) is read once, off the main thread, and the list is drawn only
+ * from that: nothing here touches a file while composing. Until it is read the list is empty and says nothing.
+ */
 @Composable
 private fun FileList(dir: File?, onOpen: (File) -> Unit) {
-    val files = remember(dir) { dir?.let(LogFiles::list).orEmpty() }
+    val read by produceState<List<LogFiles.Entry>?>(null, dir) {
+        value = withContext(Dispatchers.IO) { dir?.let { runCatching { LogFiles.entries(it) }.getOrDefault(emptyList()) }.orEmpty() }
+    }
+    val files = read ?: return
     val stamp = remember { SimpleDateFormat("dd/MM HH:mm", Locale.US) }
     val locale = displayLocale()
     Column(
@@ -86,8 +96,8 @@ private fun FileList(dir: File?, onOpen: (File) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            pluralStringResource(R.plurals.log_viewer_summary, files.size, files.size, size(files.sumOf { it.length() }, locale)),
-            style = REauMono.copy(fontSize = 11.5.sp), color = MaterialTheme.colorScheme.onSurfaceVariant,
+            pluralStringResource(R.plurals.log_viewer_summary, files.size, files.size, size(files.sumOf { it.lengthBytes }, locale)),
+            style = REauMono, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 4.dp).testTag("log_summary"),
         )
         if (files.isEmpty()) {
@@ -99,7 +109,8 @@ private fun FileList(dir: File?, onOpen: (File) -> Unit) {
             files.forEachIndexed { i, f ->
                 if (i > 0) HorizontalDivider(thickness = 1.dp, color = hairline(0.14f, 0.6f))
                 Row(
-                    Modifier.fillMaxWidth().clickable(role = Role.Button) { onOpen(f) }.padding(horizontal = 16.dp, vertical = 12.dp).testTag("log_file_$i"),
+                    Modifier.fillMaxWidth().clickable(role = Role.Button) { onOpen(f.file) }.padding(horizontal = 16.dp, vertical = 12.dp)
+                        .testTag("log_file_$i"),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
@@ -110,7 +121,7 @@ private fun FileList(dir: File?, onOpen: (File) -> Unit) {
                             style = REauMono.copy(fontSize = 13.5.sp),
                         )
                         Text(
-                            "${stamp.format(Date(f.lastModified()))} · ${size(f.length(), locale)}", style = MaterialTheme.typography.bodySmall,
+                            "${stamp.format(Date(f.lastModifiedMs))} · ${size(f.lengthBytes, locale)}", style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -121,16 +132,33 @@ private fun FileList(dir: File?, onOpen: (File) -> Unit) {
     }
 }
 
-/** The end of [file]: what was left out of its start, in blue, then the text in mono, scrolled to its end, never wrapped. */
+/** What reading the end of a file came to: under way, failed, or done. */
+private sealed interface TailState {
+    data object Reading : TailState
+    data object Unreadable : TailState
+    data class Ready(val tail: LogFiles.Tail) : TailState
+}
+
+/**
+ * The end of [file]: what was left out of its start, in blue, then the text in mono, scrolled to its end, never wrapped. The file
+ * (up to [TAIL_BYTES]) is read once, off the main thread; until then only its name shows.
+ */
 @Composable
 private fun FileEnd(file: File) {
-    val tail = remember(file) { runCatching { LogFiles.tail(file, TAIL_BYTES) }.getOrNull() }
+    val state by produceState<TailState>(TailState.Reading, file) {
+        value = withContext(Dispatchers.IO) {
+            runCatching { LogFiles.tail(file, TAIL_BYTES) }.fold({ TailState.Ready(it) }, { TailState.Unreadable })
+        }
+    }
+    val tail = (state as? TailState.Ready)?.tail
     val down = rememberScrollState()
     LaunchedEffect(tail) { down.scrollTo(down.maxValue) }
     Column(Modifier.fillMaxSize().navigationBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(file.name, style = REauMono.copy(fontSize = 11.5.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(file.name, style = REauMono, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (tail == null) {
-            Text(stringResource(R.string.log_viewer_unreadable), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            if (state is TailState.Unreadable) {
+                Text(stringResource(R.string.log_viewer_unreadable), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            }
             return@Column
         }
         if (tail.skippedBytes > 0) Skipped(tail.skippedBytes)
@@ -140,7 +168,7 @@ private fun FileEnd(file: File) {
         ) {
             Text(
                 tail.text, softWrap = false, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.testTag("log_text"),
-                style = REauMono.copy(fontSize = 11.sp, lineHeight = 18.sp),
+                style = REauMono,
             )
         }
     }
