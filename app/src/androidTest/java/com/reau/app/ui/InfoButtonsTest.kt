@@ -98,6 +98,8 @@ class InfoButtonsTest {
     private fun showSettings() {
         compose.setContent { SettingsScreen(REauSettings(), SettingsActions({}, {}, {}, {})) }
         compose.openDebug()
+        // The stream's numbers (and the (i) of the frame ceiling) are behind "Detalhes" (12/11/2026): opened here, as the rider opens it.
+        compose.onNodeWithTag("profile_details").performScrollTo().performClick()
     }
 
     @Test

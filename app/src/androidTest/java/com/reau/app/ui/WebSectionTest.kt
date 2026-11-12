@@ -72,6 +72,23 @@ class WebSectionTest {
         compose.onNodeWithTag("web_waiting").performScrollTo().assertIsDisplayed()
     }
 
+    /** The server is plain HTTP: the rule "só em rede sua" is next to the switch, with it off and with it on (12/11/2026). */
+    @Test
+    fun theOwnNetworkNoticeIsUnderTheSwitchWithItOffAndOn() {
+        val notice = "web_network_notice"
+        compose.onNodeWithTag(notice).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag(notice).assertTextContains("rede sua", substring = true)
+        compose.onNodeWithTag(notice).assertTextContains("Nunca em Wi-Fi público", substring = true)
+        compose.onNodeWithTag(notice).assertTextContains("PIN", substring = true)
+        val switch = compose.onNodeWithTag("web_view").fetchSemanticsNode().boundsInRoot
+        val said = compose.onNodeWithTag(notice).fetchSemanticsNode().boundsInRoot
+        assertTrue("the notice at $said is under the switch at $switch", said.top >= switch.bottom - 1f)
+        compose.onNodeWithTag("web_view").performScrollTo().tapSwitch()
+        assertEquals(true, settings.webView)
+        compose.onNodeWithTag(notice).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("web_warning").performScrollTo().assertIsDisplayed()
+    }
+
     @Test
     fun theSoundChoiceIsAlwaysThereAndPicksTheModeOfTheSound() {
         compose.onNodeWithTag("web_audio_phone").performScrollTo().assertIsDisplayed()

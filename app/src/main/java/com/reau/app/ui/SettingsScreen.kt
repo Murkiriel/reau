@@ -247,14 +247,16 @@ private fun JoystickGroup(s: REauSettings, change: (REauSettings) -> Unit, onOpe
 }
 
 /**
- * The video's two fixed profiles: the stream's frame ceiling, bitrate, mode and keyframe, and the navigation profiles
- * that choose between them. Everything in it is shown and locked.
+ * The video's two fixed profiles: each by its name and one short line, the navigation profiles that choose between them, and, behind
+ * "Detalhes" (closed at first), the stream's frame ceiling, bitrate, mode and keyframe. Everything in it is shown and locked.
  */
 @Composable
 private fun VideoProfilesGroup(s: REauSettings) {
     SettingsGroup(R.drawable.ic_ms_tune, stringResource(R.string.group_video_profiles), listOf(
-        { StreamProfileRows(s) },
+        { ProfileNameRow(R.string.profile_a_title, R.string.profile_a_sub, "profile_a") },
+        { ProfileNameRow(R.string.profile_b_title, R.string.profile_b_sub, "profile_b") },
         { NavProfileRows() },
+        { ProfileDetailsRow(s) },
     ), tag = "group_video_profiles")
 }
 

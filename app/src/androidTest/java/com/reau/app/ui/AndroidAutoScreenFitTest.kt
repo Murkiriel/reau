@@ -3,14 +3,18 @@ package com.reau.app.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.reau.app.settings.Fit
 import com.reau.app.settings.PlanSettings
@@ -52,6 +56,12 @@ class AndroidAutoScreenFitTest {
 
     private fun tap(tag: String) {
         compose.onNodeWithTag(tag).performScrollTo().performClick()
+    }
+
+    /** "Voltar ao padrão" asks first now (12/11/2026): the answer is Voltar ao padrão in the dialog. */
+    private fun confirmReset() {
+        compose.onNodeWithTag("fit_reset_confirm").performClick()
+        compose.waitForIdle()
     }
 
     private fun text(tag: String, expected: String) {
@@ -166,6 +176,7 @@ class AndroidAutoScreenFitTest {
         assertEquals(REauSettings.DEFAULT_NAV_FIT.cropPercent - 10, settings.navFit.cropPercent)
         assertEquals("the apps' fit stays", apps, settings.appsFit)
         tap("fit_reset")
+        confirmReset()
         assertEquals("the reset of a tab is that tab's only", REauSettings.DEFAULT_NAV_FIT, settings.navFit)
         assertEquals(apps, settings.appsFit)
     }
@@ -186,6 +197,7 @@ class AndroidAutoScreenFitTest {
     fun theResetOfATabTakesItsZoomAndBandsBackToo() {
         settings = settings.copy(zoom = 120, cover = com.reau.app.video.FrameFit.Cover(right = 10))
         tap("fit_reset")
+        confirmReset()
         assertEquals(100 to com.reau.app.video.FrameFit.Cover.NONE, settings.zoom to settings.cover)
     }
 
@@ -233,6 +245,7 @@ class AndroidAutoScreenFitTest {
         tap("move_x_plus10")
         tap("fit_CROP")
         tap("fit_reset")
+        confirmReset()
         assertEquals(com.reau.app.settings.REauSettings().appsFit, settings.appsFit)
     }
 
@@ -241,5 +254,68 @@ class AndroidAutoScreenFitTest {
     fun thereIsNoLineUnderTheTabsSayingWhichOpenedByItself() {
         compose.onNodeWithTag("fit_tab_apps").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fit_tab_hint").assertDoesNotExist()
+    }
+
+    // ── "Voltar ao padrão" in sight, asked first (12/11/2026) ───────────────────────────────────────────────────────
+
+    /** The wrong fit to be undone: a crop moved, a zoom and a black band. */
+    private fun spoil() {
+        settings = settings.copy(
+            fit = Fit.CROP, cropPercent = 80, cropX = 5, cropY = 5, moveX = 30, zoom = 120, cover = com.reau.app.video.FrameFit.Cover(right = 10),
+        )
+    }
+
+    @Test
+    fun theWayBackIsInSightAtTheTopWithoutScrollingNorSearching() {
+        compose.onNodeWithTag("fit_reset").assertIsDisplayed()
+        compose.onNodeWithTag("fit_reset").assertHasClickAction()
+    }
+
+    @Test
+    fun theWayBackAsksFirstAndCancelingKeepsTheFit() {
+        spoil()
+        val spoiled = settings
+        tap("fit_reset")
+        compose.onNodeWithTag("fit_reset_title").assertIsDisplayed()
+        compose.onNodeWithTag("fit_reset_text").assertIsDisplayed()
+        assertEquals("asking changes nothing", spoiled, settings)
+        compose.onNodeWithTag("fit_reset_cancel").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("fit_reset_title").assertDoesNotExist()
+        assertEquals("canceled: the rider's fit stays", spoiled, settings)
+    }
+
+    @Test
+    fun confirmingTakesTheFitTheCropTheZoomAndTheMarginsBackAndLeavesTheRest() {
+        spoil()
+        settings = settings.copy(density = 200, dashMask = false)
+        val navBefore = settings.navFit
+        tap("fit_reset")
+        confirmReset()
+        compose.onNodeWithTag("fit_reset_title").assertDoesNotExist()
+        assertEquals(REauSettings().appsFit, settings.appsFit)
+        assertEquals("the density and the mask are not the fit's", 200 to false, settings.density to settings.dashMask)
+        assertEquals("the other tab's fit stays", navBefore, settings.navFit)
+    }
+
+    @Test
+    fun theDialogNamesTheTabItResets() {
+        tap("fit_tab_nav")
+        tap("fit_reset")
+        compose.onNodeWithTag("fit_reset_text").assertTextContains("Navegação", substring = true)
+        compose.onNodeWithTag("fit_reset_cancel").performClick()
+    }
+
+    /** Every target of the fit's screen is at least 48 dp tall (the counters, the tabs, the modes, the way back and the dialog's buttons). */
+    @Test
+    fun theTouchTargetsOfTheFitAreAtLeast48Dp() {
+        val targets = listOf(
+            "fit_reset", "density_minus", "density_plus", "density_minus10", "density_plus10", "move_x_minus", "move_x_plus10",
+            "move_y_minus", "move_y_plus10", "fit_tab_nav", "fit_tab_apps", "fit_WHOLE_VISIBLE", "fit_CROP", "aa_screen_mask_switch",
+        )
+        for (tag in targets) compose.onNodeWithTag(tag).performScrollTo().assertHeightIsAtLeast(48.dp)
+        for (tag in listOf("density_minus", "density_plus", "move_x_minus", "move_x_plus")) compose.onNodeWithTag(tag).assertWidthIsAtLeast(48.dp)
+        tap("fit_reset")
+        for (tag in listOf("fit_reset_confirm", "fit_reset_cancel")) compose.onNodeWithTag(tag).assertHeightIsAtLeast(48.dp)
     }
 }

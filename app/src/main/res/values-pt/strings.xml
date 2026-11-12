@@ -446,6 +446,13 @@
     <string name="bitrate_cbr">Constante</string>
     <string name="keyframe_title">Quadro-chave</string>
     <string name="profiles_on">Ligado</string>
+    <string name="profile_a_title">Perfil A</string>
+    <string name="profile_a_sub">A imagem mais fluida</string>
+    <string name="profile_b_title">Perfil B</string>
+    <string name="profile_b_sub">Mais leve para o Wi-Fi e para o painel</string>
+    <string name="profile_fixed">Fixo</string>
+    <string name="profile_details_title">Detalhes</string>
+    <string name="profile_details_sub">Os números de cada perfil, que não se mudam</string>
     <string name="maneuver_fps_title">Perfil por manobra</string>
     <string name="maneuver_profile_info">Escolhe o perfil de vídeo pela distância até a próxima manobra da rota: a menos de 1 km dela vale o A; mais longe, o B, depois que a distância muda uns 200 m (para não ficar trocando). Só decide com uma rota ativa. Se o perfil por velocidade pedir o B, o B vale.</string>
     <string name="speed_fps_title">Perfil por velocidade</string>
@@ -462,7 +469,7 @@
     <string name="section_button">Código do botão no vídeo</string>
     <string name="section_info_ring">Anel de informações no painel</string>
     <string name="info_ring_title">Anel de informações</string>
-    <string name="info_ring_sub">Chuva, vento, UV, ar e sol sobre o mapa</string>
+    <string name="info_ring_sub">Chuva, vento e trovoada sobre o mapa; os outros cartões você liga</string>
     <string name="info_ring_info">Desenha um anel à direita da imagem do painel, onde o painel não desenha nada, com uma coisa de cada vez que importa na estrada: o clima (chuva, vento, trovoada, UV, ar, sol, temperaturas) e a bateria, o sinal e o GPS do celular. O botão para baixo do painel no modo mapa o mostra e o esconde; contorno tracejado quer dizer previsão velha. Consulta o Open-Meteo a cada 15 minutos, no lugar arredondado de \"Usar a localização\"; desligado, nada é consultado nem guardado, a não ser que \"Clima no painel\" esteja ligado.</string>
     <string name="info_ring_needs_location">Precisa de \"Usar a localização\" ligado (Configurações \u2192 Tema) e de internet no celular.</string>
     <string name="info_ring_place_title">No lugar do anel de manobras</string>
@@ -536,6 +543,7 @@
     <string name="web_waiting">O endereço e o PIN aparecem em instantes, com o servidor ligado.</string>
     <string name="web_no_address">Este celular não está em nenhuma rede local agora. Conecte-se a uma Wi-Fi para ter um endereço.</string>
     <string name="web_warning">Quem tiver este endereço e o PIN, na mesma rede, vê a tela do Android Auto (mapa, rota, quem liga).</string>
+    <string name="web_network_notice">Use só numa rede sua, como a de casa ou o ponto de acesso do próprio celular. Nunca em Wi-Fi público ou de outra pessoa: o servidor não é cifrado, e quem estiver na rede pode ver o PIN, a imagem e os toques.</string>
     <string name="web_pin_label">PIN</string>
     <string name="web_copy">Copiar</string>
     <string name="web_copied">Copiado</string>
@@ -603,6 +611,8 @@
     <string name="move_y_hint">+ desce, − sobe</string>
     <string name="technical_label">Técnico</string>
     <string name="fit_reset">Voltar ao padrão</string>
+    <string name="fit_reset_title">Voltar ao padrão?</string>
+    <string name="fit_reset_text">Isso apaga o seu ajuste de encaixe, recorte, zoom e margens da aba %1$s e volta aos valores de fábrica. A densidade não muda. Não dá para desfazer.</string>
 
     <!-- The redesign's joystick page. -->
     <string name="joystick_mode_map">Modo mapa</string>

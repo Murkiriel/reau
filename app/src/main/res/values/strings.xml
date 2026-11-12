@@ -458,6 +458,13 @@
     <string name="bitrate_cbr">Constant</string>
     <string name="keyframe_title">Keyframe</string>
     <string name="profiles_on">On</string>
+    <string name="profile_a_title">Profile A</string>
+    <string name="profile_a_sub">The smoother picture</string>
+    <string name="profile_b_title">Profile B</string>
+    <string name="profile_b_sub">Lighter on the Wi-Fi and on the dash</string>
+    <string name="profile_fixed">Fixed</string>
+    <string name="profile_details_title">Details</string>
+    <string name="profile_details_sub">The numbers of each profile, which cannot be changed</string>
     <string name="maneuver_fps_title">Profile by maneuver</string>
     <string name="maneuver_profile_info">Picks the video profile by the distance to the route’s next maneuver: within 1 km of it, A; farther away, B, once the distance has changed by about 200 m (so it doesn’t keep switching). It only decides while a route is active. If the speed profile asks for B, B wins.</string>
     <string name="speed_fps_title">Profile by speed</string>
@@ -474,7 +481,7 @@
     <string name="section_button">Button code on the video</string>
     <string name="section_info_ring">Info ring on the dash</string>
     <string name="info_ring_title">Info ring</string>
-    <string name="info_ring_sub">Rain, wind, UV, air and sun, over the map</string>
+    <string name="info_ring_sub">Rain, wind and thunder over the map; you switch on the other cards</string>
     <string name="info_ring_info">Draws a ring on the right of the dash’s picture, where the dash draws nothing, with one thing at a time that matters on the road: the weather (rain, wind, storms, UV, air quality, sun, temperatures) and the phone’s battery, signal and GPS. The dash’s down button in map mode shows and hides it; a dashed outline means an old forecast. It asks Open-Meteo for the weather every 15 minutes, from the rounded place of \"Use location\"; off, nothing is asked or kept, unless \"Weather on the dash\" is on.</string>
     <string name="info_ring_needs_location">Needs \"Use location\" on (Settings \u2192 Theme) and an internet connection on the phone.</string>
     <string name="info_ring_place_title">In the maneuver ring’s place</string>
@@ -548,6 +555,7 @@
     <string name="web_waiting">The address and PIN appear in a moment, once the server is on.</string>
     <string name="web_no_address">This phone isn’t on any local network right now. Connect to a Wi-Fi network to get an address.</string>
     <string name="web_warning">Anyone with this address and the PIN, on the same network, can see the Android Auto screen (map, route, who’s calling).</string>
+    <string name="web_network_notice">Use it only on a network of your own, such as your home or your phone’s own hotspot. Never on public or someone else’s Wi-Fi: the server is not encrypted, so anyone on the network can see the PIN, the picture and the touches.</string>
     <string name="web_pin_label">PIN</string>
     <string name="web_copy">Copy</string>
     <string name="web_copied">Copied</string>
@@ -615,6 +623,8 @@
     <string name="move_y_hint">+ down, − up</string>
     <string name="technical_label">Technical</string>
     <string name="fit_reset">Reset to default</string>
+    <string name="fit_reset_title">Reset to default?</string>
+    <string name="fit_reset_text">This erases your fit, crop, zoom and margins on the %1$s tab and goes back to the factory values. The density does not change. It cannot be undone.</string>
 
     <!-- The redesign's joystick page. -->
     <string name="joystick_mode_map">Map mode</string>

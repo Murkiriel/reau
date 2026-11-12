@@ -30,7 +30,7 @@ Wi-Fi del tablero.
 - Envía también la música que suena (cuando la página del joystick tiene un control de música), las llamadas y el clima, para las tarjetas del tablero.
 - Usa el joystick del manillar para controlar Android Auto (mapa, menú, música, llamadas y Gemini, que viene activado y funciona cuando concedes el micrófono): mientras suena una llamada, la izquierda contesta y la derecha o el
   centro rechazan; durante una llamada, el centro cuelga y arriba y abajo cambian el volumen.
-- Un anillo de información sobre la imagen, a la derecha del tablero (viene apagado, con un interruptor): lluvia, viento, tormentas, UV, calidad del aire, el sol, las temperaturas del día y la batería, la señal y el GPS del teléfono, una cosa a la vez. Necesita la ubicación e internet para el clima.
+- Un anillo de información sobre la imagen, a la derecha del tablero (viene apagado, con un interruptor): lluvia, viento, tormentas, UV, calidad del aire, el sol, las temperaturas del día y la batería, la señal y el GPS del teléfono, una cosa a la vez (de fábrica solo la lluvia, el viento y la tormenta; las demás tarjetas las activas tú). Necesita la ubicación e internet para el clima.
 - Habla portugués, inglés y español: sigue el idioma del teléfono, y los ajustes tienen un selector.
 - Ajusta la calidad del video según la distancia a la próxima maniobra y la velocidad.
 - Se enciende con una pulsación larga en el ícono de REau ("Encender") o desde un mosaico de los Ajustes rápidos, para encenderlo en casa, antes del casco.

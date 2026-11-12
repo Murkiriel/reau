@@ -212,7 +212,7 @@ class REauSettingsTest {
         assertEquals(0b1010, loaded(0b1010))
         assertEquals(com.reau.app.weather.RingData.ALL, loaded(com.reau.app.weather.RingData.ALL))
         assertEquals("a choice of the old kinds, as the rider left it", 0b1111_1110, loaded(0b1111_1110))
-        assertEquals(com.reau.app.weather.RingData.ALL, REauSettings().infoRingData)
+        assertEquals("a new setting starts with the rain, the wind and the thunder only (12/11/2026)", com.reau.app.weather.RingData.DEFAULT, REauSettings().infoRingData)
     }
 
     /** The info ring is off by default (30/10/2026; on from 28/10/2026): on Waze it covers the speed limit; the rider switches it on, and the choice is kept. */
@@ -225,14 +225,14 @@ class REauSettingsTest {
         assertEquals(false, SettingsStore(KeystoreBackedPrefsTest.FakePrefs()).load().infoRing)
     }
 
-    /** The info ring says every kind of data at first, as a carousel of 6 seconds; the rider's choices are kept and held in range. */
+    /** The info ring says the rain, the wind and the thunder at first (12/11/2026; every kind before), as a carousel of 7 seconds; the rider's choices are kept and held in range. */
     @Test
-    fun `the info ring's choices are all, a carousel of seven seconds, and are saved`() {
+    fun `the info ring's choices are rain, wind and thunder, a carousel of seven seconds, and are saved`() {
         val d = REauSettings()
-        assertEquals(com.reau.app.weather.RingData.ALL, d.infoRingData)
+        assertEquals(com.reau.app.weather.RingData.DEFAULT, d.infoRingData)
         assertEquals(true, d.infoRingCarousel)
         assertEquals(7, d.infoRingSeconds)
-        assertEquals(com.reau.app.weather.RingOptions(), d.infoRingOptions)
+        assertEquals(com.reau.app.weather.RingOptions(data = com.reau.app.weather.RingData.DEFAULT), d.infoRingOptions)
         val prefs = KeystoreBackedPrefsTest.FakePrefs()
         SettingsStore(prefs).save(REauSettings(infoRingData = 0b1010, infoRingCarousel = false, infoRingSeconds = 12, infoRingInPlace = true))
         val back = SettingsStore(prefs).load()

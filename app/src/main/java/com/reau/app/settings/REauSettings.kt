@@ -177,8 +177,11 @@ data class REauSettings(
      * known: it asks the internet for the weather, as "Clima no painel" does, which it does not need on: the ring asks for the weather by itself.
      */
     val infoRing: Boolean = false,
-    /** With the info ring: which of its data it may say (bits of [com.reau.app.weather.RingData]; all of them at first). */
-    val infoRingData: Int = com.reau.app.weather.RingData.ALL,
+    /**
+     * With the info ring: which of its data it may say (bits of [com.reau.app.weather.RingData]). At first only the rain, the wind and the thunder
+     * ([com.reau.app.weather.RingData.DEFAULT], 12/11/2026); the other cards are one tick each away.
+     */
+    val infoRingData: Int = com.reau.app.weather.RingData.DEFAULT,
     /** With the info ring: it turns from one page to the next every [infoRingSeconds] (on), or stays on the most urgent one (off). */
     val infoRingCarousel: Boolean = true,
     val infoRingSeconds: Int = com.reau.app.weather.RingOptions.DEFAULT_SECONDS,

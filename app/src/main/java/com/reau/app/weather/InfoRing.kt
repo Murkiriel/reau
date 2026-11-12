@@ -36,8 +36,11 @@ enum class RingData(val bit: Int) {
     ;
 
     companion object {
-        /** Every kind: the default. */
+        /** Every kind: all the bits there are (what a setting is held to, and what a rider who ticks them all gets). */
         const val ALL = 2047
+
+        /** What a new setting starts with (12/11/2026): RAIN (1), WIND (2, the gusts) and STORM (4, the thunder) only; the other cards stay in the code, off until ticked. */
+        const val DEFAULT = 1 or 2 or 4
 
         /** What "every kind" was before the phone's cards: a setting saved with it means every kind still. */
         const val BEFORE_PHONE_CARDS = 255

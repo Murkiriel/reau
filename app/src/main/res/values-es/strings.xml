@@ -447,6 +447,13 @@
     <string name="bitrate_cbr">Constante</string>
     <string name="keyframe_title">Fotograma clave</string>
     <string name="profiles_on">Activado</string>
+    <string name="profile_a_title">Perfil A</string>
+    <string name="profile_a_sub">La imagen más fluida</string>
+    <string name="profile_b_title">Perfil B</string>
+    <string name="profile_b_sub">Más liviano para el Wi-Fi y para el tablero</string>
+    <string name="profile_fixed">Fijo</string>
+    <string name="profile_details_title">Detalles</string>
+    <string name="profile_details_sub">Los números de cada perfil, que no se cambian</string>
     <string name="maneuver_fps_title">Perfil por maniobra</string>
     <string name="maneuver_profile_info">Elige el perfil de video según la distancia a la próxima maniobra de la ruta: a menos de 1 km, A; más lejos, B, una vez que la distancia haya cambiado unos 200 m (para que no esté cambiando todo el tiempo). Solo decide mientras hay una ruta activa. Si el perfil por velocidad pide el B, gana el B.</string>
     <string name="speed_fps_title">Perfil por velocidad</string>
@@ -463,7 +470,7 @@
     <string name="section_button">Código de botón sobre el video</string>
     <string name="section_info_ring">Anillo de información en el tablero</string>
     <string name="info_ring_title">Anillo de información</string>
-    <string name="info_ring_sub">Lluvia, viento, UV, aire y sol, sobre el mapa</string>
+    <string name="info_ring_sub">Lluvia, viento y tormenta sobre el mapa; las demás tarjetas las activas tú</string>
     <string name="info_ring_info">Dibuja un anillo a la derecha de la imagen del tablero, donde el tablero no dibuja nada, con un dato a la vez que importa en la ruta: el clima (lluvia, viento, tormentas, UV, aire, sol, temperaturas) y la batería, la señal y el GPS del teléfono. El botón abajo del tablero en el modo mapa lo muestra y lo oculta; un contorno discontinuo indica un pronóstico viejo. Consulta a Open-Meteo cada 15 minutos, desde el lugar redondeado de \"Usar la ubicación\"; apagado, no se pide ni se guarda nada, salvo que \"Clima en el tablero\" esté activado.</string>
     <string name="info_ring_needs_location">Necesita \"Usar la ubicación\" activado (Ajustes → Tema) y conexión a internet en el teléfono.</string>
     <string name="info_ring_place_title">En el lugar del anillo de maniobras</string>
@@ -537,6 +544,7 @@
     <string name="web_waiting">La dirección y el PIN aparecen en un momento, cuando el servidor esté encendido.</string>
     <string name="web_no_address">Este teléfono no está en ninguna red local ahora mismo. Conéctate a una red Wi-Fi para obtener una dirección.</string>
     <string name="web_warning">Cualquiera que tenga esta dirección y el PIN, en la misma red, puede ver la pantalla de Android Auto (mapa, ruta, quién llama).</string>
+    <string name="web_network_notice">Úsalo solo en una red tuya, como la de tu casa o el punto de acceso de tu propio teléfono. Nunca en una Wi-Fi pública o ajena: el servidor no está cifrado, y cualquiera en la red puede ver el PIN, la imagen y los toques.</string>
     <string name="web_pin_label">PIN</string>
     <string name="web_copy">Copiar</string>
     <string name="web_copied">Copiado</string>
@@ -604,6 +612,8 @@
     <string name="move_y_hint">+ abajo, − arriba</string>
     <string name="technical_label">Técnico</string>
     <string name="fit_reset">Restablecer al valor por defecto</string>
+    <string name="fit_reset_title">¿Restablecer al valor por defecto?</string>
+    <string name="fit_reset_text">Esto borra tu ajuste de encaje, recorte, zoom y márgenes de la pestaña %1$s y vuelve a los valores de fábrica. La densidad no cambia. No se puede deshacer.</string>
 
     <!-- The redesign's joystick page. -->
     <string name="joystick_mode_map">Modo mapa</string>

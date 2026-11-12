@@ -19,6 +19,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
 
     fun load(): REauSettings {
         conservativeVideoOnce()
+        ringCardsOnce()
         val loaded = loadAllButThePlaces()
         val content = loaded.content
         // The default place only while that fit was never saved; a crop saved centred has no place stored.
@@ -45,6 +46,23 @@ class SettingsStore(private val prefs: SharedPreferences) {
         prefs.edit {
             putVideo(d)
             putBoolean(KEY_AA_NEW_PROTOCOL, d.aaNewProtocol)
+        }
+    }
+
+    /**
+     * The info ring starts with three cards (rain, wind and thunder; [com.reau.app.weather.RingData.DEFAULT]) since 12/11/2026. A phone whose settings
+     * were saved before it, with "every card" kept (the old default; a rider who ticked them all on purpose looks the same), goes to the
+     * new default once, and then the rider ticks what is wanted. Any narrower choice was the rider's own and is left as it is. Everything saved
+     * from then on carries the mark, so a rider who ticks every card again keeps them. A phone with nothing saved just gets the default.
+     */
+    private fun ringCardsOnce() {
+        if (prefs.contains(KEY_RING_CARDS) || prefs.all.isEmpty()) return
+        val everyCard = setOf(com.reau.app.weather.RingData.ALL, com.reau.app.weather.RingData.BEFORE_PHONE_CARDS)
+        prefs.edit {
+            if (prefs.getInt(KEY_INFO_RING_DATA, com.reau.app.weather.RingData.DEFAULT) in everyCard) {
+                putInt(KEY_INFO_RING_DATA, com.reau.app.weather.RingData.DEFAULT)
+            }
+            putBoolean(KEY_RING_CARDS, true)
         }
     }
 
@@ -296,6 +314,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
             putBoolean(KEY_DASH_WEATHER, s.dashWeather)
             putBoolean(KEY_INFO_RING, s.infoRing)
             putInt(KEY_INFO_RING_DATA, s.infoRingData)
+            putBoolean(KEY_RING_CARDS, true)
             putBoolean(KEY_INFO_RING_CAROUSEL, s.infoRingCarousel)
             putInt(KEY_INFO_RING_SECONDS, s.infoRingSeconds)
             putBoolean(KEY_INFO_RING_IN_PLACE, s.infoRingInPlace)
@@ -412,6 +431,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
         private const val KEY_DASH_WEATHER = "dash_weather"
         private const val KEY_INFO_RING = "info_ring"
         private const val KEY_INFO_RING_DATA = "info_ring_data"
+        private const val KEY_RING_CARDS = "info_ring_cards_20261112"
         private const val KEY_INFO_RING_CAROUSEL = "info_ring_carousel"
         private const val KEY_INFO_RING_SECONDS = "info_ring_seconds"
         private const val KEY_INFO_RING_IN_PLACE = "info_ring_in_place"

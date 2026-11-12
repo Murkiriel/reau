@@ -31,4 +31,12 @@ class WebSectionLockedTest {
         compose.onNodeWithTag("web_view_locked").assertTextContains("Ligar", substring = true)
         compose.onNodeWithTag("web_view").assertDoesNotExist()
     }
+
+    /** The rule is read before the server is switched on, so it is there while the switch still waits for Ligar (12/11/2026). */
+    @Test
+    fun theOwnNetworkNoticeIsThereWhileTheSwitchWaitsForLigar() {
+        compose.setContent { Column(Modifier.verticalScroll(rememberScrollState())) { WebSection(REauSettings(), projectionOn = false) {} } }
+        compose.onNodeWithTag("web_network_notice").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("web_network_notice").assertTextContains("rede sua", substring = true)
+    }
 }

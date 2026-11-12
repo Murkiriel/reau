@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,7 +39,10 @@ import com.reau.app.ui.components.GhostButton
 import com.reau.app.ui.components.GroupLabel
 import com.reau.app.ui.components.Info
 import com.reau.app.ui.components.LockedRow
+import com.reau.app.ui.components.MsIcon
 import com.reau.app.ui.components.SegmentedRow
+import com.reau.app.ui.components.StatusKind
+import com.reau.app.ui.components.color
 import com.reau.app.ui.components.hairline
 import com.reau.app.ui.theme.REauMono
 import com.reau.app.web.WebAccess
@@ -71,6 +75,8 @@ internal fun WebSection(s: REauSettings, projectionOn: Boolean = true, change: (
                     Info(stringResource(R.string.web_view_title), stringResource(R.string.web_view_long)),
                 )
             }
+            // Under the switch, on or off and while it waits for Ligar: it is to be read before the server is switched on.
+            WebNetworkNotice()
             if (s.webView) {
                 HorizontalDivider(thickness = 1.dp, color = hairline(0.14f, 0.6f))
                 SettingSwitch(R.string.web_touch_title, R.string.web_touch_sub, R.string.web_touch_long, s.webTouch, "web_touch") {
@@ -80,6 +86,22 @@ internal fun WebSection(s: REauSettings, projectionOn: Boolean = true, change: (
                 WebAccessBlock()
             }
         }
+    }
+}
+
+/**
+ * The rule for the network server, said next to the switch that starts it: the server is plain HTTP, so the PIN, the picture and the touches
+ * go in the clear, and anyone on the network can read the PIN. Only on a network of the rider's own (home, the phone's own hotspot), never
+ * on a public or someone else's Wi-Fi. Text only: what the server does does not change.
+ */
+@Composable
+private fun WebNetworkNotice() {
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 14.dp).semantics(mergeDescendants = true) {}.testTag("web_network_notice"),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        MsIcon(R.drawable.ic_ms_error, 18.dp, StatusKind.CONNECTING.color())
+        Text(stringResource(R.string.web_network_notice), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 

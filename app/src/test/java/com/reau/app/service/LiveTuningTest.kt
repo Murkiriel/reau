@@ -65,7 +65,7 @@ class LiveTuningTest {
         assertEquals(setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(dashWeather = !before.dashWeather)))
         assertEquals("the ring too", setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(maneuverRing = !before.maneuverRing)))
         assertEquals("and the info ring", setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(infoRing = !before.infoRing)))
-        assertEquals("what it says", setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(infoRingData = 3)))
+        assertEquals("what it says", setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(infoRingData = before.infoRingData xor 4)))
         assertEquals("the carousel", setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(infoRingCarousel = !before.infoRingCarousel)))
         assertEquals("its time", setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(infoRingSeconds = 12)))
         assertEquals("its place", setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(infoRingInPlace = !before.infoRingInPlace)))

@@ -45,7 +45,8 @@ class AaScreenDefaultsTest {
         "statsOverlay" to false, "statsX" to 160, "statsY" to 44, "statsSize" to 22,
         "buttonOverlay" to false, "buttonX" to 170, "buttonY" to 96, "buttonSize" to 32,
         "maneuverRing" to false,
-        "infoRing" to false, "infoRingData" to 2047, "infoRingCarousel" to true, "infoRingSeconds" to 7, "infoRingInPlace" to false,
+        // infoRingData 7: the rain, the wind and the thunder (12/11/2026; it was every card, 2047)
+        "infoRing" to false, "infoRingData" to 7, "infoRingCarousel" to true, "infoRingSeconds" to 7, "infoRingInPlace" to false,
         "dashWeather" to true, "useLocation" to true,
     )
 

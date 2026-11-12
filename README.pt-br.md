@@ -31,7 +31,7 @@ pela rede Wi-Fi do painel.
   cartões do painel.
 - Usa o joystick do guidão para comandar o Android Auto (mapa, menu, música, chamadas e Gemini, que vem ligado e passa a funcionar quando você libera o microfone): tocando, a esquerda atende e a
   direita ou o centro recusam; em ligação, o centro desliga e cima e baixo mudam o volume.
-- Um anel de informações sobre a imagem, à direita do painel (vem desligado, com uma chave): chuva, vento, tempestade, UV, qualidade do ar, o sol, as temperaturas do dia e a bateria, o sinal e o GPS do celular, uma coisa de cada vez. Precisa da localização e da internet para o clima.
+- Um anel de informações sobre a imagem, à direita do painel (vem desligado, com uma chave): chuva, vento, tempestade, UV, qualidade do ar, o sol, as temperaturas do dia e a bateria, o sinal e o GPS do celular, uma coisa de cada vez (de fábrica só a chuva, o vento e a trovoada; os outros cartões você liga). Precisa da localização e da internet para o clima.
 - Fala português, inglês e espanhol: segue o idioma do celular, e há um seletor nos Ajustes.
 - Ajusta a qualidade do vídeo pela distância da próxima manobra e pela velocidade.
 - Liga com um toque longo no ícone do REau ("Ligar") ou por um bloco das Configurações rápidas, para ligar em casa, antes do capacete.
