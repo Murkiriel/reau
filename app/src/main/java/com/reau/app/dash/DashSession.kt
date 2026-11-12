@@ -169,6 +169,9 @@ class DashSession(
     // started the next session, that leftover's own fail() closed the new session's socket and put it in ERROR, or
     // its READY went out on a socket already closed.
     @Volatile private var sessionGeneration = 0
+    // Which session's failure fail() has already taken (none yet: NO_FAILED_SESSION). Taken in one atomic step: looking at ERROR and writing it
+    // at the end of the teardown were two steps, and two threads failing the same session could both pass the look (see fail()).
+    private val failedGeneration = java.util.concurrent.atomic.AtomicInteger(NO_FAILED_SESSION)
 
     var onButton: ((com.reau.app.dash.protocol.DashButtonEvent) -> Unit)? = null
 
@@ -1436,8 +1439,9 @@ class DashSession(
             Log.i(TAG, "fail() ignored — disconnect() already tore this session down cleanly: $msg")
             return
         }
-        if (_state.value == DashState.ERROR) {
+        if (_state.value == DashState.ERROR || !claimFailure(generation)) {
             Log.w(TAG, "fail() called again while already ERROR (ignored, real diagnosis already reported): $msg")
+            com.reau.app.data.RideDiagnostics.log("session", "a second cause of the same failure, not told to the rider: $msg")
             return
         }
         Log.e(TAG, "ERROR — $msg")
@@ -1457,7 +1461,18 @@ class DashSession(
         onError?.invoke(msg)
     }
 
+    /**
+     * The first failure of session [generation] takes it, in one atomic step; any other gets false. ERROR is only written at the end of fail()'s
+     * teardown, after the socket is closed, and closing the socket is what wakes the receive loop with "Socket closed": on a busy phone that loop
+     * reached fail() before ERROR was written, passed the look at ERROR, and the rider got two notices for one drop (seen in CI, 11/11/2026).
+     * A new session has a new number, so nothing has to be put back.
+     */
+    private fun claimFailure(generation: Int): Boolean = failedGeneration.getAndSet(generation) != generation
+
     companion object {
+        /** No session has failed yet ([failedGeneration]); session numbers start at 0. */
+        private const val NO_FAILED_SESSION = -1
+
         /**
          * Whether the dash's keyframe-decoded notice (09 06 55) confirms the first frame: only while
          * streaming, when a keyframe was really sent. One before (seen on the phone, before any authentication) is

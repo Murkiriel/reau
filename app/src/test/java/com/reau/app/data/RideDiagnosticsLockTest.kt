@@ -89,6 +89,9 @@ class RideDiagnosticsLockTest {
     @Test
     fun `while the days kept delete the old files, other threads log without waiting`() {
         RideDiagnostics.startProcess("app")
+        // The opening's own tidying is done first: still on its way, it was the one stopped at the trim below, and it removed the old file
+        // itself and wrote its line after this test had read the log (2 in 3 000 runs, 11/11/2026).
+        RideDiagnostics.testOnlyAwaitTidy()
         RideDiagnostics.logAndWait("ui", "before")
         val trimming = CountDownLatch(1)
         val finish = CountDownLatch(1)
