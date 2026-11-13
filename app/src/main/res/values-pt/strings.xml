@@ -613,6 +613,22 @@
     <string name="fit_reset">Voltar ao padrão</string>
     <string name="fit_reset_title">Voltar ao padrão?</string>
     <string name="fit_reset_text">Isso apaga o seu ajuste de encaixe, recorte, zoom e margens da aba %1$s e volta aos valores de fábrica. A densidade não muda. Não dá para desfazer.</string>
+    <string name="fit_assistant_open">Assistente de encaixe</string>
+    <string name="fit_assistant_step">Passo %1$d de %2$d</string>
+    <string name="fit_assistant_start_text">Em celulares diferentes o Android Auto pode desenhar a seta da manobra e a velocidade em outro lugar. Com a projeção ligada, abra o Waze ou o Maps no Android Auto e comece uma rota. Na imagem acima, a parte clara é o que chega ao vidro do painel. Começar liga a Máscara, se estiver desligada.</string>
+    <string name="fit_assistant_no_nav">O Android Auto não está mostrando a navegação agora: abra o Waze ou o Maps nele para conferir.</string>
+    <string name="fit_assistant_density">O encaixe de fábrica foi medido com o DPI %2$d. O seu está em %1$d, então é mais provável que precise de ajuste.</string>
+    <string name="fit_assistant_maneuver_text">A seta da manobra e a distância até ela aparecem inteiras na parte clara da imagem acima?</string>
+    <string name="fit_assistant_speed_text">A velocidade aparece inteira na parte clara da imagem acima? Se o seu app de navegação não mostra a velocidade, responda sim.</string>
+    <string name="fit_assistant_adjust_tip">Mude até aparecer inteira. Cada toque vale na hora, na imagem acima e no painel, e já fica salvo.</string>
+    <string name="fit_assistant_size_tip">Um recorte menor mostra mais da tela, em letras menores. Cada toque vale na hora, na imagem acima e no painel, e já fica salvo.</string>
+    <string name="fit_assistant_end_text">Pronto. O encaixe da navegação já está salvo. Confira no painel com a moto parada. Para refazer, toque em Assistente de encaixe; todos os controles continuam abaixo, na aba Navegação.</string>
+    <string name="fit_assistant_begin">Começar</string>
+    <string name="fit_assistant_skip">Pular</string>
+    <string name="fit_assistant_yes">Sim, aparece</string>
+    <string name="fit_assistant_no">Não, ajustar</string>
+    <string name="fit_assistant_good">Ficou bom</string>
+    <string name="fit_assistant_finish">Concluir</string>
 
     <!-- The redesign's joystick page. -->
     <string name="joystick_mode_map">Modo mapa</string>

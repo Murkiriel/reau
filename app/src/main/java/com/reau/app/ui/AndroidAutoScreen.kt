@@ -96,7 +96,7 @@ fun AndroidAutoScreen(
                 Column(
                     Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).navigationBarsPadding()
                         .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 24.dp),
-                ) { FitPanel(fit.settings, fit.change, fit.screen) }
+                ) { FitPanel(fit.settings, fit.change, fit.screen, fit.assistant) }
             }
         }
     }

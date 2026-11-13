@@ -230,7 +230,7 @@ class MainActivity : ComponentActivity() {
                     onBack = {},
                 )
             } else if (inAndroidAuto) {
-                AndroidAutoFromSettings(settings, saveSettings) { inAndroidAuto = false }
+                AndroidAutoFromSettings(settings, saveSettings, store) { inAndroidAuto = false }
             } else if (page == SettingsPage.WIFI) {
                 BackHandler { page = SettingsPage.NONE }
                 com.reau.app.ui.WifiScreen(
@@ -650,12 +650,14 @@ private object PermissionRows {
 
 /** The Android Auto screen with the touch, the mask and the fit (which lives there now) of the settings. */
 @androidx.compose.runtime.Composable
-private fun AndroidAutoFromSettings(settings: REauSettings, save: (REauSettings) -> Unit, onBack: () -> Unit) {
+private fun AndroidAutoFromSettings(settings: REauSettings, save: (REauSettings) -> Unit, store: SettingsStore, onBack: () -> Unit) {
     // The screen Android Auto shows; the mask shows the fit in force on it, the fit opens on its tab
     val screen = com.reau.app.aa.AaScreens.watch.screen.collectAsState().value
+    // The fit assistant opens by itself only on a phone that never saved a fit; asked once, as the screen opens.
+    val assistantPending = remember { store.fitAssistantPending() }
     AndroidAutoScreen(
         onBack = onBack, touch = settings.phoneTouch, mask = maskOf(settings, save, screen),
-        fit = com.reau.app.ui.AaScreenFit(settings, screen, save),
+        fit = com.reau.app.ui.AaScreenFit(settings, screen, com.reau.app.ui.FitAssistantAsk(assistantPending, store::fitAssistantSeen), save),
         stats = settings.overlay,
         button = settings.buttonLook,
     )

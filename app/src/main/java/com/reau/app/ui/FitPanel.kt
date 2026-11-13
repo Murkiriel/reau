@@ -76,13 +76,16 @@ import com.reau.app.video.StatsOverlay
  * step is seen as it is taken. The density and the margins asked of Android Auto (on the same screen where Android Auto
  * is touched) are one for the menu and the apps; then the two tabs (the navigation apps and the rest, the menu with them), the mode, the fine and coarse counters, what is
  * wrong with the fit and the rectangles it gives. The way back to the default ("Voltar ao padrão", asked first) is at the top, under the section's label, in sight
- * at once (it was at the foot of the steps, where a wrong fit was hard to undo).
+ * at once (it was at the foot of the steps, where a wrong fit was hard to undo). Under it, the fit assistant ([FitAssistantCard]): open by itself only on a phone that
+ * never saved a fit ([assistant]), and otherwise behind its quiet button.
  */
 @Composable
-internal fun FitPanel(s: REauSettings, change: (REauSettings) -> Unit, screen: AaScreen = AaScreen.APPS) {
+internal fun FitPanel(s: REauSettings, change: (REauSettings) -> Unit, screen: AaScreen = AaScreen.APPS, assistant: FitAssistantAsk = FitAssistantAsk()) {
     // Which screen Android Auto shows is read from the picture (the little neural net, PictureLook).
     var tab by remember(screen) { mutableStateOf(FitTab.opening(screen)) }
     var asking by rememberSaveable { mutableStateOf(false) }
+    // Read once, when the screen opens: saving a counter of the assistant ends the wait, and must not close it in the rider's hands.
+    var assisting by rememberSaveable { mutableStateOf(assistant.pending) }
     if (asking) {
         FitResetDialog(tab, onCancel = { asking = false }) {
             asking = false
@@ -93,6 +96,14 @@ internal fun FitPanel(s: REauSettings, change: (REauSettings) -> Unit, screen: A
         Column(verticalArrangement = Arrangement.spacedBy(LABEL_GAP)) {
             GroupLabel(null, stringResource(R.string.section_fit))
             GhostButton(R.drawable.ic_ms_restart_alt, stringResource(R.string.fit_reset), "fit_reset", { asking = true })
+            if (assisting) {
+                FitAssistantCard(s, change, screen) {
+                    assisting = false
+                    assistant.seen()
+                }
+            } else {
+                GhostButton(R.drawable.ic_ms_tune, stringResource(R.string.fit_assistant_open), "fit_assistant_open", { assisting = true })
+            }
             Column(verticalArrangement = Arrangement.spacedBy(BLOCK_GAP)) { FitBlocks(tab, { tab = it }, s, change) }
         }
         // The info ring's switch, over the stats text's: in a release build, where there is no stats text, it ends the panel.
@@ -394,33 +405,20 @@ private fun FitSteps(p: FitParams, mapping: FrameFit.Mapping, s: REauSettings, s
             }
         }
     }
-    Card {
-        if (p.fit == Fit.CROP) {
-            CropSteps(p, s.content, set)
-        } else {
-            // Hidden on the crop, which already fills the dash's frame (FrameFit.moved has nowhere to take it)
-            FineStepper(
-                stringResource(R.string.move_x_title), stringResource(R.string.move_x_hint), p.moveX, REauSettings.MOVE,
-                { set(p.copy(moveX = it)) }, "move_x", format = { "$it px" },
-            )
-            HorizontalDivider(thickness = 1.dp, color = hairline(0.14f, 0.6f))
-            FineStepper(
-                stringResource(R.string.move_y_title), stringResource(R.string.move_y_hint), p.moveY, REauSettings.MOVE,
-                { set(p.copy(moveY = it)) }, "move_y", format = { "$it px" },
-            )
-        }
-    }
+    Card { FitCounters(p, s.content, FitControl.of(p.fit), set) }
     val problems = FrameFit.problems(mapping, AaVideo.WIDTH, AaVideo.HEIGHT)
     if (problems.isNotEmpty()) BadFit(problems.map { stringResource(ScreenText.problem(it)) }.joinToString("; "))
     Technical(mapping)
 }
 
 /**
- * The crop's size and place, in pixels: the place is the window's top left pixel in Android Auto's picture, past the
- * edges up to FrameFit.cropRange; a new size keeps the window's centre where it was.
+ * The counters of one fit ([p]), those of [controls] in that order with a hairline between them: the crop's size and place, in pixels (the
+ * place is the window's top left pixel in Android Auto's picture, past the edges up to FrameFit.cropRange; a new size keeps the window's
+ * centre where it was), and the picture's move. The fit's tab shows all of its mode ([FitControl.of]); the fit assistant, the ones of its step,
+ * with [tags] before each tag.
  */
 @Composable
-private fun CropSteps(p: FitParams, content: RectPx, set: (FitParams) -> Unit) {
+internal fun FitCounters(p: FitParams, content: RectPx, controls: List<FitControl>, set: (FitParams) -> Unit, tags: String = "") {
     val (w, h) = FrameFit.cropSize(content, p.cropPercent)
     val x = p.cropX ?: ((content.w - w) / 2)
     val y = p.cropY ?: ((content.h - h) / 2)
@@ -429,21 +427,32 @@ private fun CropSteps(p: FitParams, content: RectPx, set: (FitParams) -> Unit) {
         val (newW, newH) = FrameFit.cropSize(content, percent)
         return p.copy(cropPercent = percent, cropX = p.cropX?.let { it + (w - newW) / 2 }, cropY = p.cropY?.let { it + (h - newH) / 2 })
     }
-    FineStepper(
-        stringResource(R.string.label_crop), stringResource(R.string.crop_hint), p.cropPercent, REauSettings.CROP,
-        { set(sized(it)) }, "crop", format = { "$it%" },
-    )
-    HorizontalDivider(thickness = 1.dp, color = hairline(0.14f, 0.6f))
-    // Which part of Android Auto's frame the crop takes; with the projection on it applies at once.
-    FineStepper(
-        stringResource(R.string.crop_x_title), stringResource(R.string.crop_x_hint), x, rangeX, { set(p.copy(cropX = it)) }, "crop_center_x",
-        format = { "$it px" },
-    )
-    HorizontalDivider(thickness = 1.dp, color = hairline(0.14f, 0.6f))
-    FineStepper(
-        stringResource(R.string.crop_y_title), stringResource(R.string.crop_y_hint), y, rangeY, { set(p.copy(cropY = it)) }, "crop_center_y",
-        format = { "$it px" },
-    )
+    controls.forEachIndexed { index, control ->
+        if (index > 0) HorizontalDivider(thickness = 1.dp, color = hairline(0.14f, 0.6f))
+        when (control) {
+            FitControl.CROP_SIZE -> FineStepper(
+                stringResource(R.string.label_crop), stringResource(R.string.crop_hint), p.cropPercent, REauSettings.CROP,
+                { set(sized(it)) }, "${tags}crop", format = { "$it%" },
+            )
+            // Which part of Android Auto's frame the crop takes; with the projection on it applies at once.
+            FitControl.CROP_X -> FineStepper(
+                stringResource(R.string.crop_x_title), stringResource(R.string.crop_x_hint), x, rangeX, { set(p.copy(cropX = it)) }, "${tags}crop_center_x",
+                format = { "$it px" },
+            )
+            FitControl.CROP_Y -> FineStepper(
+                stringResource(R.string.crop_y_title), stringResource(R.string.crop_y_hint), y, rangeY, { set(p.copy(cropY = it)) }, "${tags}crop_center_y",
+                format = { "$it px" },
+            )
+            FitControl.MOVE_X -> FineStepper(
+                stringResource(R.string.move_x_title), stringResource(R.string.move_x_hint), p.moveX, REauSettings.MOVE,
+                { set(p.copy(moveX = it)) }, "${tags}move_x", format = { "$it px" },
+            )
+            FitControl.MOVE_Y -> FineStepper(
+                stringResource(R.string.move_y_title), stringResource(R.string.move_y_hint), p.moveY, REauSettings.MOVE,
+                { set(p.copy(moveY = it)) }, "${tags}move_y", format = { "$it px" },
+            )
+        }
+    }
 }
 
 /** One of the three modes: a card of 64 dp with its icon; chosen, Ouro border on primaryContainer. */

@@ -614,6 +614,22 @@
     <string name="fit_reset">Restablecer al valor por defecto</string>
     <string name="fit_reset_title">¿Restablecer al valor por defecto?</string>
     <string name="fit_reset_text">Esto borra tu ajuste de encaje, recorte, zoom y márgenes de la pestaña %1$s y vuelve a los valores de fábrica. La densidad no cambia. No se puede deshacer.</string>
+    <string name="fit_assistant_open">Asistente de ajuste</string>
+    <string name="fit_assistant_step">Paso %1$d de %2$d</string>
+    <string name="fit_assistant_start_text">En teléfonos distintos Android Auto puede dibujar la flecha de la maniobra y la velocidad en otro lugar. Con la proyección encendida, abre Waze o Maps en Android Auto y empieza una ruta. En la imagen de arriba, la parte clara es lo que llega al cristal del tablero. Empezar enciende la Máscara, si está apagada.</string>
+    <string name="fit_assistant_no_nav">Android Auto no está mostrando la navegación ahora: abre Waze o Maps en él para comprobar.</string>
+    <string name="fit_assistant_density">El ajuste de fábrica se midió con el DPI %2$d. El tuyo está en %1$d, así que es más probable que necesite ajuste.</string>
+    <string name="fit_assistant_maneuver_text">¿La flecha de la maniobra y la distancia hasta ella se ven enteras en la parte clara de la imagen de arriba?</string>
+    <string name="fit_assistant_speed_text">¿La velocidad se ve entera en la parte clara de la imagen de arriba? Si tu app de navegación no muestra la velocidad, responde sí.</string>
+    <string name="fit_assistant_adjust_tip">Cambia hasta que se vea entera. Cada toque vale al instante, en la imagen de arriba y en el tablero, y ya queda guardado.</string>
+    <string name="fit_assistant_size_tip">Un recorte más pequeño muestra más de la pantalla, con letras más pequeñas. Cada toque vale al instante, en la imagen de arriba y en el tablero, y ya queda guardado.</string>
+    <string name="fit_assistant_end_text">Listo. El ajuste de la navegación ya está guardado. Compruébalo en el tablero con la moto parada. Para repetirlo, toca Asistente de ajuste; todos los controles siguen abajo, en la pestaña Navegación.</string>
+    <string name="fit_assistant_begin">Empezar</string>
+    <string name="fit_assistant_skip">Omitir</string>
+    <string name="fit_assistant_yes">Sí, se ve</string>
+    <string name="fit_assistant_no">No, ajustar</string>
+    <string name="fit_assistant_good">Quedó bien</string>
+    <string name="fit_assistant_finish">Terminar</string>
 
     <!-- The redesign's joystick page. -->
     <string name="joystick_mode_map">Modo mapa</string>

@@ -66,6 +66,29 @@ class SettingsStore(private val prefs: SharedPreferences) {
         }
     }
 
+    /**
+     * Whether the first-time fit assistant of the "Tela do Android Auto" opens by itself: only on a phone that never saved a fit. A phone that
+     * already has one stored (every phone that saved any setting before 13/11/2026 has, the owner's own too) is never asked; a new install is, until
+     * the assistant is finished or skipped ([fitAssistantSeen]) or a fit that is not the factory one is saved. Asking writes nothing.
+     */
+    fun fitAssistantPending(): Boolean = !fitAssistantDone(ownFit = false)
+
+    /** The assistant was finished or skipped: it never opens by itself again (the rider can still open it by hand). */
+    fun fitAssistantSeen() = prefs.edit { putBoolean(KEY_FIT_ASSISTANT, true) }
+
+    /** The mark once it is written; before it, whether a fit is stored. [ownFit]: a fit that is not the factory one is being saved. */
+    private fun fitAssistantDone(ownFit: Boolean): Boolean = when {
+        ownFit -> true
+        prefs.contains(KEY_FIT_ASSISTANT) -> prefs.getBoolean(KEY_FIT_ASSISTANT, true)
+        else -> FIT_KEYS.any { prefs.contains(it) }
+    }
+
+    /** Whether [s] carries a fit of the rider's own: any of the three fits is not the factory one (the menu's kept fit follows the menu's while that is on). */
+    private fun ownFit(s: REauSettings): Boolean {
+        val factory = REauSettings()
+        return s.appsFit != factory.appsFit || s.navFit != factory.navFit || s.menuFit != factory.menuFit
+    }
+
     /** The stream's own settings, with the mark that the conservative video was given. */
     private fun SharedPreferences.Editor.putVideo(s: REauSettings) {
         putInt(KEY_FPS, s.fpsCeiling)
@@ -236,7 +259,10 @@ class SettingsStore(private val prefs: SharedPreferences) {
     @Suppress("LongMethod") // one straight run of setup/serialization; cutting it adds indirection and no clarity
     fun save(settings: REauSettings) {
         val s = settings.sanitized()
+        // Read before the fit below is written: from then on a fit is always stored.
+        val assistantDone = fitAssistantDone(ownFit(s))
         prefs.edit {
+            putBoolean(KEY_FIT_ASSISTANT, assistantDone)
             // The frame size and the cluster experiment are no longer kept.
             remove(OLD_KEY_RESOLUTION)
             remove(OLD_KEY_CLUSTER)
@@ -361,6 +387,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
         private const val KEY_CROP = "crop_percent"
         private const val KEY_CROP_CENTER_X = "crop_center_x"
         private const val KEY_CROP_CENTER_Y = "crop_center_y"
+        private const val KEY_FIT_ASSISTANT = "fit_assistant_done_20261113"
         private const val KEY_MOVE_X = "move_x"
         private const val KEY_MOVE_Y = "move_y"
         /** The preferences of the navigation apps' own fit. */
@@ -375,6 +402,9 @@ class SettingsStore(private val prefs: SharedPreferences) {
                 "${name}_fit_on", "${name}_fit", "${name}_crop_percent", "${name}_crop_x", "${name}_crop_y", "${name}_move_x", "${name}_move_y",
                 "${name}_zoom", "${name}_cover_top", "${name}_cover_bottom", "${name}_cover_left", "${name}_cover_right",
             )
+
+        /** The preferences that say a fit was saved: the apps', the navigation apps' and the app menu's mode. */
+        private val FIT_KEYS = listOf(KEY_FIT, NAV_KEYS.fit, MENU_KEYS.fit)
 
         /** No key: a fit that never had old percent keys to read (the place is stored in pixels from the start). */
         private const val NO_KEY = ""

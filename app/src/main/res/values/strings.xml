@@ -625,6 +625,22 @@
     <string name="fit_reset">Reset to default</string>
     <string name="fit_reset_title">Reset to default?</string>
     <string name="fit_reset_text">This erases your fit, crop, zoom and margins on the %1$s tab and goes back to the factory values. The density does not change. It cannot be undone.</string>
+    <string name="fit_assistant_open">Fit assistant</string>
+    <string name="fit_assistant_step">Step %1$d of %2$d</string>
+    <string name="fit_assistant_start_text">On different phones Android Auto may draw the maneuver arrow and the speed somewhere else. With the projection on, open Waze or Maps in Android Auto and start a route. In the picture above, the clear part is what reaches the dash’s glass. Start turns the Mask on, if it is off.</string>
+    <string name="fit_assistant_no_nav">Android Auto is not showing the navigation now: open Waze or Maps in it to check.</string>
+    <string name="fit_assistant_density">The factory fit was measured at DPI %2$d. Yours is at %1$d, so it is more likely to need adjusting.</string>
+    <string name="fit_assistant_maneuver_text">Do the maneuver arrow and the distance to it show whole in the clear part of the picture above?</string>
+    <string name="fit_assistant_speed_text">Does the speed show whole in the clear part of the picture above? If your navigation app does not show the speed, answer yes.</string>
+    <string name="fit_assistant_adjust_tip">Change it until it shows whole. Each tap applies at once, in the picture above and on the dash, and is already saved.</string>
+    <string name="fit_assistant_size_tip">A smaller crop shows more of the screen, in smaller letters. Each tap applies at once, in the picture above and on the dash, and is already saved.</string>
+    <string name="fit_assistant_end_text">Done. The navigation fit is already saved. Check it on the dash with the bike stopped. To do it again, tap Fit assistant; every control is still below, on the Navigation tab.</string>
+    <string name="fit_assistant_begin">Start</string>
+    <string name="fit_assistant_skip">Skip</string>
+    <string name="fit_assistant_yes">Yes, it shows</string>
+    <string name="fit_assistant_no">No, adjust</string>
+    <string name="fit_assistant_good">Looks good</string>
+    <string name="fit_assistant_finish">Finish</string>
 
     <!-- The redesign's joystick page. -->
     <string name="joystick_mode_map">Map mode</string>
