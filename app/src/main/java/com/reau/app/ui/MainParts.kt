@@ -7,12 +7,12 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.reau.app.R
 import com.reau.app.ui.MainLook.Warning
 import com.reau.app.ui.components.CardAction
@@ -176,9 +176,9 @@ private fun TileRow(left: @Composable (Modifier) -> Unit, right: (@Composable (M
 @Composable
 private fun weatherSub(on: Boolean): String {
     if (!on) return stringResource(R.string.tile_weather_off)
-    val kept by com.reau.app.weather.WeatherKeeper.snapshot.collectAsState()
-    val dash by com.reau.app.dash.DashReadings.settings.collectAsState()
-    val why by com.reau.app.weather.WeatherKeeper.why.collectAsState()
+    val kept by com.reau.app.weather.WeatherKeeper.snapshot.collectAsStateWithLifecycle()
+    val dash by com.reau.app.dash.DashReadings.settings.collectAsStateWithLifecycle()
+    val why by com.reau.app.weather.WeatherKeeper.why.collectAsStateWithLifecycle()
     // No fresh weather: say why in a few words, the same reason the weather screen gives, instead of "fetching" forever.
     val now = kept?.forecast?.current ?: return stringResource(
         when (why) {

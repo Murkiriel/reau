@@ -22,10 +22,17 @@ detekt = "1.23.8"
 # unit tests run on the JUnit Platform with the vintage engine for the JUnit 4 ones.
 jazzer = "0.30.0"
 junitBom = "5.11.4"
+# Coverage of the JVM unit tests (`./gradlew :app:koverHtmlReportDebug`, see CONTRIBUTING); a Gradle plugin of the build, never in an APK.
+kover = "0.9.11"
+# The macrobenchmark module (`:macrobenchmark`: the startup time and the baseline profile generator); it runs on a device and is never in an APK.
+macrobenchmark = "1.5.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+# collectAsStateWithLifecycle: a state flow read by a screen stops being collected while the app is in the background. Same version as the line above
+# (the same atomic group, so the build brings both to one number); only the catalog's pin.
+androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
@@ -48,8 +55,11 @@ junit-vintage-engine = { group = "org.junit.vintage", name = "junit-vintage-engi
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
 jazzer-junit = { group = "com.code-intelligence", name = "jazzer-junit", version.ref = "jazzer" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "macrobenchmark" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+android-test = { id = "com.android.test", version.ref = "agp" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }

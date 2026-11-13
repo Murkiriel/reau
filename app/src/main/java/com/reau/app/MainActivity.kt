@@ -9,7 +9,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
@@ -176,10 +176,10 @@ class MainActivity : ComponentActivity() {
         lifecycle.addObserver(dashSearch)
         if (savedInstanceState == null) quickStart(intent)
         setContent {
-            val projection by ProjectionService.projection.collectAsState()
-            val startedAt by ProjectionService.startedAt.collectAsState()
+            val projection by ProjectionService.projection.collectAsStateWithLifecycle()
+            val startedAt by ProjectionService.startedAt.collectAsStateWithLifecycle()
             // The network server is up when it has published its address and PIN (the icon of the main screen blinks for it).
-            val networkOn = com.reau.app.web.WebAccess.state.collectAsState().value != null
+            val networkOn = com.reau.app.web.WebAccess.state.collectAsStateWithLifecycle().value != null
             var inSettings by rememberSaveable { mutableStateOf(false) }
             var inAndroidAuto by rememberSaveable { mutableStateOf(false) }
             var inJoystick by rememberSaveable { mutableStateOf(false) }
@@ -652,7 +652,7 @@ private object PermissionRows {
 @androidx.compose.runtime.Composable
 private fun AndroidAutoFromSettings(settings: REauSettings, save: (REauSettings) -> Unit, store: SettingsStore, onBack: () -> Unit) {
     // The screen Android Auto shows; the mask shows the fit in force on it, the fit opens on its tab
-    val screen = com.reau.app.aa.AaScreens.watch.screen.collectAsState().value
+    val screen = com.reau.app.aa.AaScreens.watch.screen.collectAsStateWithLifecycle().value
     // The fit assistant opens by itself only on a phone that never saved a fit; asked once, as the screen opens.
     val assistantPending = remember { store.fitAssistantPending() }
     AndroidAutoScreen(

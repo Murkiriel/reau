@@ -16,7 +16,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +31,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.reau.app.R
 import com.reau.app.settings.REauSettings
 import com.reau.app.settings.WebAudioMode
@@ -140,7 +140,7 @@ private fun WebAudioChoice(s: REauSettings, change: (REauSettings) -> Unit) {
 /** The warning, then the PIN and the address (or why there is none yet), the count and the way to drop the browsers. */
 @Composable
 private fun WebAccessBlock() {
-    val access by WebAccess.state.collectAsState()
+    val access by WebAccess.state.collectAsStateWithLifecycle()
     val addresses = LocalWebAddresses.current
     val networkTick = rememberNetworkTick()
     Column(Modifier.fillMaxWidth().padding(CARD_PADDING).testTag("web_access"), verticalArrangement = Arrangement.spacedBy(CARD_GAP)) {

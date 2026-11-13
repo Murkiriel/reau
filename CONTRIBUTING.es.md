@@ -55,6 +55,47 @@ propias (nunca capturas reales: mira "Datos personales"). Para esto las pruebas 
 `--lista` cuenta las mutaciones y `--fatia I/N` ejecuta una porción (el workflow semanal ejecuta diez, y `mutacao-mensal.yml` ejecuta una de doce cada mes, la del número del mes); una mutación que sobrevive es una prueba
 que no guarda esa decisión.
 
+## Cobertura, benchmark, dispositivos gestionados y la verificación de dependencias
+
+**Cobertura de las pruebas unitarias (Kover).** `./gradlew :app:koverHtmlReportDebug` ejecuta las pruebas de JVM de la variante debug y escribe el informe HTML en
+`app/build/reports/kover/htmlDebug/` (`:app:koverXmlReportDebug` escribe el XML). No forma parte de `check`, de `assemble` ni de la integración continua, y el APK
+no se toca. Las clases generadas `R` y `BuildConfig`, las `ComposableSingletons` del compilador de Compose y los mensajes de Android Auto que genera protoc (`com.reau.app.aa.proto`) quedan fuera de la cuenta.
+
+**Benchmark de arranque y perfil base (`macrobenchmark/`).** El módulo compila sin dispositivo (`./gradlew :macrobenchmark:assemble`) pero solo SE EJECUTA en un teléfono con depuración USB
+o en un emulador, y mide el tipo de build `benchmark` de la app (el código de la release, firmado con la clave de debug, y por eso sin necesitar la clave de release). Con un dispositivo conectado:
+
+```
+./gradlew :macrobenchmark:connectedBenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.reau.app.macrobenchmark.StartupBenchmark
+```
+
+`StartupBenchmark` mide el arranque en frío dos veces, sin perfil base y con el de la app; los números son `timeToInitialDisplayMs` en la salida. Acepta antes los términos de uso en el dispositivo,
+o medirá la pantalla de los términos. En un emulador añade `-Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.suppressErrors=EMULATOR`
+(los números de un emulador no dicen nada sobre un teléfono). `BaselineProfileGenerator` (el mismo comando, con `class=com.reau.app.macrobenchmark.BaselineProfileGenerator`) anota lo que se ejecuta
+mientras la app abre e imprime dónde dejó el archivo en el dispositivo. El build no usa ese archivo: el perfil de la app, `app/src/main/baseline-prof.txt`, se escribe a mano, y se comparan los dos y se añade a mano
+lo que valga la pena. El plugin `androidx.baselineprofile` de Gradle no se usa: crearía tipos de build y carpetas de perfil generado que se superponen al escrito a mano.
+
+**Dispositivos que Gradle gestiona.** `pixel6Api34` está declarado en `app/build.gradle.kts` (la imagen ligera `aosp-atd`, para las pruebas instrumentadas) y en `macrobenchmark/build.gradle.kts` (la imagen `aosp`, que puede ser root).
+Declararlos no descarga nada. La primera ejecución de uno de ellos descarga una imagen de sistema de algunos cientos de MB y crea sola el dispositivo virtual:
+
+```
+./gradlew :app:pixel6Api34DebugAndroidTest
+./gradlew :macrobenchmark:pixel6Api34BenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.suppressErrors=EMULATOR
+```
+
+Necesitan virtualización por hardware (KVM). No usan, no cambian y no borran los dispositivos virtuales que hayas creado tú.
+
+**Una dependencia nueva y la verificación PGP.** `gradle/verification-metadata.xml` comprueba cada artefacto que el build descarga: por la firma PGP, contra las claves de `gradle/verification-keyring.keys`,
+cuando quien publica firma, y por el sha256 en los demás (muchos artefactos del Maven de Google no están firmados). Un build con una dependencia que no está en el archivo falla con
+"Dependency verification failed". Para añadirla, ejecuta, con red y en la carpeta del repositorio:
+
+```
+./gradlew --write-verification-metadata pgp,sha256 --export-keys help testDebugUnitTest detekt lintDebug assembleDebug assembleAndroidTest assembleRelease -PreauDebugSigned=true :macrobenchmark:assemble
+```
+
+Gradle mantiene los sha256 que ya están en el archivo, añade los nuevos y pone un `trusted-key` para cada clave que firma los artefactos nuevos (y la exporta al llavero). Después LEE la diferencia: de quién es la clave
+y para qué grupo es de confianza; que no se quitó ningún sha256; y que ningún `ignored-key` (una clave que no se pudo descargar) esconde un artefacto que antes tenía sha256, lo que lo dejaría
+sin ninguna comprobación. Haz el commit de los metadatos y del llavero juntos (`gradle/verification-keyring.gpg`, la copia binaria que Gradle también escribe, no se guarda). Después ejecuta el build otra vez con `--offline`.
+
 ## Qué no cambiar sin una prueba en la moto
 
 El protocolo de Android Auto y el protocolo del tablero (`aa/` y `dash/protocol/`), el handshake con el tablero y la ruta del video (el

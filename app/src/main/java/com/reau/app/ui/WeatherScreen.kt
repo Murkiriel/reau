@@ -19,7 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.reau.app.R
 import com.reau.app.dash.DashReadings
 import com.reau.app.service.SunPlace
@@ -90,10 +90,10 @@ fun WeatherScreen(enabled: Boolean, onToggle: (Boolean) -> Unit, onBack: () -> U
 @Composable
 private fun WeatherContent(enabled: Boolean, onToggle: (Boolean) -> Unit) {
     val context = LocalContext.current
-    val kept by WeatherKeeper.snapshot.collectAsState()
-    val why by WeatherKeeper.why.collectAsState()
+    val kept by WeatherKeeper.snapshot.collectAsStateWithLifecycle()
+    val why by WeatherKeeper.why.collectAsStateWithLifecycle()
     // The units the dash itself says it uses (03 03: Celsius or Fahrenheit; 03 04: kilometres or miles).
-    val dashSettings by DashReadings.settings.collectAsState()
+    val dashSettings by DashReadings.settings.collectAsStateWithLifecycle()
     val u = WeatherUnits.of(dashSettings)
     // Showing the screen, or switching the weather on, looks at once (the keeper waits between fetches by itself).
     LaunchedEffect(enabled) {

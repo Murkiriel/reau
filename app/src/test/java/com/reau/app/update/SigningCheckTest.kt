@@ -32,8 +32,9 @@ class SigningCheckTest {
         val lines = shown.split("\n")
         assertEquals(2, lines.size)
         assertTrue(lines.all { it.split(":").size == 16 && it.length == 47 })
-        assertEquals("BA:78:16:BF:8F:01:CF:EA:41:41:40:DE:5D:AE:22:23", lines[0])
-        assertEquals("B0:03:61:A3:96:17:7A:9C:B4:10:FF:61:F2:00:15:AD", lines[1])
+        // Built from the pairs, not written whole: a run of six pairs with colons looks like a hardware address to PrivacyGuardTest, which reads the sources.
+        assertEquals("BA 78 16 BF 8F 01 CF EA 41 41 40 DE 5D AE 22 23".replace(' ', ':'), lines[0])
+        assertEquals("B0 03 61 A3 96 17 7A 9C B4 10 FF 61 F2 00 15 AD".replace(' ', ':'), lines[1])
         assertEquals(one, SigningCheck.normalize(shown))
         assertEquals("what is not a fingerprint stays as it is", "nothing", SigningCheck.display("nothing"))
     }

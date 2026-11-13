@@ -4,6 +4,7 @@ import java.time.format.DateTimeFormatter
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kover)
     jacoco
 }
 
@@ -100,6 +101,15 @@ android {
             }
             signingConfig = signingConfigs.getByName(if (releaseKeystore != null) "release" else "debug")
         }
+        // The build the macrobenchmark module measures (`:macrobenchmark`, see CONTRIBUTING): the release code (profileable by the shell, as the main manifest says),
+        // not debuggable, always signed with the debug key, so it needs no release key and the check above does not stop it. It is never a build for the rider.
+        // The release stubs of src/release/ stand in for the debug tools, as in the release.
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -134,6 +144,17 @@ android {
     sourceSets {
         getByName("test").kotlin.srcDir("src/sharedTest/java")
         getByName("androidTest").kotlin.srcDir("src/sharedTest/java")
+        getByName("benchmark").kotlin.srcDir("src/release/java")
+    }
+
+    // A device that Gradle creates, starts and stops by itself, for the instrumented tests (`./gradlew pixel6Api34DebugAndroidTest`; see CONTRIBUTING). It is only
+    // declared here: nothing downloads its system image until that task is run. ATD ("automated test device") is the light image for tests; REau does not
+    // use Google Play services. The macrobenchmark module has its own device (a rooted image).
+    @Suppress("UnstableApiUsage")
+    testOptions.managedDevices.localDevices.create("pixel6Api34") {
+        device = "Pixel 6"
+        apiLevel = 34
+        systemImageSource = "aosp-atd"
     }
 }
 
@@ -155,6 +176,7 @@ dependencies {
     compileOnly(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.protobuf.java)
     implementation(libs.conscrypt.android)
     testImplementation(libs.junit)
@@ -198,6 +220,19 @@ tasks.register<JacocoReport>("jacocoTestReport") {
     }
 }
 
+// Coverage of the JVM unit tests with Kover, in the debug variant: `./gradlew :app:koverHtmlReportDebug` (or `koverXmlReportDebug`) runs them and writes the
+// report to build/reports/kover/. It is not part of `check`, `assemble` or CI, and it does not touch the APK. What is left out has no logic of the app's:
+// the generated R and BuildConfig classes, the classes the Compose compiler makes for the lambdas of @Composable functions and the Android Auto
+// messages that protoc generates (com.reau.app.aa.proto: about two thirds of the lines of the app, which no test is meant to cover one by one).
+kover {
+    reports {
+        filters {
+            excludes {
+                classes("*.R", "*.R\$*", "*.BuildConfig", "*ComposableSingletons*", "com.reau.app.aa.proto.*")
+            }
+        }
+    }
+}
 
 // detekt runs as the stand-alone CLI: the Gradle plugin does not follow Kotlin 2.2 / AGP 9.
 // It fails on any finding that is not in config/detekt/baseline.xml, which holds only the accepted debt (long protocol and decoder routines kept as they are on purpose).

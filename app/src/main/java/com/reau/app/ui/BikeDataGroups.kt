@@ -11,7 +11,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,6 +23,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.reau.app.R
 import com.reau.app.dash.DashReadings
 import com.reau.app.dash.DashReading
@@ -44,7 +44,7 @@ import kotlinx.coroutines.delay
  */
 @Composable
 fun BikeDataGroups() {
-    val all by DashReadings.all.collectAsState()
+    val all by DashReadings.all.collectAsStateWithLifecycle()
     LastReadGroup(all)
     RangeGroup(all)
     VersionGroup(all)
