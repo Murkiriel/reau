@@ -37,6 +37,21 @@ kotlin {
     }
 }
 
+// A reproducible release build: the Compose compiler decides how each composable skips (the $changed bits it tests, the $stable fields it reads)
+// from what it knows of the types it uses. An INCREMENTAL Kotlin compilation compiles again only the files that changed, and a type of another
+// file is known only from its .class, not from its source; the same code then comes out with other constants (a `$stable` read with `sget` where
+// the whole compilation writes the number, one $changed bit more or less), and the classes2.dex and classes3.dex of a release built over an old
+// build are not those of a clean build of the same commit. So the release (and the "benchmark" build, which is the release's code) declares the
+// sources once more as an input that is NOT incremental: when one changes, Gradle runs the task without incremental changes and Kotlin compiles
+// everything. The debug build stays incremental, since it is the one rebuilt all day. ReleaseReproducibleBuildTest holds this block.
+tasks.configureEach {
+    if (name.endsWith("ReleaseKotlin") || name.endsWith("BenchmarkKotlin")) {
+        inputs.files(fileTree("src") { include("main/**/*.kt", "main/**/*.java", "release/**/*.kt", "release/**/*.java") })
+            .withPropertyName("sourcesForAFullCompilation")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+    }
+}
+
 android {
     namespace = "com.reau.app"
     compileSdk {

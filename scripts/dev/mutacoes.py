@@ -3118,6 +3118,18 @@ MUTATIONS = [
     ('Leva 8b 13/11 Regras: o targetSdk muda', 'app/build.gradle.kts',
      'targetSdk = 36', 'targetSdk = 35',
      ['BuildSetupTest']),
+    ('Release reproduzível 13/11: o release volta a compilar o Kotlin de forma incremental', 'app/build.gradle.kts',
+     'if (name.endsWith("ReleaseKotlin") || name.endsWith("BenchmarkKotlin")) {', 'if (name.endsWith("BenchmarkKotlin")) {',
+     ['ReleaseReproducibleBuildTest']),
+    ('Release reproduzível 13/11: o build benchmark fica de fora', 'app/build.gradle.kts',
+     'if (name.endsWith("ReleaseKotlin") || name.endsWith("BenchmarkKotlin")) {', 'if (name.endsWith("ReleaseKotlin")) {',
+     ['ReleaseReproducibleBuildTest']),
+    ('Release reproduzível 13/11: os fontes do release deixam de contar', 'app/build.gradle.kts',
+     'include("main/**/*.kt", "main/**/*.java", "release/**/*.kt", "release/**/*.java")', 'include("main/**/*.kt", "main/**/*.java")',
+     ['ReleaseReproducibleBuildTest']),
+    ('Release reproduzível 13/11: o debug também perde o incremental', 'app/build.gradle.kts',
+     'if (name.endsWith("ReleaseKotlin") || name.endsWith("BenchmarkKotlin")) {', 'if (name.endsWith("ReleaseKotlin") || name.endsWith("BenchmarkKotlin") || name.endsWith("DebugKotlin")) {',
+     ['ReleaseReproducibleBuildTest']),
 ]
 
 
