@@ -877,6 +877,14 @@
     <string name="update_button_check">Buscar ahora</string>
     <string name="update_button_open">Ver la versión</string>
     <string name="update_info">REau solo le pregunta a GitHub (api.github.com) cuando tocas; GitHub ve la dirección del teléfono, sin cuenta. No se descarga ni se instala nada.</string>
+    <string name="update_sign_title">Firma de este APK</string>
+    <string name="update_sign_expected">Esperada, de las versiones del proyecto (SHA-256)</string>
+    <string name="update_sign_installed">Del APK instalado (SHA-256)</string>
+    <string name="update_sign_match">Coinciden: este APK tiene la firma de las versiones del proyecto.</string>
+    <string name="update_sign_differ">Difieren: este APK no se firmó con la clave de las versiones del proyecto (una versión de prueba, por ejemplo).</string>
+    <string name="update_sign_debug">Versión de depuración: firmada con la clave de depuración, no con la de las versiones publicadas; no se espera que las dos coincidan.</string>
+    <string name="update_sign_unset">Esta versión no trae la huella del proyecto, así que no hay con qué compararla.</string>
+    <string name="update_sign_unreadable">Android no informó la firma de este APK.</string>
 
     <!-- A small line on the main screen while the old app with the seal on its icon (id ending in .lite) is still installed -->
     <string name="old_app_note">La app REau antigua (la del ícono con sello) sigue instalada. Ya no hace falta: puedes desinstalarla.</string>

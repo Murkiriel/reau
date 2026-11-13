@@ -887,6 +887,14 @@
     <string name="update_button_check">Check now</string>
     <string name="update_button_open">See the release</string>
     <string name="update_info">Only when you tap, REau asks GitHub (api.github.com); GitHub sees the phone’s address, with no account. Nothing is downloaded or installed.</string>
+    <string name="update_sign_title">Signature of this APK</string>
+    <string name="update_sign_expected">Expected, from the project’s releases (SHA-256)</string>
+    <string name="update_sign_installed">Of the installed APK (SHA-256)</string>
+    <string name="update_sign_match">They match: this APK carries the signature of the project’s releases.</string>
+    <string name="update_sign_differ">They differ: this APK was not signed with the key of the project’s releases (a test build, for example).</string>
+    <string name="update_sign_debug">Debug build: it is signed with the debug key, not with the key of the project’s releases, so the two are not expected to match.</string>
+    <string name="update_sign_unset">This build does not carry the project’s fingerprint, so there is nothing to compare it with.</string>
+    <string name="update_sign_unreadable">Android did not give the signature of this APK.</string>
 
     <!-- A small line on the main screen while the old app with the seal on its icon (id ending in .lite) is still installed -->
     <string name="old_app_note">The old REau app (the one with the seal on its icon) is still installed. It isn’t needed any more: you can uninstall it.</string>
