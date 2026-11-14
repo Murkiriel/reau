@@ -36,15 +36,15 @@ class DashFailureTruthTest {
 
     @Test
     fun `an empty or unreadable scan says nothing about the dash`() {
-        assertNull(DashWifiManager.scanVerdict(emptyList(), "RE_", pendingPrefix = true))
-        assertNull(DashWifiManager.scanVerdict(null, "RE_", pendingPrefix = true))
+        assertNull(DashSsid.scanVerdict(emptyList(), "RE_", pendingPrefix = true))
+        assertNull(DashSsid.scanVerdict(null, "RE_", pendingPrefix = true))
     }
 
     @Test
     fun `a scan with networks tells whether the dash is among them`() {
-        assertEquals(false, DashWifiManager.scanVerdict(listOf("Casa", "Vizinho"), "RE_", pendingPrefix = true))
-        assertEquals(true, DashWifiManager.scanVerdict(listOf("Casa", "RE_AB12_345678"), "RE_", pendingPrefix = true))
-        assertEquals(true, DashWifiManager.scanVerdict(listOf("RE_AB12_345678"), "RE_AB12_345678", pendingPrefix = false))
+        assertEquals(false, DashSsid.scanVerdict(listOf("Casa", "Vizinho"), "RE_", pendingPrefix = true))
+        assertEquals(true, DashSsid.scanVerdict(listOf("Casa", "RE_AB12_345678"), "RE_", pendingPrefix = true))
+        assertEquals(true, DashSsid.scanVerdict(listOf("RE_AB12_345678"), "RE_AB12_345678", pendingPrefix = false))
     }
 
     // ── the keyframe-decoded notice ────────────────────────────────────────────────────────────────────────────

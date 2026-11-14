@@ -11,7 +11,7 @@ import org.junit.Test
  * Ride log of 01/11/2026, 19:12:44 to 19:16:41: the dash spoke for 26 minutes, went quiet, and stayed in the scan at -47 to -63 dBm while 23 requests
  * in a row ended unavailable in 6 s each; only the rider's ignition off and on brought it back. A dash that is switched off leaves the scan.
  *
- * This is the mid-ride detection ([DashStuck], [StuckDashWatch]); [DashStuckTest] keeps the older one, [DashWifiManager.Refusal.DASH_STUCK] of the initial connect.
+ * This is the mid-ride detection ([DashStuck], [StuckDashWatch]); [DashStuckTest] keeps the older one, [JoinRules.Refusal.DASH_STUCK] of the initial connect.
  */
 class StuckDashWatchTest {
     private val sec = 1_000_000L

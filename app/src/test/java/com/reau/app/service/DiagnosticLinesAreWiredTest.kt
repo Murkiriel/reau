@@ -18,24 +18,39 @@ class DiagnosticLinesAreWiredTest {
     private val session = source("dash/DashSession.kt")
     private val compositor = source("video/DashCompositor.kt")
 
+    /**
+     * The text between two anchors of a source. `substringAfter` and `substringBefore` hand back the whole text when the anchor is not there, so a
+     * function that moved to another file would leave the check looking at more than it should, and passing: each anchor has to be there.
+     */
+    private fun String.between(start: String, end: String): String {
+        val rest = after(start)
+        assertTrue("the end anchor is gone after '$start': $end", rest.contains(end))
+        return rest.substringBefore(end)
+    }
+
+    private fun String.after(start: String): String {
+        assertTrue("the anchor is gone: $start", contains(start))
+        return substringAfter(start)
+    }
+
     @Test
     fun `every reading of the list that has networks goes into the trail, and the empty one is described with it`() {
-        assertTrue(wifi.substringAfter("private fun readScan()").contains("ScanHistory.trail.note("))
-        assertTrue(wifi.substringAfter("private fun searchDashSsid").substringBefore("catch (e: Exception)").contains("ScanHistory.trail.note("))
-        val state = wifi.substringAfter("private fun emptyListState()").substringBefore("/** Log only: whether the phone is joined")
+        assertTrue(wifi.after("private fun readScan()").contains("ScanHistory.trail.note("))
+        assertTrue(wifi.between("private fun searchDashSsid", "catch (e: Exception)").contains("ScanHistory.trail.note("))
+        val state = wifi.between("private fun emptyListState()", "/** Log only: whether the phone is joined")
         assertTrue(state.contains("lastNonEmpty = ScanHistory.trail.describe("))
         assertTrue(state.contains("wifiJoined = joinedWifi()"))
     }
 
     @Test
     fun `both lines of the request and the end of it read the list through the one function that keeps the trail`() {
-        assertTrue(wifi.substringAfter("private fun lastScanEvidence()").substringBefore("/** Log only, read when").contains("readScan()"))
+        assertTrue(wifi.between("private fun lastScanEvidence()", "/** Log only, read when").contains("readScan()"))
         assertEquals("the list is read from the system in two places only: the lookup and readScan", 2, Regex("wifi\\.scanResults\\.mapNotNull \\{ r ->").findAll(wifi).count())
     }
 
     @Test
     fun `each look of a watch passes through the look log, which writes only when the list moved`() {
-        val look = wifi.substringAfter("fun seenInLastScan(").substringBefore("/**")
+        val look = wifi.between("fun seenInLastScan(", "/**")
         assertTrue(look.contains("scanLooks.line(seen, ssid, prefix, nowUs)"))
         assertTrue(look.contains("RideDiagnostics.log(\"wifi\", it)"))
         assertTrue(look.indexOf("scanLooks.line") < look.indexOf("DashJoin.seenRecently"))
@@ -52,7 +67,7 @@ class DiagnosticLinesAreWiredTest {
 
     @Test
     fun `the image gap opens at the Wi-Fi loss and at the session failure, learns the dash's age, and closes at the stream`() {
-        assertTrue(wifi.substringAfter("private fun bikeLost()").substringBefore("stuck.lost(").contains("ImageGap.clock.lost(now, DashHeard.agoMs(now))"))
+        assertTrue(wifi.between("private fun bikeLost()", "stuck.lost(").contains("ImageGap.clock.lost(now, DashHeard.agoMs(now))"))
         assertTrue(session.substringAfter("internal fun fail(").substringBefore("logTrail(").contains("ImageGap.clock.lost("))
         assertTrue(session.substringAfter("private fun noteHeartbeat(").substringBefore("}").contains("ImageGap.clock.dashAge(firstHeartbeatAtMs, counter)"))
         assertTrue(session.substringAfter("fun startStreaming()").substringBefore("launchProjectionHeartbeat()").contains("ImageGap.clock.streaming("))

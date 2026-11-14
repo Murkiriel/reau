@@ -83,7 +83,7 @@ internal class ScanLookLog(private val maxLines: Int = MAX_LINES) {
 
     /** The line for this look, or null when it adds nothing. [seen] null is an unreadable list; [nowUs] microseconds since boot. */
     fun line(seen: List<ScanSeen>?, wanted: String, prefix: Boolean, nowUs: Long): String? {
-        val dash = seen.orEmpty().filter { DashWifiManager.matchesPendingSsid(it.ssid, wanted, prefix) }
+        val dash = seen.orEmpty().filter { DashSsid.matchesPendingSsid(it.ssid, wanted, prefix) }
         val dashStamp = dash.maxOfOrNull { it.timestampUs } ?: 0L
         val newest = seen?.let(::newestStamp) ?: 0L
         val same = started && lastReadable == (seen != null) && lastDash == dash.isNotEmpty() && lastDashStamp == dashStamp && lastNewest == newest

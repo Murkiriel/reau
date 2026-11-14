@@ -7,92 +7,92 @@ import org.junit.Test
 
 /**
  * Covers the pure decision logic pulled out of DashWifiManager's Android-framework-calling
- * methods (see its companion object) — the rest of the class (WifiNetworkSpecifier,
+ * methods (now in [DashSsid], [JoinRules] and ScanEvidence.kt) — the rest of the class (WifiNetworkSpecifier,
  * ConnectivityManager.requestNetwork) needs a real access point and isn't testable here.
  */
 class DashWifiManagerHelpersTest {
 
     @Test
     fun `timeoutForAttempt uses the longer timeout for a fresh connect`() {
-        assertEquals(30_000, DashWifiManager.timeoutForAttempt(everConnected = false))
+        assertEquals(30_000, JoinRules.timeoutForAttempt(everConnected = false))
     }
 
     @Test
     fun `timeoutForAttempt uses the shorter timeout once we've connected before`() {
-        assertEquals(10_000, DashWifiManager.timeoutForAttempt(everConnected = true))
+        assertEquals(10_000, JoinRules.timeoutForAttempt(everConnected = true))
     }
 
     @Test
     fun `normalizeSsid strips the surrounding quotes Android adds`() {
-        assertEquals("RE_1234ABCD", DashWifiManager.normalizeSsid("\"RE_1234ABCD\""))
+        assertEquals("RE_1234ABCD", DashSsid.normalizeSsid("\"RE_1234ABCD\""))
     }
 
     @Test
     fun `normalizeSsid collapses the unknown-ssid sentinel to blank`() {
-        assertEquals("", DashWifiManager.normalizeSsid("<unknown ssid>"))
+        assertEquals("", DashSsid.normalizeSsid("<unknown ssid>"))
     }
 
     @Test
     fun `normalizeSsid passes through an already-unquoted ssid unchanged`() {
-        assertEquals("RE_1234ABCD", DashWifiManager.normalizeSsid("RE_1234ABCD"))
+        assertEquals("RE_1234ABCD", DashSsid.normalizeSsid("RE_1234ABCD"))
     }
 
     @Test
     fun `normalizeSsid treats null as blank`() {
-        assertEquals("", DashWifiManager.normalizeSsid(null))
+        assertEquals("", DashSsid.normalizeSsid(null))
     }
 
     @Test
     fun `shouldRetryOnUnavailable retries only when we'd connected before AND still want to`() {
-        assertTrue(DashWifiManager.shouldRetryOnUnavailable(everConnected = true, wantConnected = true))
-        assertFalse(DashWifiManager.shouldRetryOnUnavailable(everConnected = true, wantConnected = false))
-        assertFalse(DashWifiManager.shouldRetryOnUnavailable(everConnected = false, wantConnected = true))
-        assertFalse(DashWifiManager.shouldRetryOnUnavailable(everConnected = false, wantConnected = false))
+        assertTrue(JoinRules.shouldRetryOnUnavailable(everConnected = true, wantConnected = true))
+        assertFalse(JoinRules.shouldRetryOnUnavailable(everConnected = true, wantConnected = false))
+        assertFalse(JoinRules.shouldRetryOnUnavailable(everConnected = false, wantConnected = true))
+        assertFalse(JoinRules.shouldRetryOnUnavailable(everConnected = false, wantConnected = false))
     }
 
     @Test
     fun `matchesPendingSsid requires an exact match when not prefix mode`() {
-        assertTrue(DashWifiManager.matchesPendingSsid("RE_1234ABCD", "RE_1234ABCD", pendingPrefix = false))
-        assertFalse(DashWifiManager.matchesPendingSsid("RE_1234ABCDX", "RE_1234ABCD", pendingPrefix = false))
+        assertTrue(DashSsid.matchesPendingSsid("RE_1234ABCD", "RE_1234ABCD", pendingPrefix = false))
+        assertFalse(DashSsid.matchesPendingSsid("RE_1234ABCDX", "RE_1234ABCD", pendingPrefix = false))
     }
 
     @Test
     fun `matchesPendingSsid accepts any suffix in prefix mode`() {
-        assertTrue(DashWifiManager.matchesPendingSsid("RE_1234ABCD", "RE_", pendingPrefix = true))
-        assertFalse(DashWifiManager.matchesPendingSsid("MyHomeWifi", "RE_", pendingPrefix = true))
+        assertTrue(DashSsid.matchesPendingSsid("RE_1234ABCD", "RE_", pendingPrefix = true))
+        assertFalse(DashSsid.matchesPendingSsid("MyHomeWifi", "RE_", pendingPrefix = true))
     }
 
     @Test
     fun `maskSsid keeps the shape but hides the value`() {
-        assertEquals("RE_****CD", DashWifiManager.maskSsid("RE_1234ABCD"))
+        assertEquals("RE_****CD", DashSsid.maskSsid("RE_1234ABCD"))
     }
 
     @Test
     fun `maskSsid handles a short ssid without going negative on length`() {
-        assertEquals("RE**", DashWifiManager.maskSsid("RE_1"))
+        assertEquals("RE**", DashSsid.maskSsid("RE_1"))
         // A name of five to seven characters came out whole, or all but one or two characters: two characters of it now.
-        for (short in listOf("RE_AB", "RE_AB1", "RE_AB12")) assertEquals(short, "RE**", DashWifiManager.maskSsid(short))
-        assertEquals("eight characters: three and two", "RE_****23", DashWifiManager.maskSsid("RE_AB123"))
+        for (short in listOf("RE_AB", "RE_AB1", "RE_AB12")) assertEquals(short, "RE**", DashSsid.maskSsid(short))
+        assertEquals("eight characters: three and two", "RE_****23", DashSsid.maskSsid("RE_AB123"))
     }
 
     @Test
     fun `maskSsid of a blank ssid is blank, not a crash`() {
-        assertEquals("", DashWifiManager.maskSsid(""))
+        assertEquals("", DashSsid.maskSsid(""))
     }
 
     @Test
     fun `candidateMatchesActive accepts a candidate with no readable ssid`() {
-        assertTrue(DashWifiManager.candidateMatchesActive(candidateSsid = null, activeSsid = "RE_1234ABCD"))
+        assertTrue(DashSsid.candidateMatchesActive(candidateSsid = null, activeSsid = "RE_1234ABCD"))
     }
 
     @Test
     fun `candidateMatchesActive accepts a candidate whose ssid equals the active one`() {
-        assertTrue(DashWifiManager.candidateMatchesActive(candidateSsid = "RE_1234ABCD", activeSsid = "RE_1234ABCD"))
+        assertTrue(DashSsid.candidateMatchesActive(candidateSsid = "RE_1234ABCD", activeSsid = "RE_1234ABCD"))
     }
 
     @Test
     fun `candidateMatchesActive rejects a candidate with a different readable ssid`() {
-        assertFalse(DashWifiManager.candidateMatchesActive(candidateSsid = "MyHomeWifi", activeSsid = "RE_1234ABCD"))
+        assertFalse(DashSsid.candidateMatchesActive(candidateSsid = "MyHomeWifi", activeSsid = "RE_1234ABCD"))
     }
 
     // ── the scan line of the ride log (no decision reads it) ───────────────────────────────────────────

@@ -9,11 +9,11 @@ package com.reau.app.dash
 internal object DashPick {
     /** The name taken and how many different dashes the scan showed, with their signal in dBm, strongest first. */
     data class Choice(val name: String, val signals: List<Pair<String, Int>>) {
-        /** For the ride log: the dash names masked ([DashWifiManager.maskSsid]); with more than one in sight, all of them and why. */
+        /** For the ride log: the dash names masked ([DashSsid.maskSsid]); with more than one in sight, all of them and why. */
         fun describe(): String {
-            val taken = "'${DashWifiManager.maskSsid(name)}'"
+            val taken = "'${DashSsid.maskSsid(name)}'"
             if (signals.size < 2) return taken
-            val all = signals.joinToString(", ") { (ssid, dbm) -> "'${DashWifiManager.maskSsid(ssid)}' $dbm dBm" }
+            val all = signals.joinToString(", ") { (ssid, dbm) -> "'${DashSsid.maskSsid(ssid)}' $dbm dBm" }
             return "$taken, the strongest and most recent of ${signals.size} dashes in sight: $all"
         }
     }

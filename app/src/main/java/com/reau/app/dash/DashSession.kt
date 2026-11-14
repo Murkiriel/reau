@@ -1512,7 +1512,7 @@ class DashSession(
          */
         /** The log's line of a [connect]: the dash's name masked (it ties a log to one bike). */
         internal fun connectLine(ssid: String, network: Any?): String =
-            "connect() — ssid='${DashWifiManager.maskSsid(ssid)}' network=$network"
+            "connect() — ssid='${DashSsid.maskSsid(ssid)}' network=$network"
 
         /** The patient pace of the greeting once the dash is ready, which [DashReadiness.Greeting] applies in the loop; kept as its own rule for the tests. */
         internal fun burstDue(sinceLastBurstMs: Long, keySeen: Boolean, resends: Int): Boolean =
@@ -1568,7 +1568,7 @@ class DashSession(
                     ". $DIGITAL_HINT"
             heardFromDash ->
                 "Auth timed out — the dash answered but never accepted (no 07 01 01). " +
-                    "Check SSID matches '${DashWifiManager.maskSsid(ssid)}'. $DIGITAL_HINT"
+                    "Check SSID matches '${DashSsid.maskSsid(ssid)}'. $DIGITAL_HINT"
             else -> "Auth timed out — not a single packet from the dash (bike off, or its Wi-Fi gone?)."
         }
 

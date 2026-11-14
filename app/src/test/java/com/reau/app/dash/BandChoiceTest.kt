@@ -99,17 +99,32 @@ class BandChoiceTest {
     @Test
     fun `the manager decides the band only for a request it really makes, sets it on Android 12 and later, and tells the choice when the request ends unanswered`() {
         val manager = File("src/main/java/com/reau/app/dash/DashWifiManager.kt").readText()
-        val ask = manager.substringAfter("private fun askForTheNetwork()").substringBefore("cm.requestNetwork(request, cb, timeout)")
+        val ask = manager.between("private fun askForTheNetwork()", "cm.requestNetwork(request, cb, timeout)")
         val reuse = ask.indexOf("if (useAlreadyConnectedNetwork()) return")
         val decide = ask.indexOf("bandChoice.nameOn(specBuilder, band24(), requests)")
         assertTrue("after the network the phone already joined is taken", reuse in 0 until decide)
         assertEquals("the band is decided once, there", 1, Regex("""bandChoice\.(nameOn|forRequest)\(""").findAll(ask).count())
         assertTrue("the request's own line is as it always was", ask.contains("\", first approval\" else \"\"})\")"))
         assertTrue("the band is named on the request's builder", File("src/main/java/com/reau/app/dash/BandChoice.kt").readText().contains("builder.setBand(ScanResult.WIFI_BAND_24_GHZ)"))
-        val unavailable = manager.substringAfter("override fun onUnavailable()").substringBefore("override fun onLosing")
+        val unavailable = manager.between("override fun onUnavailable()", "override fun onLosing")
         assertTrue(unavailable.contains("bandChoice.endedUnanswered()"))
         assertTrue("with no switch given, a manager never names the band", manager.contains("private val band24: () -> Boolean = { false },"))
         val live = File("src/main/java/com/reau/app/service/LiveSides.kt").readText()
         assertTrue(live.contains("DashWifiManager(context, scope, pairing, band24 = { SettingsStore.open(context).load().experimentWifiBand })"))
+    }
+
+    /**
+     * The text between two anchors of a source. `substringAfter` and `substringBefore` hand back the whole text when the anchor is not there, so a
+     * function that moved to another file would leave the check looking at more than it should, and passing: each anchor has to be there.
+     */
+    private fun String.between(start: String, end: String): String {
+        val rest = after(start)
+        assertTrue("the end anchor is gone after '$start': $end", rest.contains(end))
+        return rest.substringBefore(end)
+    }
+
+    private fun String.after(start: String): String {
+        assertTrue("the anchor is gone: $start", contains(start))
+        return substringAfter(start)
     }
 }

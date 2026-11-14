@@ -23,7 +23,7 @@ object DashJoin {
      * of it (a Wi-Fi manager made without one), and then nothing is assumed: false.
      */
     fun needsApproval(joinedSsid: String?, wantedSsid: String, wantedIsPrefix: Boolean): Boolean =
-        joinedSsid != null && (joinedSsid.isBlank() || !DashWifiManager.matchesPendingSsid(joinedSsid, wantedSsid, wantedIsPrefix))
+        joinedSsid != null && (joinedSsid.isBlank() || !DashSsid.matchesPendingSsid(joinedSsid, wantedSsid, wantedIsPrefix))
 
     /**
      * How long a request waits: a reconnection of this session [everConnected] keeps [reconnectMs], the first approval of
@@ -55,7 +55,7 @@ object DashJoin {
      */
     internal fun seenRecently(seen: List<ScanSeen>?, wantedSsid: String, wantedIsPrefix: Boolean, nowUs: Long): Boolean =
         seen.orEmpty().any {
-            DashWifiManager.matchesPendingSsid(it.ssid, wantedSsid, wantedIsPrefix) &&
+            DashSsid.matchesPendingSsid(it.ssid, wantedSsid, wantedIsPrefix) &&
                 (it.timestampUs <= 0 || it.timestampUs > nowUs || nowUs - it.timestampUs <= SIGHTING_FRESH_MS * MICROS_PER_MILLI)
         }
 

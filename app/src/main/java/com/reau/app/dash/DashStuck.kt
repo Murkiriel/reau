@@ -10,7 +10,7 @@ package com.reau.app.dash
  * (StuckDashWatchTest); the Wi-Fi manager feeds it the facts and shows the notification.
  *
  * This covers the dash that hangs **in the middle of a ride** (the Wi-Fi was joined, spoke, was lost). The older detection,
- * [DashWifiManager.Refusal.DASH_STUCK] (tested by DashStuckTest), is only evaluated in the manager's "initial connect" branch (before any join
+ * [JoinRules.Refusal.DASH_STUCK] (tested by DashStuckTest), is only evaluated in the manager's "initial connect" branch (before any join
  * of the projection, or after a quick refusal of a network that had worked) and only puts the words `dash_err_dash_stuck` on the screen; it
  * raises no notification. The two are independent.
  */
@@ -39,7 +39,7 @@ internal object DashStuck {
      * cannot be read or is empty (the screen is off), a sighting between the two ages or a weak one say nothing: [Sighting.UNKNOWN].
      */
     fun sighting(seen: List<ScanSeen>?, wantedSsid: String, wantedIsPrefix: Boolean, nowUs: Long): Sighting {
-        val dash = seen.orEmpty().filter { DashWifiManager.matchesPendingSsid(it.ssid, wantedSsid, wantedIsPrefix) }
+        val dash = seen.orEmpty().filter { DashSsid.matchesPendingSsid(it.ssid, wantedSsid, wantedIsPrefix) }
         val freshest = dash.filter { it.timestampUs in 1..nowUs }.maxByOrNull { it.timestampUs }
         val ageMs = freshest?.let { (nowUs - it.timestampUs) / MICROS_PER_MILLI }
         return when {

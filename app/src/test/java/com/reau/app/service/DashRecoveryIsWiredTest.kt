@@ -14,6 +14,21 @@ class DashRecoveryIsWiredTest {
     private val live = File("src/main/java/com/reau/app/service/LiveSides.kt").readText()
     private val session = File("src/main/java/com/reau/app/dash/DashSession.kt").readText()
 
+    /**
+     * The text between two anchors of a source. `substringAfter` and `substringBefore` hand back the whole text when the anchor is not there, so a
+     * function that moved to another file would leave the check looking at more than it should, and passing: each anchor has to be there.
+     */
+    private fun String.between(start: String, end: String): String {
+        val rest = after(start)
+        assertTrue("the end anchor is gone after '$start': $end", rest.contains(end))
+        return rest.substringBefore(end)
+    }
+
+    private fun String.after(start: String): String {
+        assertTrue("the anchor is gone: $start", contains(start))
+        return substringAfter(start)
+    }
+
     @Test
     fun `the watch over a loss holds a request whose Wi-Fi is being joined, as the first connection's does`() {
         assertTrue(wifi.contains("DashJoin.refileAfterLossHeld("))
@@ -23,7 +38,7 @@ class DashRecoveryIsWiredTest {
 
     @Test
     fun `a network found already connected is checked before and after it is taken, and again a moment later`() {
-        val use = wifi.substringAfter("private fun useAlreadyConnectedNetwork()").substringBefore("private fun joinedNetworkUsable")
+        val use = wifi.between("private fun useAlreadyConnectedNetwork()", "private fun joinedNetworkUsable")
         assertTrue(use.split("joinedNetworkUsable(activeNetwork)").size - 1 >= 2)
         assertTrue(use.contains("verifyJoinedLater(activeNetwork)"))
         assertTrue("the watcher is registered before the second check", use.indexOf("watchJoined(activeNetwork)") < use.lastIndexOf("joinedNetworkUsable(activeNetwork)"))
@@ -31,7 +46,7 @@ class DashRecoveryIsWiredTest {
 
     @Test
     fun `a refused network is never found as already connected again`() {
-        val find = wifi.substringAfter("private fun findAlreadyConnectedDashNetwork()").substringBefore("private fun readActiveWifiSsid")
+        val find = wifi.between("private fun findAlreadyConnectedDashNetwork()", "private fun readActiveWifiSsid")
         assertTrue(find.contains("isRefused(candidate)"))
     }
 
@@ -46,8 +61,8 @@ class DashRecoveryIsWiredTest {
 
     @Test
     fun `the failed tries of a request feed the hung dash watch, from the unavailable and from the early release`() {
-        assertTrue(wifi.substringAfter("override fun onUnavailable()").substringBefore("override fun onLosing").contains("noteFailedTry()"))
-        assertTrue(wifi.substringAfter("private fun refileForSighting").substringBefore("private fun newestSightingUs").contains("noteFailedTry()"))
+        assertTrue(wifi.between("override fun onUnavailable()", "override fun onLosing").contains("noteFailedTry()"))
+        assertTrue(wifi.between("private fun refileForSighting", "private fun newestSightingUs").contains("noteFailedTry()"))
     }
 
     @Test
@@ -60,15 +75,15 @@ class DashRecoveryIsWiredTest {
 
     @Test
     fun `after a refusal asked for again, the projection is told two seconds later that the Wi-Fi is up, and the network's owner is logged`() {
-        val bind = wifi.substringAfter("fun bindResult(bound: Network?, refused: Boolean)").substringBefore("private fun dropWatcher")
+        val bind = wifi.between("fun bindResult(bound: Network?, refused: Boolean)", "private fun dropWatcher")
         assertTrue(bind.contains("bindRefusals.refused(dead, phoneJoined)"))
         assertTrue(bind.contains("verdict.line(dead, owner)"))
         assertTrue("asked for again, then the news is scheduled", bind.indexOf("askForTheNetwork()") < bind.indexOf("tellTheProjectionSoon(serial)"))
-        val soon = bind.substringAfter("private fun tellTheProjectionSoon")
+        val soon = bind.after("private fun tellTheProjectionSoon")
         assertTrue(soon.contains("delay(RefusalRetry.AFTER_MS)"))
         assertTrue(soon.contains("RefusalRetry.due("))
         assertTrue(soon.contains("onNetworkAvailable?.invoke()"))
-        assertTrue("a switch-off makes the news stale", wifi.substringAfter("fun disconnect()").substringBefore("private fun requestNetwork").contains("refusalSerial++"))
+        assertTrue("a switch-off makes the news stale", wifi.between("fun disconnect()", "private fun requestNetwork").contains("refusalSerial++"))
         assertTrue(wifi.contains("using already-connected WiFi '\${maskSsid(activeSsid)}' (network \$activeNetwork, \${networkOwner("))
         assertTrue(wifi.contains("in \${tookMs}ms (network \$network, \${networkOwner("))
     }
