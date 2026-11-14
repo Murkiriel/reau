@@ -10,7 +10,7 @@ import org.junit.Test
 class StreamGovernorStatsTest {
     private var nowMs = 0L
 
-    private fun governor() = StreamGovernor(AutoFpsController.Plan(4, 4), bitrateCeilingBps = 200_000, fixedKeyframeSec = 1)
+    private fun governor() = StreamGovernor(4, bitrateCeilingBps = 200_000, fixedKeyframeSec = 1)
 
     private fun StreamGovernor.poll(frames: Int, bytes: Long): List<Action> {
         nowMs += 250L

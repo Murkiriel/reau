@@ -10,12 +10,14 @@ import java.util.Locale
 
 /**
  * The decisions of the video loop, with the clock and every measurement passed in, so they run in a plain JVM
- * test. It applies the stream rules ([DashLogic], [AutoFpsController], [AutoKeyframeController]) to
+ * test. It applies the stream rules ([DashLogic], [AutoKeyframeController]) to
  * a source that is Android Auto instead of a map:
  *
  * - **Pace.** The still pace until the dash has confirmed the first frame of the stream; then a tick at the
  *   stream's rate. Which ticks carry a frame is the compositor's business: a new picture, or a repeat every idle
- *   interval.
+ *   interval. The rate is fixed for the whole stream: the full pace it was started with (`fullFps`, 4 in the app), half of
+ *   it in the REDUCED tier, the light screens' pace on a light screen. Nothing raises or lowers it by what a window measured
+ *   (the ladder that did, `AutoFpsController`, could not be reached with the fixed ceiling of 4 and was cut on 14/11/2026).
  * - **Bitrate.** The full bitrate while pictures keep coming ("the map changed recently" there is "Android Auto
  *   sent a new picture recently" here), half of it [MOTION_HOLD_MS] after the last one. The full bitrate is the
  *   rider's [bitrateCeilingBps], raised as needed so the rate keeps [DashLogic.MIN_BITS_PER_FRAME]. In the REDUCED
@@ -25,19 +27,19 @@ import java.util.Locale
  * - **Keyframes while still.** One every [DashLogic.IDLE_SYNC_EVERY_MS], when the encoder's own would be further
  *   apart than that.
  * - **The window.** Every [windowMs] one line with the stream's measurements, the bike's speed and
- *   Wi-Fi among it ([LinkWindow]), and the automatic controllers get to judge it. A change of the automatic rate or of
- *   the keyframe interval means a new encoder.
- * - **The navigation profiles** change the pace and the live bitrate, never the encoder: with a profile on,
- *   the encoder is always built for the full rate ([encoderFps]) and REDUCED just feeds it fewer frames, at the
- *   lower bitrate, set live, so a change of tier costs no rebuild. The last tier is held [NAV_HOLD_MS] when the data
- *   it came from goes missing.
+ *   Wi-Fi among it ([LinkWindow]), ending with what the window showed ([windowVerdict]); the automatic keyframe
+ *   interval gets to judge it. A change of the keyframe interval means a new encoder: the only rebuild a poll asks for.
+ * - **The navigation profiles** change the pace and the live bitrate, never the encoder: the encoder is always built
+ *   for the full rate ([encoderFps]) and REDUCED just feeds it fewer frames, at the lower bitrate, set live, so a change
+ *   of tier costs no rebuild. The last tier is held [NAV_HOLD_MS] when the data it came from goes missing.
  *
  * A window is judged only if the stream ran at its full rate for all of it AND the compositor had a frame for
  * (nearly) every tick: a source slower than the rate says nothing about what the phone or the dash can take.
  */
 @Suppress("TooManyFunctions", "LongParameterList") // one small function per case; the parameters are the knobs of one stream
 internal class StreamGovernor(
-    private val plan: AutoFpsController.Plan,
+    /** The pace of the full profile, for the whole stream: the rider's ceiling, already under what the phone's heat allowed at the start. */
+    fullFps: Int,
     private val clockSlowPercent: Int = 0,
     private val windowMs: Long = WINDOW_MS,
     private val bitrateCeilingBps: Int = DashConfig.MAX_STREAM_BITRATE_BPS,
@@ -152,7 +154,8 @@ internal class StreamGovernor(
         }
     }
 
-    private val autoFps = AutoFpsController(plan.startFps, plan.ceiling)
+    /** The full pace on an even step, like every rate. */
+    private val fullFps = DashConfig.snapStreamFps(fullFps)
     private val autoKeyframe = AutoKeyframeController()
     private val maneuverProfile = ManeuverProfile()
     private val speedProfile = SpeedProfile()
@@ -167,25 +170,23 @@ internal class StreamGovernor(
     // When the tier last changed from one tier to the other (NAV_DWELL_MS keeps it that long); none yet at the start.
     private var tierChangedAtMs = Long.MIN_VALUE / 2
 
-    /** A profile is switched on: the encoder is then built for the full rate and the tiers only change the pace. */
+    /** A profile is switched on: with none, the tier held for missing data is let go at once. */
     private var navProfilesOn = false
 
     private var dashAckSeen = false
-    private var builtFps = autoFps.currentFps
 
-    /** The navigation profiles: the tier's fps/bitrate override [fps]/[activeBitrateBps], or null for autoFps. */
+    /** The pace of the stream now: the profile's, or the light screens' on a light screen. */
     val fps: Int get() = if (lightOn) LightScreen.fps(profileFps, lightScreenFps) else profileFps
 
-    /** The pace of the profile (the automatic rate or the navigation tier), without the light-screen pace: what the heat is judged against. */
-    val profileFps: Int get() = navTier?.let(::tierFps) ?: autoFps.currentFps
+    /** The pace of the profile (the navigation tier, or the full pace with none), without the light-screen pace: what the heat is judged against. */
+    val profileFps: Int get() = navTier?.let(::tierFps) ?: fullFps
     val keyframeSec: Int get() = fixedKeyframeSec.takeIf { it > 0 } ?: autoKeyframe.currentSec
 
     /**
-     * The rate the encoder is built for (its frame-rate hint, and so the bits each frame gets). With a navigation profile
-     * on, always the full rate: REDUCED only feeds it fewer frames ([fps]), so a frame keeps its bits and a change of
-     * tier needs no new encoder. Without one, the automatic rate, as it always was.
+     * The rate the encoder is built for (its frame-rate hint, and so the bits each frame gets): always the full pace.
+     * REDUCED only feeds it fewer frames ([fps]), so a frame keeps its bits and a change of tier needs no new encoder.
      */
-    val encoderFps: Int get() = if (navProfilesOn) autoFps.ceiling else autoFps.currentFps
+    val encoderFps: Int get() = fullFps
 
     /**
      * The fastest pace the stream can have on this encoder: the light screens' ([lightScreenFps], 6) when it is above the encoder's rate hint
@@ -206,15 +207,14 @@ internal class StreamGovernor(
         get() = if (navTier == QualityTier.REDUCED && !lightOn) minOf(activeBitrateBps, reducedBitrateBps) else activeBitrateBps
 
     /**
-     * FULL is [AutoFpsController.ceiling] — the Settings' own ceiling (AutoFpsController.plan) — never above what the dash has
-     * already shown it can hold, and never whatever fps autoFps happens to be sitting at. REDUCED is half of it, snapped to an even
-     * step — allowed down to [NAV_MIN_FPS] (2, REau's idle pace too,
+     * FULL is the full pace — the Settings' own ceiling — never above what the dash has already shown it can hold.
+     * REDUCED is half of it, snapped to an even step — allowed down to [NAV_MIN_FPS] (2, REau's idle pace too,
      * `DashEncoder.kt`'s "4 fps active / 2 fps idle"), below [DashConfig.MIN_STREAM_FPS] on purpose: that floor is
-     * about autoFps's own climb, not this deliberate, bounded reduction.
+     * about the full pace, not this deliberate, bounded reduction.
      */
     private fun tierFps(tier: QualityTier): Int = when (tier) {
-        QualityTier.FULL -> autoFps.ceiling
-        QualityTier.REDUCED -> snapNavFps(autoFps.ceiling / 2)
+        QualityTier.FULL -> fullFps
+        QualityTier.REDUCED -> snapNavFps(fullFps / 2)
     }
 
     private fun snapNavFps(fps: Int): Int {
@@ -235,7 +235,7 @@ internal class StreamGovernor(
     private val syncReasons = LinkedHashMap<String, Int>()
 
     /**
-     * The encoder to build when the running one failed (not when the plan changed): the rate it is built for and the bitrate
+     * The encoder to build when the running one failed: the rate it is built for and the bitrate
      * that is applied now. It used to be built for the pace's fps and the full bitrate, so a stream that was still (or in the
      * reduced profile) came back at the full bitrate with the pace unchanged, and nothing set it right (audit of 20/10/2026).
      */
@@ -249,7 +249,6 @@ internal class StreamGovernor(
         lastPictureAtMs = null
         window = null
         statsStartMs = -1L
-        builtFps = encoderFps
         return paceChange(firstFrameConfirmed = false) + bitrateChange(full = false) + sync("stream start", nowMs)
     }
 
@@ -269,12 +268,8 @@ internal class StreamGovernor(
         lightChange?.let { actions += it }
         actions += paceChange(p.firstFrameConfirmed)
         actions += bitrateChange(full)
-        // A tier change moves the pace only. The encoder is replaced only when what it is built for moves: a profile
-        // switched on or off while running, or the plan's own rate.
-        if (encoderFps != builtFps) {
-            builtFps = encoderFps
-            actions += Action.Rebuild(encoderFps, keyframeSec, bitrateBps, encoderKeyframeSec)
-        }
+        // A tier change, a light screen and a profile switched on or off move the pace and the live bitrate only: what the
+        // encoder is built for ([encoderFps]) never moves, so no poll asks for a new encoder here.
         actions += idleSync(full, p.nowMs)
         actions += account(p, full)
         actions += statsSecond(p)
@@ -306,7 +301,7 @@ internal class StreamGovernor(
     /**
      * The navigation profiles, read live every poll, nothing baked in at construction (same pattern as [Poll.link]). A
      * profile with no data this poll (the route's speed or distance missing for a moment) keeps its last verdict for
-     * [NAV_HOLD_MS] instead of falling back to the automatic rate at once: that fall-back, and the climb back, caused
+     * [NAV_HOLD_MS] instead of falling back to the full pace at once: that fall-back, and the way back, caused
      * most of the encoder rebuilds measured in use. A log line when the tier changes (null: no override).
      */
     private fun updateNavOverride(sample: NavSample?, nowMs: Long): Action? {
@@ -342,7 +337,7 @@ internal class StreamGovernor(
         }
     }
 
-    /** No switch enabled (or no active route) is null — no override, the automatic rate stands. With
+    /** No switch enabled (or no active route) is null — no tier, the full pace stands. With
      *  one switch enabled and data, its own verdict stands. With both and disagreeing, [NavSample.mode] decides:
      *  OTIMISTA takes whichever says FULL, PESSIMISTA whichever says REDUCED. */
     private fun combineNavTier(sample: NavSample?): QualityTier? {
@@ -451,16 +446,12 @@ internal class StreamGovernor(
         val composedFps = DashLogic.computeActualFps(w.drawn + w.repeated, elapsedMs)
         val decodedFps = DashLogic.computeActualFps((p.dashAcks - w.ackStart).toInt(), elapsedMs)
         val kbps = w.bytes * 8.0 / elapsedMs
-        val judged = w.allFull && composedFps >= target * AutoFpsController.DELIVERY_RATIO
-        val rate = autoFps.onWindow(
-            AutoFpsController.Window(target, sentFps, decodedFps, kbps, allActive = judged, thermalOk = w.thermalOk),
-            p.nowMs,
-        )
+        val judged = w.allFull && composedFps >= target * DELIVERY_RATIO
         val auto = autoKeyframe.onWindow(
             AutoKeyframeController.Window(
                 sentFps = sentFps,
                 // Acks far below the sent rate do not track frames at all: then only the bitrate rule applies.
-                decodedFps = decodedFps.takeIf { sentFps > 0 && it >= sentFps * AutoFpsController.ACK_TRACKING_MIN_RATIO },
+                decodedFps = decodedFps.takeIf { sentFps > 0 && it >= sentFps * ACK_TRACKING_MIN_RATIO },
                 kbps = kbps, appliedKbps = bitrateBps / 1000.0, allActive = judged,
             ),
         )
@@ -476,15 +467,12 @@ internal class StreamGovernor(
             if (w.frames > 0) w.bytes / w.frames else 0L,
             w.source, w.drawn, w.repeated, perFrame(w.composeNs, w.drawn + w.repeated), perFrame(w.encodeNs, w.frames), w.late,
             com.reau.app.video.TickWait.text(w.tickWaits), judged, if (w.thermalOk) "OK" else "HOT", w.link.text(), keyframe.intervalSec,
-            w.keyframes, w.keyBytesMax, w.keyPacketsMax, syncSummary(), rate.fps, rate.reason,
+            w.keyframes, w.keyBytesMax, w.keyPacketsMax, syncSummary(), fullFps, windowVerdict(judged, target, sentFps, kbps, w.thermalOk),
         ) + StageReport.text(w.compose.stats(), w.encode.stats(), w.look.stats(), w.latch.stats(), w.wakeups, elapsedMs)
         val actions = mutableListOf<Action>(Action.Log(line))
-        if (rate.changed || keyframe.changed) {
-            // With a navigation profile on, the encoder is built for the full rate whatever the automatic rate does.
-            if (keyframe.changed || encoderFps != builtFps) {
-                builtFps = encoderFps
-                actions += Action.Rebuild(encoderFps, keyframeSec, bitrateBps, encoderKeyframeSec)
-            }
+        // Only the automatic keyframe interval asks for a new encoder here (the app runs with a fixed one: never).
+        if (keyframe.changed) {
+            actions += Action.Rebuild(encoderFps, keyframeSec, bitrateBps, encoderKeyframeSec)
             actions += paceChange(p.firstFrameConfirmed)
         }
         return actions
@@ -501,6 +489,50 @@ internal class StreamGovernor(
     companion object {
         /** One line, and one judgement, every 5 s. */
         const val WINDOW_MS = 5_000L
+
+        /** The least of the pace a window must have composed to be judged (`full=`), and sent not to be short. */
+        const val DELIVERY_RATIO = 0.95
+
+        /**
+         * Headroom over [DashConfig.MAX_STREAM_BITRATE_BPS] before a window counts as over budget: the encoder's 5 s
+         * average wobbles a few percent around its target.
+         */
+        const val BITRATE_TOLERANCE = 1.10
+
+        /** Acks under this fraction of the frames sent do not track frames at all (a dash that acknowledges only the keyframes). */
+        const val ACK_TRACKING_MIN_RATIO = 0.3
+
+        /**
+         * The text in brackets that ends the window's line, after `auto=Nfps` (N is the stream's full pace): what this
+         * window alone showed, with no memory of the windows before it.
+         *
+         * - `not judged`: the window is not a full one, exactly when the line says `full=false` ([judged] false): the
+         *   picture was still, the dash had not confirmed the first frame, or the compositor made less than
+         *   [DELIVERY_RATIO] of [target].
+         * - `short: sent 3.1`: a full window where fewer frames went out than [DELIVERY_RATIO] of [target]; with
+         *   `kbps N` when the encoder put out more than [BITRATE_TOLERANCE] of the bitrate ceiling and `thermal` when the
+         *   phone was hot, each alone or together (`short: sent 3.1, kbps 1200, thermal`).
+         * - `ok`: a full window with none of the three.
+         *
+         * [target] is the `target=` of the same line: the pace when the window closed, not the pace the window ran at.
+         * A window the pace changed in is therefore read against the pace it ended at. Going up (2 to 4, 4 to 6) it
+         * composed less than the new pace and is `not judged`, never a false `short`; going down (4 to 2, 6 to 4) it
+         * sent more than the new pace asks and is `ok`. `short` always means the encoder gave out fewer frames than the
+         * compositor made in that same window.
+         */
+        internal fun windowVerdict(judged: Boolean, target: Int, sentFps: Double, kbps: Double, thermalOk: Boolean): String {
+            if (!judged) return "not judged"
+            val delivered = sentFps >= target * DELIVERY_RATIO
+            val withinBitrate = kbps <= DashConfig.MAX_STREAM_BITRATE_BPS / KILO * BITRATE_TOLERANCE
+            val why = buildList {
+                if (!delivered) add(String.format(Locale.US, "sent %.1f", sentFps))
+                if (!withinBitrate) add(String.format(Locale.US, "kbps %.0f", kbps))
+                if (!thermalOk) add("thermal")
+            }
+            return if (why.isEmpty()) "ok" else "short: ${why.joinToString(", ")}"
+        }
+
+        private const val KILO = 1000.0
 
         /** The stats text on the dash's video is made again every second. */
         const val STATS_MS = 1_000L

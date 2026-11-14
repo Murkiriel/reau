@@ -42,9 +42,7 @@ internal data class GovernorConfig(val name: String, val ceilingFps: Int, val bi
      */
     fun governor(): StreamGovernor {
         val ceiling = ThermalCeiling.capFor(COOL, ceilingFps)
-        return StreamGovernor(
-            AutoFpsController.plan(VideoLoop.Settings().startFps, ceiling), 0, StreamGovernor.WINDOW_MS, bitrateBps, keyframeSec, lightScreenFps = lightScreenFps,
-        )
+        return StreamGovernor(ceiling, 0, StreamGovernor.WINDOW_MS, bitrateBps, keyframeSec, lightScreenFps = lightScreenFps)
     }
 }
 

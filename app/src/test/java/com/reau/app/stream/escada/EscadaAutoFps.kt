@@ -1,4 +1,10 @@
-package com.reau.app.stream
+/*
+ * ORACLE OF PLAN 27, NOT APP CODE. This is `stream/AutoFpsController.kt` as it was before the fps ladder was cut (commit bcb027e, step G0), copied
+ * with nothing changed but the names (EscadaAutoFps) and the package. GovernadorLadoALadoTest runs it beside the
+ * governor of today. Do not edit it: a fix here would hide a difference. It leaves the test tree in step G3; the original is kept in
+ * `reau_arquivo/governador-escada-20261114/`.
+ */
+package com.reau.app.stream.escada
 
 import com.reau.app.dash.DashConfig
 
@@ -24,7 +30,7 @@ import com.reau.app.dash.DashConfig
  *
  * Pure logic (no Android, clock injected per call) so every rule is unit-tested.
  */
-internal class AutoFpsController(startFps: Int, ceiling: Int = DashConfig.MAX_STREAM_FPS) {
+internal class EscadaAutoFps(startFps: Int, ceiling: Int = DashConfig.MAX_STREAM_FPS) {
 
     /** How a stream starts: at [startFps], never climbing past [ceiling]. */
     data class Plan(val startFps: Int, val ceiling: Int)

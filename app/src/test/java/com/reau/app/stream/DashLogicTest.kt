@@ -222,4 +222,26 @@ class DashLogicTest {
         assertEquals(0.0, DashLogic.computeActualFps(frames = 0, elapsedMs = 5_000), 1e-9)
     }
 
+    // ── the first frame (kept from AutoFpsDashLimitTest, which left with the fps ladder on 14/11/2026) ─────
+
+    @Test
+    fun `until the dash confirms the first frame the stream stays at the still-map pace`() {
+        // On that ride every stream that began at 4 fps (map still) had its first frame confirmed in about 8 s; of the
+        // 36 that began at 30 fps in motion, none was.
+        assertFalse(DashLogic.fullRate(mapChangedRecently = true, firstFrameConfirmed = false))
+        assertTrue(DashLogic.fullRate(mapChangedRecently = true, firstFrameConfirmed = true))
+        assertFalse(DashLogic.fullRate(mapChangedRecently = false, firstFrameConfirmed = true))
+        assertFalse(DashLogic.fullRate(mapChangedRecently = false, firstFrameConfirmed = false))
+    }
+
+    // ── waiting for the encoder (the older loop), as a test switch (kept from AutoFpsRiderCeilingTest, the same) ──
+
+    @Test
+    fun `the encoder is rebuilt when the rate, the keyframe interval or the way its output is read changes`() {
+        assertFalse(DashLogic.encoderRebuildNeeded(fps = 16, encoderFps = 16, keyframeSec = 1, encoderKeyframeSec = 1, waits = false, encoderWaits = false))
+        assertTrue(DashLogic.encoderRebuildNeeded(fps = 18, encoderFps = 16, keyframeSec = 1, encoderKeyframeSec = 1, waits = false, encoderWaits = false))
+        assertTrue(DashLogic.encoderRebuildNeeded(fps = 16, encoderFps = 16, keyframeSec = 2, encoderKeyframeSec = 1, waits = false, encoderWaits = false))
+        assertTrue("the switch was flipped", DashLogic.encoderRebuildNeeded(fps = 16, encoderFps = 16, keyframeSec = 1, encoderKeyframeSec = 1, waits = true, encoderWaits = false))
+        assertTrue(DashLogic.encoderRebuildNeeded(fps = 16, encoderFps = 16, keyframeSec = 1, encoderKeyframeSec = 1, waits = false, encoderWaits = true))
+    }
 }

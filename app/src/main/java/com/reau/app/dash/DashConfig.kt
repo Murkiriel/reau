@@ -2,7 +2,7 @@ package com.reau.app.dash
 
 /**
  * The limits of the video stream to the dash, as found on a real dash.
- * The rules that use them are in `com.reau.app.stream` (DashLogic, AutoFpsController, AutoKeyframeController).
+ * The rules that use them are in `com.reau.app.stream` (DashLogic, StreamGovernor, AutoKeyframeController).
  */
 object DashConfig {
     /** Range of the stream rate. At 30 the dash went silent; 4 is the conservative rate it shows well. */
@@ -11,14 +11,18 @@ object DashConfig {
     const val STREAM_FPS_STEP = 2
     const val DEFAULT_STREAM_FPS = 4
 
-    /** Where automatic mode starts with no history: 8 fps ran cleanly on a real dash. */
+    /**
+     * Where the automatic rate started with no history: 8 fps ran cleanly on a real dash. Nothing in the app reads it since the
+     * automatic rate was cut (14/11/2026); it goes with the last clean-up of that cut.
+     */
     const val AUTO_FPS_START = 8
 
     /**
-     * The highest rate automatic fps climbs to. The dash does not acknowledge frames one by one, so the
-     * controller cannot find the dash's limit by itself (see AutoFpsController); this is the highest rate the
-     * dash has been SEEN to hold for minutes on a real bike, with no drop. Above it the stretches were
-     * much shorter (about a minute at 18 fps), and 30 fps killed the stream.
+     * The highest rate the dash has been SEEN to hold for minutes on a real bike, with no drop: above it the stretches
+     * were much shorter (about a minute at 18 fps), and 30 fps killed the stream. It was the ceiling the automatic rate
+     * climbed to (the dash does not acknowledge frames one by one, so nothing could find its limit by itself). The
+     * automatic rate was cut on 14/11/2026 and the app's own ceiling is fixed at [PROFILE_FULL_FPS]; this is left as the
+     * default of a stream made without the rider's settings (the tests), until the last clean-up of that cut.
      */
     const val AUTO_FPS_CEILING = 16
 

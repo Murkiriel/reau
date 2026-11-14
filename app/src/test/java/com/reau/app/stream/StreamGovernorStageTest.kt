@@ -17,7 +17,7 @@ class StreamGovernorStageTest {
     private var nowMs = 0L
     private val ms = 1_000_000L
 
-    private fun governor() = StreamGovernor(AutoFpsController.Plan(4, 4), bitrateCeilingBps = 400_000, fixedKeyframeSec = 1)
+    private fun governor() = StreamGovernor(4, bitrateCeilingBps = 400_000, fixedKeyframeSec = 1)
 
     private fun stats(vararg ns: Long): StageStats = StageClock().also { c -> ns.forEach(c::add) }.take()
 

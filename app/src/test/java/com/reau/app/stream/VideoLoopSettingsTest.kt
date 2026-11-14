@@ -61,11 +61,10 @@ class VideoLoopSettingsTest {
     @Test
     fun `what is not the rider's is left as it was, the recording among it`() {
         val dir = File("somewhere")
-        val s = VideoLoop.Settings(recordFrames = 600, recordDir = dir, recordRolling = true, startFps = 3, windowMs = 1_234L).withRider(REauSettings())
+        val s = VideoLoop.Settings(recordFrames = 600, recordDir = dir, recordRolling = true, windowMs = 1_234L).withRider(REauSettings())
         assertEquals(600, s.recordFrames)
         assertEquals(dir, s.recordDir)
         assertTrue(s.recordRolling)
-        assertEquals(3, s.startFps)
         assertEquals(1_234L, s.windowMs)
     }
 }

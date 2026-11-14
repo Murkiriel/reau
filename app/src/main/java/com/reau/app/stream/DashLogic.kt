@@ -73,7 +73,7 @@ internal object DashLogic {
     internal fun frameIntervalsMsForFps(fps: Int): Pair<Long, Long> {
         val active = kotlin.math.round(1000.0 / fps.coerceAtLeast(1)).toLong().coerceAtLeast(1L)
         // A still map sends identical frames: never more than 4 of them a second, whatever the
-        // moving rate (automatic fps can settle at 20+, where "half" would still be 10+).
+        // moving rate (at a rate of 20+ "half" would still be 10+).
         return active to maxOf(active * 2, IDLE_MIN_FRAME_MS)
     }
 

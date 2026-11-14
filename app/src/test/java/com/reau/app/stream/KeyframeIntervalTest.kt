@@ -54,7 +54,7 @@ class KeyframeIntervalTest {
     private var acks = 0L
 
     private fun governor(lightFps: Int = 6, keyframeSec: Int = 1) =
-        StreamGovernor(AutoFpsController.Plan(4, 4), fixedKeyframeSec = keyframeSec, lightScreenFps = lightFps).also { it.start(nowMs) }
+        StreamGovernor(4, fixedKeyframeSec = keyframeSec, lightScreenFps = lightFps).also { it.start(nowMs) }
 
     private fun far(distance: Int) = StreamGovernor.NavSample(
         maneuverProfileEnabled = true, speedProfileEnabled = false, distanceToManeuverMeters = distance, speedKmh = null,
@@ -157,34 +157,35 @@ class KeyframeIntervalTest {
     // ── the rebuilds carry the interval ─────────────────────────────────────────────────────────────────────
 
     /** One 5 s window of 20 polls with [composed] frames drawn and sent, the way StreamGovernorTest feeds one. */
-    private fun StreamGovernor.window(composed: Int): List<Action> = (0 until 20).flatMap { i ->
+    private fun StreamGovernor.window(composed: Int, bytesPerFrame: Long = 1_000L): List<Action> = (0 until 20).flatMap { i ->
         fun share(total: Int) = total * (i + 1) / 20 - total * i / 20
         nowMs += 250
         acks += share(composed)
         onPoll(
             StreamGovernor.Poll(
                 nowMs = nowMs, compositor = DashCompositor.Stats(share(composed) * 2, share(composed), 0, 0L), framesOut = share(composed),
-                bytesOut = 1_000L * share(composed), lateFrames = 0, encodeNs = 0L, dashAcks = acks, firstFrameConfirmed = true,
+                bytesOut = bytesPerFrame * share(composed), lateFrames = 0, encodeNs = 0L, dashAcks = acks, firstFrameConfirmed = true,
             ),
         )
     }
 
     @Test
-    fun `the rebuild of a climb to a higher rate asks for the interval of the new rate`() {
-        // Light pace 16 fps over an encoder that climbs 8 -> 10: 1 s at 16 fps is 1.6 s of the encoder's counting, so 2 s.
-        val g = StreamGovernor(AutoFpsController.Plan(8, 12), lightScreenFps = 16).also { it.start(nowMs); it.window(composed = 1) }
-        val up = (1..4).flatMap { g.window(composed = 40) }.filterIsInstance<Action.Rebuild>()
-        assertEquals(1, up.size)
-        assertEquals(10, up.single().fps)
-        assertEquals(1, up.single().keyframeSec)
-        assertEquals(2, up.single().encoderKeyframeSec)
+    fun `the rebuild for an automatic keyframe interval that moved asks for the interval of the light pace`() {
+        // The automatic interval (no fixed one) goes to 2 s after a minute of windows with the bitrate in use: 96 kbit a frame at 8 fps is 768 of 1024 kbps.
+        // Light pace 16 fps over an encoder built for 8: 2 s at 16 fps is 4 s of the encoder's counting, so 5 s.
+        val g = StreamGovernor(8, lightScreenFps = 16).also { it.start(nowMs); it.window(composed = 1) }
+        val moved = (1..14).flatMap { g.window(composed = 40, bytesPerFrame = 12_000L) }.filterIsInstance<Action.Rebuild>()
+        assertEquals(1, moved.size)
+        assertEquals(8, moved.single().fps)
+        assertEquals(2, moved.single().keyframeSec)
+        assertEquals(2 * 16 / 8 + 1, moved.single().encoderKeyframeSec)
     }
 
     @Test
-    fun `a navigation profile switched on while running rebuilds the encoder at the full rate with the interval for the light pace`() {
-        val g = StreamGovernor(AutoFpsController.Plan(8, 16), lightScreenFps = 24).also { it.start(nowMs) }
-        assertEquals("without a profile the encoder is built at the automatic rate", 8, g.encoderFps)
-        assertEquals(1 * 24 / 8 + 1, g.encoderKeyframeSec)
+    fun `a navigation profile switched on while running asks for no new encoder, it is built at the full rate with the interval for the light pace from the start`() {
+        val g = StreamGovernor(16, lightScreenFps = 24).also { it.start(nowMs) }
+        assertEquals("with no profile yet the encoder is already built at the full rate", 16, g.encoderFps)
+        assertEquals(1 * 24 / 16 + 1, g.encoderKeyframeSec)
         nowMs += 250
         val actions = g.onPoll(
             StreamGovernor.Poll(
@@ -192,9 +193,9 @@ class KeyframeIntervalTest {
                 dashAcks = acks, firstFrameConfirmed = true, navSample = far(1_200),
             ),
         )
-        val rebuild = actions.filterIsInstance<Action.Rebuild>().single()
-        assertEquals(16, rebuild.fps)
-        assertEquals(1 * 24 / 16 + 1, rebuild.encoderKeyframeSec)
+        assertTrue("got $actions", actions.none { it is Action.Rebuild })
+        assertEquals(16, g.encoderFps)
+        assertEquals(1 * 24 / 16 + 1, g.rebuildAction().encoderKeyframeSec)
     }
 
     @Test

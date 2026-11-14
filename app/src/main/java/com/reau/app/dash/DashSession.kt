@@ -130,7 +130,7 @@ class DashSession(
     // appears in the ride log, the dash never accepted the stream — the likely "Timeout!" cause.
     @Volatile private var loggedFirstAck = false
     // Running count of 09 06 55 + 09 04 55 decode acks — the only dash-side signal of frames it
-    // actually decoded. Read as deltas per window by the automatic-fps controller.
+    // actually decoded. Read as deltas per window by the stream governor (the `dash=` of its 5 s line).
     private val decodeAcks = java.util.concurrent.atomic.AtomicLong(0)
     val decodedFrameCount: Long get() = decodeAcks.get()
 

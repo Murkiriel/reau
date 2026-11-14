@@ -88,7 +88,7 @@ class VideoRecordingTest {
 
     @Test
     fun theRecordedFileIsReadBackAndDecodesToThePictureThatWasSent() {
-        val l = newLoop(VideoLoop.Settings(startFps = 16, ceilingFps = 16, recordFrames = 8, recordDir = dir))
+        val l = newLoop(VideoLoop.Settings(ceilingFps = 16, recordFrames = 8, recordDir = dir))
         assertTrue(l.start())
         // A still picture: a frame every 248 ms once the pace is in force, so 8 units take about 2 s.
         awaitThat("the recording of 8 units and 3 more frames after it") { log.any { "video recording complete: 8 frames" in it } && framesSent() > 10 }
@@ -124,7 +124,7 @@ class VideoRecordingTest {
 
     @Test
     fun aStreamStoppedBeforeTheLimitLeavesAReadableFile() {
-        val l = newLoop(VideoLoop.Settings(startFps = 16, ceilingFps = 16, recordFrames = 500, recordDir = dir))
+        val l = newLoop(VideoLoop.Settings(ceilingFps = 16, recordFrames = 500, recordDir = dir))
         assertTrue(l.start())
         awaitThat("4 frames sent") { framesSent() >= 4 }
         l.stop()
@@ -140,7 +140,7 @@ class VideoRecordingTest {
 
     @Test
     fun withTheOptionOffNothingIsWritten() {
-        val l = newLoop(VideoLoop.Settings(startFps = 16, ceilingFps = 16, recordFrames = 0, recordDir = dir))
+        val l = newLoop(VideoLoop.Settings(ceilingFps = 16, recordFrames = 0, recordDir = dir))
         assertTrue(l.start())
         awaitThat("the stream running") { framesSent() >= 2 }
         l.stop()
@@ -152,7 +152,7 @@ class VideoRecordingTest {
 
     @Test
     fun aRollingRecordingGoesOnInPartsAfterTheLimit() {
-        val l = newLoop(VideoLoop.Settings(startFps = 16, ceilingFps = 16, recordFrames = 4, recordDir = dir, recordRolling = true))
+        val l = newLoop(VideoLoop.Settings(ceilingFps = 16, recordFrames = 4, recordDir = dir, recordRolling = true))
         assertTrue(l.start())
         awaitThat("three parts of 4 units") { recordings().size >= 3 && framesSent() > 12 }
         l.stop()
@@ -164,7 +164,7 @@ class VideoRecordingTest {
 
     @Test
     fun everyStreamGetsItsOwnRecording() {
-        val l = newLoop(VideoLoop.Settings(startFps = 16, ceilingFps = 16, recordFrames = 2, recordDir = dir))
+        val l = newLoop(VideoLoop.Settings(ceilingFps = 16, recordFrames = 2, recordDir = dir))
         assertTrue(l.start())
         awaitThat("the first stream's 2 frames") { framesSent() >= 2 }
         l.stop()

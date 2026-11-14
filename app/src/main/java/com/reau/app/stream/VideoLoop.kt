@@ -32,8 +32,10 @@ import java.util.concurrent.TimeUnit
  * holds the output until it comes.
  *
  * A hot phone streams under a lower ceiling ([ThermalCeiling]): [thermalStatus] (PowerManager's) is read at
- * the start, which sets the ceiling of the stream, and at every poll; while the rate is above what the status allows,
- * the measurement windows count as short and the automatic rate comes down. Each change of status is logged.
+ * the start, which sets the pace of the whole stream, and at every poll. Nothing lowers the pace of a running stream
+ * (at the app's ceiling of 4 the heat has no step under it): from 'moderate' on the heat puts out the faster pace of the
+ * light screens and the burst after a touch, and a window that ran above what the status allows says `thermal=HOT`.
+ * Each change of status is logged.
  *
  * [link] is read at every poll for the 5 s line: the bike's speed and Wi-Fi.
  */
@@ -68,15 +70,14 @@ internal class VideoLoop(
     }
 
     /**
-     * [startFps] is where the automatic rate starts (the rate remembered from before, once that is stored) and
-     * [ceilingFps] how high it may climb. [clockSlowPercent] is the video clock knob. [bitrateBps], [bitrateMode] and
+     * [ceilingFps] is the pace of the full profile, the one the stream runs at for all of it (the reduced profile is half
+     * of it; the name is the setting's, from when a rate climbed up to it). [clockSlowPercent] is the video clock knob. [bitrateBps], [bitrateMode] and
      * [keyframeSec] (0: automatic) are the rider's; their defaults here are what the stream had before.
      *
      * Optional recording: with [recordFrames] above zero and a [recordDir], the first [recordFrames] units of every
      * stream are also written to a file there ([H264Recorder]); with [recordRolling] the stream goes on in further parts, to its end.
      */
     data class Settings(
-        val startFps: Int = DashConfig.AUTO_FPS_START,
         val ceilingFps: Int = DashConfig.AUTO_FPS_CEILING,
         val clockSlowPercent: Int = 0,
         val bitrateBps: Int = DashConfig.MAX_STREAM_BITRATE_BPS,
@@ -149,9 +150,8 @@ internal class VideoLoop(
         lastThermal = status
         val ceiling = ThermalCeiling.capFor(status, settings.ceilingFps)
         if (thermalCapped(ceiling, settings.ceilingFps)) logThermal(status)
-        val plan = AutoFpsController.plan(settings.startFps, ceiling)
         val g = StreamGovernor(
-            plan, settings.clockSlowPercent, settings.windowMs, settings.bitrateBps, settings.keyframeSec, lightScreenFps = settings.lightScreenFps,
+            ceiling, settings.clockSlowPercent, settings.windowMs, settings.bitrateBps, settings.keyframeSec, lightScreenFps = settings.lightScreenFps,
         )
         val rec = recordInto(settings.recordDir, settings.recordFrames)?.let {
             H264Recorder(it, settings.recordFrames, H264Recorder.nameFor(System.currentTimeMillis()), settings.recordRolling, log)
@@ -181,7 +181,7 @@ internal class VideoLoop(
         adapter = BitrateAdapter.whenOn(settings.adaptiveBitrate)
         muteWatch = EncoderMuteWatch.whenOn(settings.encoderMuteWatch)
         log(
-            "video loop start: ${g.fps} fps (ceiling ${plan.ceiling}), keyframe ${g.keyframeSec}s" +
+            "video loop start: ${g.fps} fps (ceiling $ceiling), keyframe ${g.keyframeSec}s" +
                 (if (settings.keyframeSec > 0) " fixed" else " auto") +
                 " (encoder asked ${DashEncoder.iFrameIntervalText(g.encoderKeyframeSec, g.encoderFps)}, pace up to ${g.gopFps} fps)" +
                 ", ${g.activeBitrateBps / 1000} kbps (${settings.bitrateBps / 1000} chosen) ${settings.bitrateMode ?: "default"}, " +
@@ -277,7 +277,7 @@ internal class VideoLoop(
                         encodeNs = timed?.latencySumNs ?: 0L,
                         dashAcks = dash.decodedFrameCount,
                         firstFrameConfirmed = dash.firstFrameConfirmed,
-                        // Over the hot ceiling the windows count as short, and the automatic rate comes down to it.
+                        // Over the hot ceiling the faster pace of the light screens goes out and the window's line says thermal=HOT.
                         thermalOk = ThermalCeiling.allows(status, g.profileFps, settings.ceilingFps),
                         link = runCatching { link() }.getOrNull(),
                         navSample = runCatching { navSample() }.getOrNull(),

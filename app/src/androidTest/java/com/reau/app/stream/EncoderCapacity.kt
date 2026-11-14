@@ -48,7 +48,7 @@ internal object EncoderCapacity {
             override val decodedFrameCount = 0L
             override fun sendRtp(packet: ByteArray) = Unit
         }
-        val loop = VideoLoop(compositor, dash, VideoLoop.Settings(startFps = 16, ceilingFps = 16), log = { log += it })
+        val loop = VideoLoop(compositor, dash, VideoLoop.Settings(ceilingFps = 16), log = { log += it })
         try {
             check(loop.start()) { "loop did not start: $log" }
             val deadline = System.currentTimeMillis() + 12_000

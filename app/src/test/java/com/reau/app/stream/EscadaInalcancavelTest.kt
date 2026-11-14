@@ -1,9 +1,7 @@
 package com.reau.app.stream
 
 import com.reau.app.dash.BitrateMode
-import com.reau.app.dash.DashConfig
 import com.reau.app.dash.NavProfileMode
-import com.reau.app.fuzz.Seeded
 import com.reau.app.settings.REauSettings
 import com.reau.app.stream.StreamGovernor.Action
 import org.junit.Assert.assertEquals
@@ -13,12 +11,14 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Plan 27, layer 1: with the settings the app really runs with, the fps ladder (`AutoFpsController`) cannot be reached. It never
- * climbs and never comes down, because the ceiling the settings fix (4) is also the ladder's floor. These tests run on the code as it
- * is BEFORE the ladder is cut, and are what justifies cutting it: what goes away does not run.
+ * Plan 27, layer 1: with the settings the app really runs with, the fps ladder (`AutoFpsController`) could not be reached. It never
+ * climbed and never came down, because the ceiling the settings fix (4) was also the ladder's floor. These tests ran on the code as it
+ * was BEFORE the ladder was cut (step G0, commit bcb027e), and are what justified cutting it: what went away did not run.
  *
- * After the cut (step G1) the first two tests stay as they are (they hold the fixed settings and the heat ceiling); the two that name
- * `AutoFpsController` go to the archive with it, and the last one keeps its checks on the governor.
+ * With the cut (step G1, 14/11/2026) the tests of the fixed settings and of the heat ceiling stay as they were. What named
+ * `AutoFpsController` went to the archive with it (`reau_arquivo/governador-escada-20261114/`): the test of the ladder at 4 of 4 over
+ * 100 000 windows, and the one line of the heat test that held the plan at 4 of 4. The last test keeps its checks on the governor; of the
+ * text in brackets it now holds the three the cut left (`ok`, `not judged`, `short: …`) where it held the ladder's states.
  */
 class EscadaInalcancavelTest {
     private val extremes = listOf(0, 2, 6, 16, 30, 99)
@@ -68,47 +68,13 @@ class EscadaInalcancavelTest {
     }
 
     @Test
-    fun `at a ceiling of 4 no heat lowers the ceiling, the plan is 4 of 4, and both paces are always within it`() {
+    fun `at a ceiling of 4 no heat lowers the ceiling, and both paces are always within it`() {
         for (status in -1..6) {
             assertEquals("status $status", 4, ThermalCeiling.capFor(status, 4))
-            assertEquals("status $status", AutoFpsController.Plan(4, 4), AutoFpsController.plan(DashConfig.AUTO_FPS_START, ThermalCeiling.capFor(status, 4)))
             assertTrue("2 fps at status $status", ThermalCeiling.allows(status, 2, 4))
             assertTrue("4 fps at status $status", ThermalCeiling.allows(status, 4, 4))
             assertFalse("the start of a stream never says the heat capped it", VideoLoop.thermalCapped(ThermalCeiling.capFor(status, 4), 4))
         }
-    }
-
-    @Test
-    fun `the ladder at 4 of 4 never moves, whatever 100 000 windows say`() {
-        val rnd = Seeded.random(salt = 27_001)
-        val ladder = AutoFpsController(4, 4)
-        var nowMs = 0L
-        val reasons = HashSet<String>()
-        repeat(WINDOWS) { round ->
-            nowMs += StreamGovernor.WINDOW_MS
-            val sent = rnd.nextInt(81) / 10.0
-            val window = AutoFpsController.Window(
-                targetFps = listOf(2, 4, 6)[rnd.nextInt(3)],
-                sentFps = sent,
-                decodedFps = when (rnd.nextInt(3)) {
-                    0 -> null
-                    1 -> sent * rnd.nextInt(30) / 100.0
-                    else -> sent
-                },
-                kbps = rnd.nextInt(2001).toDouble(),
-                allActive = rnd.nextInt(4) != 0,
-                thermalOk = rnd.nextInt(4) != 0,
-            )
-            val decision = ladder.onWindow(window, nowMs)
-            val said = "round $round, $window: $decision"
-            assertFalse(said, decision.changed)
-            assertEquals(said, 4, decision.fps)
-            assertEquals(said, 4, ladder.currentFps)
-            assertFalse(said, decision.reason.startsWith("up:") || decision.reason.startsWith("down:"))
-            reasons += decision.reason.substringBefore(' ')
-        }
-        // The windows were not all of one kind: the ladder judged them, healthy and short, and held every time.
-        assertTrue("reasons seen: $reasons", reasons.containsAll(listOf("at", "healthy", "short", "idle", "window", "settling")))
     }
 
     @Test
@@ -135,7 +101,7 @@ class EscadaInalcancavelTest {
                         windows++
                         assertEquals(said, 4, GovernorTrace.autoFpsOf(line))
                         val state = GovernorTrace.ladderStateOf(line).orEmpty()
-                        assertFalse(said, state.startsWith("up:") || state.startsWith("down:"))
+                        assertTrue(said, state == "ok" || state == "not judged" || state.startsWith("short: "))
                         states += state.substringBefore(' ')
                         assertTrue(said, " kf=1s " in line)
                     }
@@ -144,12 +110,11 @@ class EscadaInalcancavelTest {
         }
         assertTrue("the sequences closed windows: $windows", windows > SEEDS * 100)
         assertEquals("the sequences ran at every pace the stream has", RealRates.PACES, paces)
-        // The ladder was asked, and held: at its ceiling, at its floor, counting healthy and short windows, and looking away from the windows at 2 and 6 fps.
-        assertTrue("ladder states seen: $states", states.containsAll(listOf("at", "healthy", "short", "idle", "window")))
+        // The windows were of every kind the bracket has a text for: whole, not full, and short.
+        assertEquals("texts seen in the bracket", setOf("ok", "not", "short:"), states)
     }
 
     private companion object {
-        const val WINDOWS = 100_000
         const val SEEDS = 40
     }
 }

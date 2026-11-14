@@ -37,8 +37,6 @@ MUTATIONS = [
      ["LightScreenTest"]),
     ("StreamGovernor: o menu sobe o ritmo antes do primeiro quadro confirmado", MAIN + "stream/StreamGovernor.kt",
      "val light = p.lightScreen && p.firstFrameConfirmed", "val light = p.lightScreen", ["LightScreenTest"]),
-    ("AutoFpsController: a janela medida em outro ritmo conta", MAIN + "stream/AutoFpsController.kt",
-     "w.targetFps != currentFps -> hold(", "false -> hold(", ["LightScreenTest"]),
     ("LightScreen: o celular quente também ganha o ritmo maior", MAIN + "stream/LightScreen.kt",
      "        if (!thermalOk) {\n            on = false\n        } else if (light) {", "        if (false) {\n            on = false\n        } else if (light) {", ["LightScreenTest"]),
     ("PictureGate: no modo sem displays a imagem não diz o menu", MAIN + "aa/AaScreen.kt",
@@ -504,12 +502,10 @@ MUTATIONS = [
      'const val HYSTERESIS_METERS = 200', 'const val HYSTERESIS_METERS = 100', ['ManeuverProfileTest', 'SpeedProfileTest']),
     ("P11d NavProfiles: devagar a 60 km/h", MAIN + 'stream/NavProfiles.kt',
      'const val LOW_KMH = 55.0', 'const val LOW_KMH = 60.0', ['ManeuverProfileTest', 'SpeedProfileTest']),
-    ("P11d AutoFpsController: sobe após 2 janelas boas", MAIN + 'stream/AutoFpsController.kt',
-     'UP_AFTER_HEALTHY = 3', 'UP_AFTER_HEALTHY = 2', ['AutoFpsControllerTest']),
-    ("P11d AutoFpsController: desce após 3 janelas ruins", MAIN + 'stream/AutoFpsController.kt',
-     'DOWN_AFTER_UNHEALTHY = 2', 'DOWN_AFTER_UNHEALTHY = 3', ['AutoFpsControllerTest']),
-    ("P11d AutoFpsController: 90% de entrega basta", MAIN + 'stream/AutoFpsController.kt',
-     'DELIVERY_RATIO = 0.95', 'DELIVERY_RATIO = 0.90', ['AutoFpsControllerTest']),
+    # (The two of the fps ladder that were here, UP_AFTER_HEALTHY and DOWN_AFTER_UNHEALTHY, left with AutoFpsController.kt on 14/11/2026, plan 27 step G1;
+    # the next one moved with the constant to the governor.)
+    ("P11d StreamGovernor: 90% de entrega basta", MAIN + 'stream/StreamGovernor.kt',
+     'DELIVERY_RATIO = 0.95', 'DELIVERY_RATIO = 0.90', ['StreamGovernorTest', 'GovernadorLadoALadoTest']),
     ("P11d StreamGovernor: fica 5 s no menu", MAIN + 'stream/StreamGovernor.kt',
      'NAV_DWELL_MS = 10_000L', 'NAV_DWELL_MS = 5_000L', ['StreamGovernorTest']),
     ("P11d StreamGovernor: ritmo mínimo da navegação 3", MAIN + 'stream/StreamGovernor.kt',
@@ -1023,12 +1019,10 @@ MUTATIONS = [
      "if (!DashLogic.paceSyncNeeded(fps, encoderFps, gopFps)) {", "if (fps >= encoderFps) {", ["KeyframeIntervalTest"]),
     ("StreamGovernor: a reconstrução por falha não leva o intervalo do codificador", MAIN + "stream/StreamGovernor.kt",
      "bitrateBps.takeIf { it > 0 } ?: activeBitrateBps, encoderKeyframeSec)", "bitrateBps.takeIf { it > 0 } ?: activeBitrateBps)", ["KeyframeIntervalTest"]),
-    ("StreamGovernor: a reconstrução por mudança de perfil não leva o intervalo do codificador", MAIN + "stream/StreamGovernor.kt",
-     "            builtFps = encoderFps\n            actions += Action.Rebuild(encoderFps, keyframeSec, bitrateBps, encoderKeyframeSec)",
-     "            builtFps = encoderFps\n            actions += Action.Rebuild(encoderFps, keyframeSec, bitrateBps)", ["KeyframeIntervalTest"]),
+    # (The rebuild for a change of profile left with the fps ladder on 14/11/2026, plan 27 step G1, and its mutation with it; the window's is now only the automatic keyframe's.)
     ("StreamGovernor: a reconstrução da janela não leva o intervalo do codificador", MAIN + "stream/StreamGovernor.kt",
-     "                builtFps = encoderFps\n                actions += Action.Rebuild(encoderFps, keyframeSec, bitrateBps, encoderKeyframeSec)",
-     "                builtFps = encoderFps\n                actions += Action.Rebuild(encoderFps, keyframeSec, bitrateBps)", ["KeyframeIntervalTest"]),
+     "            actions += Action.Rebuild(encoderFps, keyframeSec, bitrateBps, encoderKeyframeSec)",
+     "            actions += Action.Rebuild(encoderFps, keyframeSec, bitrateBps)", ["KeyframeIntervalTest"]),
     ("VideoLoop: o codificador do início é feito com o intervalo do rider", MAIN + "stream/VideoLoop.kt",
      "buildEncoder(out, g.encoderFps, g.activeBitrateBps, g.encoderKeyframeSec)", "buildEncoder(out, g.encoderFps, g.activeBitrateBps, g.keyframeSec)", ["KeyframeIntervalTest"]),
     ("VideoLoop: o codificador reconstruído é feito com o intervalo do rider", MAIN + "stream/VideoLoop.kt",
@@ -3193,11 +3187,25 @@ MUTATIONS = [
     # Governador G0 14/11 (14/11/2026, plan 27, step G0): the proof that comes before the fps ladder is cut (the golden traces of the governor and the
     # test that the ladder cannot be reached with the real settings) changes no production code; these show that the new tests see.
     ("Governador G0 14/11: o perfil reduzido roda no ritmo cheio", MAIN + "stream/StreamGovernor.kt",
-     "QualityTier.REDUCED -> snapNavFps(autoFps.ceiling / 2)", "QualityTier.REDUCED -> autoFps.ceiling", ["GovernadorOuroTest"]),
+     "QualityTier.REDUCED -> snapNavFps(fullFps / 2)", "QualityTier.REDUCED -> fullFps", ["GovernadorOuroTest", "GovernadorLadoALadoTest"]),
     ("Governador G0 14/11: a troca de perfil não espera os 10 s", MAIN + "stream/StreamGovernor.kt",
      "nowMs - tierChangedAtMs < NAV_DWELL_MS -> before", "false -> before", ["GovernadorOuroTest"]),
     ("Governador G0 14/11: o teto do calor passa abaixo do piso de 4", MAIN + "stream/ThermalCeiling.kt",
      "return DashConfig.snapStreamFps(hot).coerceAtMost(base)", "return hot.coerceAtMost(base)", ["EscadaInalcancavelTest"]),
+    # Governador G1 14/11 (14/11/2026, plan 27, step G1): the fps ladder is cut. The governor runs at one full pace for the whole stream; the golden traces of G0
+    # and the old governor kept beside it in the test tree (GovernadorLadoALadoTest, until step G3) hold that nothing but the text in brackets of the window's line moved.
+    ("Governador G1 14/11: sem perfil o ritmo é o mínimo da navegação e não o cheio", MAIN + "stream/StreamGovernor.kt",
+     "?: fullFps", "?: NAV_MIN_FPS", ["GovernadorOuroTest", "GovernadorLadoALadoTest"]),
+    ("Governador G1 14/11: o codificador é feito para o ritmo do perfil e não para o cheio", MAIN + "stream/StreamGovernor.kt",
+     "val encoderFps: Int get() = fullFps", "val encoderFps: Int get() = profileFps", ["GovernadorOuroTest", "GovernadorLadoALadoTest"]),
+    ("Governador G1 14/11: a janela que enviou exatamente 95% do ritmo sai como curta", MAIN + "stream/StreamGovernor.kt",
+     "sentFps >= target * DELIVERY_RATIO", "sentFps > target * DELIVERY_RATIO", ["StreamGovernorTest"]),
+    ("Governador G1 14/11: a janela que não rodou cheia é julgada assim mesmo", MAIN + "stream/StreamGovernor.kt",
+     'if (!judged) return "not judged"', 'if (false) return "not judged"', ["StreamGovernorTest"]),
+    ("Governador G1 14/11: o celular quente não é dito no colchete", MAIN + "stream/StreamGovernor.kt",
+     'if (!thermalOk) add("thermal")', 'if (false) add("thermal")', ["StreamGovernorTest"]),
+    ("Governador G1 14/11: a taxa acima do teto não é dita no colchete", MAIN + "stream/StreamGovernor.kt",
+     'if (!withinBitrate) add(', 'if (false) add(', ["StreamGovernorTest"]),
 ]
 
 

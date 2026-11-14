@@ -1555,6 +1555,16 @@ class EtapasDoVideo(unittest.TestCase):
         self.assertIn("espera pelo tick média 100 ms (pior p95 200, máx 250)", texto)
         self.assertIn("quadros-chave 10", texto)
 
+    def test_o_colchete_de_depois_do_corte_da_escada_e_lido_como_o_antigo(self):
+        # 14/11/2026 (plano 27, passo G1): o texto depois de `auto=4fps` deixou de ser o estado da escada de fps (`at ceiling`, `healthy 2/3`...) e passou a
+        # dizer só o que a janela mostrou: `ok`, `not judged` ou `short: ...`. O leitor não lê o colchete: o resumo é o mesmo com os dois.
+        novos = ("ok", "not judged", "short: sent 3.1", "short: sent 3.1, kbps 1200, thermal")
+        for antiga in (ETAPAS_ANTIGA, self.nova()):
+            self.assertIn("auto=4fps [at ceiling]", antiga)
+            depois = [antiga.replace("[at ceiling]", f"[{c}]") for c in novos]
+            self.assertEqual(self.video(*[antiga] * len(novos)), self.video(*depois))
+        self.assertIn("quadros-chave 20", self.video(*[self.nova().replace("[at ceiling]", f"[{c}]") for c in novos]))
+
     def test_uma_janela_sem_quadro_medido_traz_traco_e_nao_derruba_o_resumo(self):
         texto = self.video(self.nova(cmax="-", cp95="-", emax="-", ep95="-").replace("compose_max=-ms", "compose_max=-").replace("compose_p95=-ms", "compose_p95=-")
                            .replace("encode_max=-ms", "encode_max=-").replace("encode_p95=-ms", "encode_p95=-"))
