@@ -1,0 +1,39 @@
+# Golden trace of the stream governor (plan 27, GovernadorOuroTest). Recorded from the code, never edited by hand.
+# Case 01-stream-start: the still pace and the still bitrate until the dash confirms the first frame, and sync=stream start.
+# A line is a poll that had an action (the time in ms, then one action per line); `reads:` are the values the video loop reads, when one changed.
+
+== 400 kbps ==
+      0  start
+         pace=500/500
+         bitrate=200000
+         sync=stream start
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+# the map moves, the dash has confirmed nothing yet
+   1250  stats=2.0fps/160kbps
+   2000  sync=idle
+   2250  stats=2.0fps/80kbps
+   3250  stats=2.0fps/160kbps
+   4000  sync=idle
+   4250  stats=2.0fps/80kbps
+   5250  stats=2.0fps/160kbps
+   5500  log: video fps target=4 sent=2.0 (10frames/5.0s) composed=2.0 kbps=112 set=200k frame=7000B source=10 drawn=10 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=false thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=2(max 15000B/11pkt) sync=3[stream start:1,idle:2] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=10(2.0/s)
+   6000  sync=idle
+   6000  end, 24 polls
+
+== 200 kbps ==
+      0  start
+         pace=500/500
+         bitrate=100000
+         sync=stream start
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=100000 encoderKeyframeSec=2)
+# the map moves, the dash has confirmed nothing yet
+   1250  stats=2.0fps/160kbps
+   2000  sync=idle
+   2250  stats=2.0fps/80kbps
+   3250  stats=2.0fps/160kbps
+   4000  sync=idle
+   4250  stats=2.0fps/80kbps
+   5250  stats=2.0fps/160kbps
+   5500  log: video fps target=4 sent=2.0 (10frames/5.0s) composed=2.0 kbps=112 set=100k frame=7000B source=10 drawn=10 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=false thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=2(max 15000B/11pkt) sync=3[stream start:1,idle:2] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=10(2.0/s)
+   6000  sync=idle
+   6000  end, 24 polls

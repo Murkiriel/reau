@@ -3190,6 +3190,14 @@ MUTATIONS = [
      "        notes.lost()\n", "", ["DashRecoveryIsWiredTest"]),
     ("Divisão do DashWifiManager B 14/11: o conectar de novo não esquece a rede anterior", MAIN + "dash/DashWifiManager.kt",
      "        notes.forget()\n", "", ["DashRecoveryIsWiredTest"]),
+    # Governador G0 14/11 (14/11/2026, plan 27, step G0): the proof that comes before the fps ladder is cut (the golden traces of the governor and the
+    # test that the ladder cannot be reached with the real settings) changes no production code; these show that the new tests see.
+    ("Governador G0 14/11: o perfil reduzido roda no ritmo cheio", MAIN + "stream/StreamGovernor.kt",
+     "QualityTier.REDUCED -> snapNavFps(autoFps.ceiling / 2)", "QualityTier.REDUCED -> autoFps.ceiling", ["GovernadorOuroTest"]),
+    ("Governador G0 14/11: a troca de perfil não espera os 10 s", MAIN + "stream/StreamGovernor.kt",
+     "nowMs - tierChangedAtMs < NAV_DWELL_MS -> before", "false -> before", ["GovernadorOuroTest"]),
+    ("Governador G0 14/11: o teto do calor passa abaixo do piso de 4", MAIN + "stream/ThermalCeiling.kt",
+     "return DashConfig.snapStreamFps(hot).coerceAtMost(base)", "return hot.coerceAtMost(base)", ["EscadaInalcancavelTest"]),
 ]
 
 

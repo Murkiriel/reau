@@ -1,0 +1,105 @@
+# Golden trace of the stream governor (plan 27, GovernadorOuroTest). Recorded from the code, never edited by hand.
+# Case 10-menu-in-reduced-profile: 6 fps at the full bitrate on the app menu, back 500 ms after leaving it.
+# A line is a poll that had an action (the time in ms, then one action per line); `reads:` are the values the video loop reads, when one changed.
+
+== 400 kbps ==
+      0  start
+         pace=500/500
+         bitrate=200000
+         sync=stream start
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+# a route, 500 m from the maneuver, 70 km/h
+    250  log: nav profile: none -> REDUCED (data), pace 2 fps, encoder 4 fps
+         pace=500/1000
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+   1000  sync=pace
+   1250  stats=2.0fps/160kbps
+   2000  sync=pace
+   2250  stats=2.0fps/160kbps
+   3000  sync=pace
+   3250  stats=2.0fps/160kbps
+   4000  sync=pace
+# the app menu of Android Auto
+   4250  log: light screen: pace up to 6 fps (the app menu or an app of Android Auto)
+         pace=167/334
+         bitrate=400000
+         stats=2.0fps/160kbps
+         reads: fps=6 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=400000 encoderKeyframeSec=2)
+   5000  sync=pace
+   5250  stats=7.0fps/440kbps
+   5500  log: video fps target=6 sent=3.0 (15frames/5.0s) composed=3.0 kbps=200 set=400k frame=8333B source=15 drawn=15 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=false thermal=OK speed~70km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=6[stream start:1,pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=15(3.0/s)
+   6000  sync=pace
+   6250  stats=6.0fps/320kbps
+   7000  sync=pace
+   7250  stats=6.0fps/320kbps
+   8000  sync=pace
+   8250  stats=6.0fps/320kbps
+   9000  sync=pace
+   9250  stats=6.0fps/320kbps
+  10000  sync=pace
+# back on the map
+  10250  stats=6.0fps/320kbps
+  10500  log: light screen: pace back to the profile's 2 fps
+         pace=500/1000
+         bitrate=200000
+         log: video fps target=2 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=200k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~70km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+  11000  sync=pace
+  11250  stats=2.0fps/80kbps
+  12000  sync=pace
+  12250  stats=2.0fps/160kbps
+  13000  sync=pace
+  13250  stats=2.0fps/160kbps
+  14000  sync=pace
+  14000  end, 56 polls
+
+== 200 kbps ==
+      0  start
+         pace=500/500
+         bitrate=100000
+         sync=stream start
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=100000 encoderKeyframeSec=2)
+# a route, 500 m from the maneuver, 70 km/h
+    250  log: nav profile: none -> REDUCED (data), pace 2 fps, encoder 4 fps
+         pace=500/1000
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=100000 encoderKeyframeSec=2)
+    500  bitrate=200000
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+   1000  sync=pace
+   1250  stats=2.0fps/160kbps
+   2000  sync=pace
+   2250  stats=2.0fps/160kbps
+   3000  sync=pace
+   3250  stats=2.0fps/160kbps
+   4000  sync=pace
+# the app menu of Android Auto
+   4250  log: light screen: pace up to 6 fps (the app menu or an app of Android Auto)
+         pace=167/334
+         stats=2.0fps/160kbps
+         reads: fps=6 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+   5000  sync=pace
+   5250  stats=7.0fps/440kbps
+   5500  log: video fps target=6 sent=3.0 (15frames/5.0s) composed=3.0 kbps=200 set=200k frame=8333B source=15 drawn=15 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=false thermal=OK speed~70km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=6[stream start:1,pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=15(3.0/s)
+   6000  sync=pace
+   6250  stats=6.0fps/320kbps
+   7000  sync=pace
+   7250  stats=6.0fps/320kbps
+   8000  sync=pace
+   8250  stats=6.0fps/320kbps
+   9000  sync=pace
+   9250  stats=6.0fps/320kbps
+  10000  sync=pace
+# back on the map
+  10250  stats=6.0fps/320kbps
+  10500  log: light screen: pace back to the profile's 2 fps
+         pace=500/1000
+         log: video fps target=2 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=200k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~70km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+  11000  sync=pace
+  11250  stats=2.0fps/80kbps
+  12000  sync=pace
+  12250  stats=2.0fps/160kbps
+  13000  sync=pace
+  13250  stats=2.0fps/160kbps
+  14000  sync=pace
+  14000  end, 56 polls

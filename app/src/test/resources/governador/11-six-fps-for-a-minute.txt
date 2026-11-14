@@ -1,0 +1,305 @@
+# Golden trace of the stream governor (plan 27, GovernadorOuroTest). Recorded from the code, never edited by hand.
+# Case 11-six-fps-for-a-minute: one sync=pace a second at 6 fps, not 1.5.
+# A line is a poll that had an action (the time in ms, then one action per line); `reads:` are the values the video loop reads, when one changed.
+
+== 400 kbps ==
+      0  start
+         pace=500/500
+         bitrate=200000
+         sync=stream start
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+# the map moves, no route
+    250  pace=250/500
+    500  bitrate=400000
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=400000 encoderKeyframeSec=2)
+   1000  sync=pace
+   1250  stats=5.0fps/360kbps
+   2000  sync=pace
+# the app menu of Android Auto, a minute of it
+   2250  log: light screen: pace up to 6 fps (the app menu or an app of Android Auto)
+         pace=167/334
+         stats=4.0fps/240kbps
+         reads: fps=6 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=400000 encoderKeyframeSec=2)
+   3000  sync=pace
+   3250  stats=5.0fps/280kbps
+   4000  sync=pace
+   4250  stats=6.0fps/320kbps
+   5000  sync=pace
+   5250  stats=6.0fps/320kbps
+   5500  log: video fps target=6 sent=5.2 (26frames/5.0s) composed=5.2 kbps=288 set=400k frame=6923B source=26 drawn=26 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=false thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=6[stream start:1,pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=26(5.2/s)
+   6000  sync=pace
+   6250  stats=6.0fps/320kbps
+   7000  sync=pace
+   7250  stats=6.0fps/320kbps
+   8000  sync=pace
+   8250  stats=6.0fps/320kbps
+   9000  sync=pace
+   9250  stats=6.0fps/320kbps
+  10000  sync=pace
+  10250  stats=6.0fps/320kbps
+  10500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=400k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  11000  sync=pace
+  11250  stats=6.0fps/320kbps
+  12000  sync=pace
+  12250  stats=6.0fps/320kbps
+  13000  sync=pace
+  13250  stats=6.0fps/320kbps
+  14000  sync=pace
+  14250  stats=6.0fps/320kbps
+  15000  sync=pace
+  15250  stats=6.0fps/320kbps
+  15500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=400k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  16000  sync=pace
+  16250  stats=6.0fps/320kbps
+  17000  sync=pace
+  17250  stats=6.0fps/320kbps
+  18000  sync=pace
+  18250  stats=6.0fps/320kbps
+  19000  sync=pace
+  19250  stats=6.0fps/320kbps
+  20000  sync=pace
+  20250  stats=6.0fps/320kbps
+  20500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=400k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  21000  sync=pace
+  21250  stats=6.0fps/320kbps
+  22000  sync=pace
+  22250  stats=6.0fps/320kbps
+  23000  sync=pace
+  23250  stats=6.0fps/320kbps
+  24000  sync=pace
+  24250  stats=6.0fps/320kbps
+  25000  sync=pace
+  25250  stats=6.0fps/320kbps
+  25500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=400k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  26000  sync=pace
+  26250  stats=6.0fps/320kbps
+  27000  sync=pace
+  27250  stats=6.0fps/320kbps
+  28000  sync=pace
+  28250  stats=6.0fps/320kbps
+  29000  sync=pace
+  29250  stats=6.0fps/320kbps
+  30000  sync=pace
+  30250  stats=6.0fps/320kbps
+  30500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=400k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  31000  sync=pace
+  31250  stats=6.0fps/320kbps
+  32000  sync=pace
+  32250  stats=6.0fps/320kbps
+  33000  sync=pace
+  33250  stats=6.0fps/320kbps
+  34000  sync=pace
+  34250  stats=6.0fps/320kbps
+  35000  sync=pace
+  35250  stats=6.0fps/320kbps
+  35500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=400k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  36000  sync=pace
+  36250  stats=6.0fps/320kbps
+  37000  sync=pace
+  37250  stats=6.0fps/320kbps
+  38000  sync=pace
+  38250  stats=6.0fps/320kbps
+  39000  sync=pace
+  39250  stats=6.0fps/320kbps
+  40000  sync=pace
+  40250  stats=6.0fps/320kbps
+  40500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=400k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  41000  sync=pace
+  41250  stats=6.0fps/320kbps
+  42000  sync=pace
+  42250  stats=6.0fps/320kbps
+  43000  sync=pace
+  43250  stats=6.0fps/320kbps
+  44000  sync=pace
+  44250  stats=6.0fps/320kbps
+  45000  sync=pace
+  45250  stats=6.0fps/320kbps
+  45500  log: video fps target=6 sent=5.8 (29frames/5.0s) composed=5.8 kbps=312 set=400k frame=6724B source=29 drawn=29 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=29(5.8/s)
+  46000  sync=pace
+  46250  stats=6.0fps/320kbps
+  47000  sync=pace
+  47250  stats=6.0fps/320kbps
+  48000  sync=pace
+  48250  stats=6.0fps/320kbps
+  49000  sync=pace
+  49250  stats=6.0fps/320kbps
+  50000  sync=pace
+  50250  stats=6.0fps/320kbps
+  50500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=400k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  51000  sync=pace
+  51250  stats=6.0fps/320kbps
+  52000  sync=pace
+  52250  stats=6.0fps/320kbps
+  53000  sync=pace
+  53250  stats=6.0fps/320kbps
+  54000  sync=pace
+  54250  stats=6.0fps/320kbps
+  55000  sync=pace
+  55250  stats=6.0fps/320kbps
+  55500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=400k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  56000  sync=pace
+  56250  stats=6.0fps/320kbps
+  57000  sync=pace
+  57250  stats=6.0fps/320kbps
+  58000  sync=pace
+  58250  stats=6.0fps/320kbps
+  59000  sync=pace
+  59250  stats=6.0fps/320kbps
+  60000  sync=pace
+  60250  stats=6.0fps/320kbps
+  60500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=400k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  61000  sync=pace
+  61250  stats=6.0fps/320kbps
+  62000  sync=pace
+  62000  end, 248 polls
+
+== 200 kbps ==
+      0  start
+         pace=500/500
+         bitrate=100000
+         sync=stream start
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=100000 encoderKeyframeSec=2)
+# the map moves, no route
+    250  pace=250/500
+    500  bitrate=200000
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+   1000  sync=pace
+   1250  stats=5.0fps/360kbps
+   2000  sync=pace
+# the app menu of Android Auto, a minute of it
+   2250  log: light screen: pace up to 6 fps (the app menu or an app of Android Auto)
+         pace=167/334
+         stats=4.0fps/240kbps
+         reads: fps=6 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+   3000  sync=pace
+   3250  stats=5.0fps/280kbps
+   4000  sync=pace
+   4250  stats=6.0fps/320kbps
+   5000  sync=pace
+   5250  stats=6.0fps/320kbps
+   5500  log: video fps target=6 sent=5.2 (26frames/5.0s) composed=5.2 kbps=288 set=200k frame=6923B source=26 drawn=26 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=false thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=6[stream start:1,pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=26(5.2/s)
+   6000  sync=pace
+   6250  stats=6.0fps/320kbps
+   7000  sync=pace
+   7250  stats=6.0fps/320kbps
+   8000  sync=pace
+   8250  stats=6.0fps/320kbps
+   9000  sync=pace
+   9250  stats=6.0fps/320kbps
+  10000  sync=pace
+  10250  stats=6.0fps/320kbps
+  10500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=200k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  11000  sync=pace
+  11250  stats=6.0fps/320kbps
+  12000  sync=pace
+  12250  stats=6.0fps/320kbps
+  13000  sync=pace
+  13250  stats=6.0fps/320kbps
+  14000  sync=pace
+  14250  stats=6.0fps/320kbps
+  15000  sync=pace
+  15250  stats=6.0fps/320kbps
+  15500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=200k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  16000  sync=pace
+  16250  stats=6.0fps/320kbps
+  17000  sync=pace
+  17250  stats=6.0fps/320kbps
+  18000  sync=pace
+  18250  stats=6.0fps/320kbps
+  19000  sync=pace
+  19250  stats=6.0fps/320kbps
+  20000  sync=pace
+  20250  stats=6.0fps/320kbps
+  20500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=200k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  21000  sync=pace
+  21250  stats=6.0fps/320kbps
+  22000  sync=pace
+  22250  stats=6.0fps/320kbps
+  23000  sync=pace
+  23250  stats=6.0fps/320kbps
+  24000  sync=pace
+  24250  stats=6.0fps/320kbps
+  25000  sync=pace
+  25250  stats=6.0fps/320kbps
+  25500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=200k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  26000  sync=pace
+  26250  stats=6.0fps/320kbps
+  27000  sync=pace
+  27250  stats=6.0fps/320kbps
+  28000  sync=pace
+  28250  stats=6.0fps/320kbps
+  29000  sync=pace
+  29250  stats=6.0fps/320kbps
+  30000  sync=pace
+  30250  stats=6.0fps/320kbps
+  30500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=200k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  31000  sync=pace
+  31250  stats=6.0fps/320kbps
+  32000  sync=pace
+  32250  stats=6.0fps/320kbps
+  33000  sync=pace
+  33250  stats=6.0fps/320kbps
+  34000  sync=pace
+  34250  stats=6.0fps/320kbps
+  35000  sync=pace
+  35250  stats=6.0fps/320kbps
+  35500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=200k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  36000  sync=pace
+  36250  stats=6.0fps/320kbps
+  37000  sync=pace
+  37250  stats=6.0fps/320kbps
+  38000  sync=pace
+  38250  stats=6.0fps/320kbps
+  39000  sync=pace
+  39250  stats=6.0fps/320kbps
+  40000  sync=pace
+  40250  stats=6.0fps/320kbps
+  40500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=200k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  41000  sync=pace
+  41250  stats=6.0fps/320kbps
+  42000  sync=pace
+  42250  stats=6.0fps/320kbps
+  43000  sync=pace
+  43250  stats=6.0fps/320kbps
+  44000  sync=pace
+  44250  stats=6.0fps/320kbps
+  45000  sync=pace
+  45250  stats=6.0fps/320kbps
+  45500  log: video fps target=6 sent=5.8 (29frames/5.0s) composed=5.8 kbps=312 set=200k frame=6724B source=29 drawn=29 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=29(5.8/s)
+  46000  sync=pace
+  46250  stats=6.0fps/320kbps
+  47000  sync=pace
+  47250  stats=6.0fps/320kbps
+  48000  sync=pace
+  48250  stats=6.0fps/320kbps
+  49000  sync=pace
+  49250  stats=6.0fps/320kbps
+  50000  sync=pace
+  50250  stats=6.0fps/320kbps
+  50500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=200k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  51000  sync=pace
+  51250  stats=6.0fps/320kbps
+  52000  sync=pace
+  52250  stats=6.0fps/320kbps
+  53000  sync=pace
+  53250  stats=6.0fps/320kbps
+  54000  sync=pace
+  54250  stats=6.0fps/320kbps
+  55000  sync=pace
+  55250  stats=6.0fps/320kbps
+  55500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=200k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  56000  sync=pace
+  56250  stats=6.0fps/320kbps
+  57000  sync=pace
+  57250  stats=6.0fps/320kbps
+  58000  sync=pace
+  58250  stats=6.0fps/320kbps
+  59000  sync=pace
+  59250  stats=6.0fps/320kbps
+  60000  sync=pace
+  60250  stats=6.0fps/320kbps
+  60500  log: video fps target=6 sent=6.0 (30frames/5.0s) composed=6.0 kbps=320 set=200k frame=6666B source=30 drawn=30 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed=? wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=30(6.0/s)
+  61000  sync=pace
+  61250  stats=6.0fps/320kbps
+  62000  sync=pace
+  62000  end, 248 polls
