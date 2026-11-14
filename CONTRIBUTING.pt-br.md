@@ -86,7 +86,8 @@ Precisam de virtualização por hardware (KVM). Não usam, não mudam e não apa
 
 **Uma dependência nova e a verificação PGP.** O `gradle/verification-metadata.xml` confere cada artefato que o build baixa: pela assinatura PGP, contra as chaves de `gradle/verification-keyring.keys`,
 quando quem publica assina, e pelo sha256 nos outros (muitos artefatos do Maven do Google não são assinados). Um build com uma dependência que não está no arquivo falha com
-"Dependency verification failed". Para acrescentá-la, rode, com rede e na pasta do repositório:
+"Dependency verification failed". Os servidores de chaves ficam desligados (`<key-servers enabled="false"/>`), então nenhum build pede chave à rede; para acrescentar uma dependência,
+ponha `enabled="true"` só durante este comando e volte para `"false"` antes do commit (um teste confere). Para acrescentá-la, rode, com rede e na pasta do repositório:
 
 ```
 ./gradlew --write-verification-metadata pgp,sha256 --export-keys help testDebugUnitTest detekt lintDebug assembleDebug assembleAndroidTest assembleRelease -PreauDebugSigned=true :macrobenchmark:assemble

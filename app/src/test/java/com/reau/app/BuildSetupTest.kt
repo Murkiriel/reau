@@ -33,6 +33,8 @@ class BuildSetupTest {
         val configuration = metadata.child("configuration")!!
         assertEquals("true", configuration.child("verify-metadata")!!.textContent)
         assertEquals("true", configuration.child("verify-signatures")!!.textContent)
+        // The keys come from the keyring in the repository only: no build asks a key server (CONTRIBUTING, "A new dependency and the PGP check").
+        assertEquals("false", configuration.child("key-servers")!!.getAttribute("enabled"))
     }
 
     @Test

@@ -86,7 +86,8 @@ They need hardware virtualization (KVM). They do not use, change or delete the v
 
 **A new dependency and the PGP check.** `gradle/verification-metadata.xml` checks every artifact the build downloads: by the PGP signature, against the keys in `gradle/verification-keyring.keys`,
 when the publisher signs it, and by the sha256 otherwise (many artifacts of Google's Maven are not signed). A build with a dependency that is not in the file fails with
-"Dependency verification failed". To add it, run, with the network and from the repository's folder:
+"Dependency verification failed". The key servers are off (`<key-servers enabled="false"/>`), so no build asks the network for a key; to add a dependency, set
+it to `enabled="true"` for this one command and back to `"false"` before the commit (a test checks it). To add it, run, with the network and from the repository's folder:
 
 ```
 ./gradlew --write-verification-metadata pgp,sha256 --export-keys help testDebugUnitTest detekt lintDebug assembleDebug assembleAndroidTest assembleRelease -PreauDebugSigned=true :macrobenchmark:assemble
