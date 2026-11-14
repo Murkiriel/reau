@@ -249,6 +249,8 @@ MUTATIONS_SCRIPTS = [
      ["painel_falso/test_ponto_de_acesso.py"]),
     ("painel/ponto: sem root o up e o down seguem em frente", "scripts/painel_falso/ponto_de_acesso.py",
      "        if self.dry_run or self.euid() == 0:\n", "        if True:\n", ["painel_falso/test_ponto_de_acesso.py"]),
+    ("painel/ponto: o up pede a conexão sem esperar o NetworkManager deixar a interface pronta", "scripts/painel_falso/ponto_de_acesso.py",
+     "            if state == READY_STATE:\n", "            if True:\n", ["painel_falso/test_ponto_de_acesso.py"]),
     ("painel/ponto: o down deixa a conexão que o up criou e não chegou a ligar", "scripts/painel_falso/ponto_de_acesso.py",
      "        if active or exists:\n            ok = self._change(", "        if active:\n            ok = self._change(", ["painel_falso/test_ponto_de_acesso.py"]),
     ("painel/ver: o quadro danificado é gravado e vai ao ffplay", "scripts/painel_falso/painel.py",

@@ -41,6 +41,9 @@ UFW_CONF = "/etc/ufw/ufw.conf"
 VPN_KINDS = ("wireguard", "tun", "vpn")
 # How long NetworkManager is given to see the new interface.
 SEEN_TRIES, SEEN_WAIT_S = 20, 0.25
+# How long NetworkManager is given, once it manages the interface, to have it ready (`disconnected`, not `unavailable`) for the access point.
+READY_TRIES, READY_WAIT_S = 40, 0.25
+READY_STATE = "disconnected"
 NOT_FOUND = 127
 
 OK, CANNOT, FAILED = 0, 1, 2
@@ -383,6 +386,24 @@ class AccessPoint:
             self.sleep(SEEN_WAIT_S)
         return False
 
+    def _state_in_network_manager(self):
+        """The state NetworkManager gives the access point's interface (`unavailable`, `disconnected`, ...), or None when it is not listed."""
+        for line in self._read("nmcli", "-t", "-f", "DEVICE,STATE", "device", "status").out.splitlines():
+            name, _, state = line.partition(":")
+            if name == AP_INTERFACE:
+                return state
+        return None
+
+    def _ready_in_network_manager(self):
+        """Waits for NetworkManager to have the interface ready for a connection; the state it was last seen in, and whether it got there."""
+        state = None
+        for _ in range(READY_TRIES):
+            state = self._state_in_network_manager()
+            if state == READY_STATE:
+                return state, True
+            self.sleep(READY_WAIT_S)
+        return state, False
+
     def up(self, ssid=DEFAULT_SSID, password=None):
         password = self.default_password if password is None else password
         if not ssid.startswith(p.SSID_PREFIX) or len(ssid.encode("utf-8")) > 32:
@@ -412,13 +433,19 @@ class AccessPoint:
              "802-11-wireless-security.pairwise", "ccmp", "802-11-wireless-security.group", "ccmp",
              "802-11-wireless-security.psk", password,
              "ipv4.method", "shared", "ipv4.addresses", AP_ADDRESS, "ipv6.method", "disabled"],
-            ["nmcli", "connection", "up", CONNECTION],
+            ["nmcli", "connection", "up", CONNECTION, "ifname", AP_INTERFACE],
         )
         for n, step in enumerate(steps):
             ok = self._change(step)
             if ok and n == 0 and not self.dry_run and not self._seen_by_network_manager():
                 self.say("  NetworkManager did not take the new interface %s in %.0f s" % (AP_INTERFACE, SEEN_TRIES * SEEN_WAIT_S))
                 ok = False
+            if ok and n == 1 and not self.dry_run:
+                state, ready = self._ready_in_network_manager()
+                if not ready:
+                    self.say("  NetworkManager left %s %s for %.0f s; it has to be `%s` to take the access point" % (
+                        AP_INTERFACE, "`%s`" % state if state else "unlisted", READY_TRIES * READY_WAIT_S, READY_STATE))
+                    ok = False
             if not ok:
                 self.say("`up` stopped half-way: undoing what it did")
                 self.down()

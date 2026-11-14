@@ -99,10 +99,13 @@ class Machine:
     """A computer made up for the tests: it answers the tool's commands and changes as they ask."""
 
     def __init__(self, channel=36, mhz=5180, combinations=BOTH_AT_ONCE, wifi_address="10.0.0.20", root=True, ufw=None, vpn=False,
-                 network_manager="running", missing=(), failing=(), sees_interface=True):
+                 network_manager="running", missing=(), failing=(), sees_interface=True,
+                 ap_states=("disconnected",)):
         self.channel, self.mhz, self.combinations, self.wifi_address = channel, mhz, combinations, wifi_address
         self.root, self.ufw, self.vpn, self.network_manager = root, ufw, vpn, network_manager
         self.missing, self.failing, self.sees_interface = missing, failing, sees_interface
+        # The states NetworkManager gives the new interface at each look, the last one kept from then on.
+        self.ap_states = list(ap_states)
         self.interface = self.connection = self.active = False
         self.calls, self.said, self.slept = [], [], []
 
@@ -144,6 +147,11 @@ class Machine:
         if argv[4:6] == ["connection", "show"]:
             there = self.active if "--active" in argv else self.connection
             return "HomeNet\n" + ("reau-bench-ap\n" if there else "")
+        if "DEVICE,STATE" in argv:
+            if not (self.interface and self.sees_interface):
+                return "wlan0:connected\nlo:connected (externally)\n"
+            state = self.ap_states.pop(0) if len(self.ap_states) > 1 else self.ap_states[0]
+            return "wlan0:connected\nlo:connected (externally)\nreauap0:%s\n" % state
         if "DEVICE" in argv:
             return "wlan0\nlo\n" + ("reauap0\n" if self.interface and self.sees_interface else "")
         if "DEVICE,TYPE,STATE" in argv:
@@ -179,7 +187,7 @@ def up_commands(band="a", channel="36", ssid="RE_BENCH_0001", password="12345678
          "802-11-wireless-security.pairwise", "ccmp", "802-11-wireless-security.group", "ccmp",
          "802-11-wireless-security.psk", password,
          "ipv4.method", "shared", "ipv4.addresses", "192.168.1.1/24", "ipv6.method", "disabled"],
-        ["nmcli", "connection", "up", "reau-bench-ap"],
+        ["nmcli", "connection", "up", "reau-bench-ap", "ifname", "reauap0"],
     ]
 
 
@@ -404,6 +412,20 @@ class UpTest(unittest.TestCase):
         self.assertEqual(ap.FAILED, machine.tool().up())
         self.assertEqual(up_commands()[:1] + DOWN_COMMANDS[2:], machine.changes)
         self.assertEqual([ap.SEEN_WAIT_S] * ap.SEEN_TRIES, machine.slept)
+        self.assertFalse(machine.interface)
+
+    def test_it_waits_for_network_manager_to_have_the_interface_ready_before_the_connection(self):
+        machine = Machine(ap_states=("unavailable", "unavailable", "disconnected"))
+        self.assertEqual(ap.OK, machine.tool().up())
+        self.assertEqual(up_commands(), machine.changes)
+        self.assertEqual([ap.READY_WAIT_S] * 2, machine.slept)
+
+    def test_an_interface_network_manager_never_has_ready_is_taken_away_and_the_state_is_said(self):
+        machine = Machine(ap_states=("unavailable",))
+        self.assertEqual(ap.FAILED, machine.tool().up())
+        self.assertEqual(up_commands()[:2] + DOWN_COMMANDS[2:], machine.changes)
+        self.assertEqual([ap.READY_WAIT_S] * ap.READY_TRIES, machine.slept)
+        self.assertIn("  NetworkManager left reauap0 `unavailable` for 10 s; it has to be `disconnected` to take the access point", machine.said)
         self.assertFalse(machine.interface)
 
     def test_it_says_what_to_do_next(self):
