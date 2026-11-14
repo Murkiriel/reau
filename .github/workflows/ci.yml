@@ -146,11 +146,11 @@ jobs:
         run: python3 -m pip install --target "$RUNNER_TEMP/pylibs" --require-hashes --no-deps -r scripts/requirements.txt
 
       # O Python do runner (3.12 no ubuntu-24.04). Os testes de scripts/ só usam a biblioteca padrão; os de bench/, o Pillow.
-      - name: Testes dos scripts (leitor de registros, auditoria de APK, redução, emulador)
+      - name: Testes dos scripts (leitor de registros, auditoria de APK, redução, emulador, painel falso)
         env:
           PYTHONPATH: ${{ runner.temp }}/pylibs
         run: |
-          for dir in scripts scripts/registro scripts/dev bench scripts/emu; do
+          for dir in scripts scripts/registro scripts/dev bench scripts/emu scripts/painel_falso; do
             echo "== $dir"
             (cd "$dir" && python3 -B -m unittest discover -p "test_*.py" -v)
           done

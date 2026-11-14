@@ -26,7 +26,7 @@ repository (`docs/`, `NOTICE`, the READMEs, the changelogs, `app/src/main/res/`)
 they run again by themselves when a text changes. The instrumented tests (`app/src/androidTest`) need an
 emulator, as the README says; `scripts/emu/` has the scripts.
 The Python scripts have their own tests (`python3 -B -m unittest discover -p "test_*.py"` inside `scripts/`, `scripts/registro/`,
-`scripts/dev/`, `scripts/emu/` and `bench/`; the last one needs Pillow, pinned in `scripts/requirements.txt`), and the
+`scripts/dev/`, `scripts/emu/`, `scripts/painel_falso/` and `bench/`; the last one needs Pillow, pinned in `scripts/requirements.txt`), and the
 continuous integration runs them too.
 
 Every code change comes with a new or adjusted test. The project has three languages: texts that people read go in English
@@ -95,6 +95,34 @@ when the publisher signs it, and by the sha256 otherwise (many artifacts of Goog
 Gradle keeps the sha256 entries already in the file, adds the new ones, and adds a `trusted-key` for each key that signs the new artifacts (and exports it to the keyring). Then READ the diff: who the key belongs to
 and for which group it is trusted; that no sha256 entry was removed; and that no `ignored-key` (a key that could not be downloaded) hides an artifact that had a sha256 before, which would leave it
 with no check at all. Commit the metadata and the keyring together (`gradle/verification-keyring.gpg`, the binary copy that Gradle also writes, is not kept). Then run the build again with `--offline`.
+
+## The bench panel
+
+`scripts/painel_falso/painel_falso.py` stands in for the bike's dash on a computer, so that a real phone with REau connects and projects with
+no bike. It uses only Python's standard library. It listens on the dash's UDP ports (2000 for control, 5000 for video; the answers go to the
+phone's 2002), answers the greeting with an RSA-1024 public key made on the spot (the private key stays in memory and is never written),
+takes the AES-256 session key, sends the dash's heartbeat, answers each video frame with the dash's notice, puts the RTP video back together
+into a `.h264` file and presses the joystick from the standard input (`press left`; `help` lists the commands). What arrives, what is
+answered and every protocol error go to the terminal and to a log file, both in `painel_falso_saida/` (`--out` changes it; `.log` and `.h264`
+are never versioned). The route's title, the song and the caller's name are written only by their size unless `--show-text` is given: do
+not share a log made with it.
+
+The phone finds the computer when the computer is what the app looks for:
+
+1. Make the computer a Wi-Fi access point with WPA2, a name that begins with `RE_` (say `RE_BENCH_0001`) and the passphrase the app has
+   for the dash (the factory one, `12345678`, unless you changed it).
+2. Give the access point's interface the address `192.168.1.1` with the mask `255.255.255.0`, and a DHCP server that hands the phone an
+   address in `192.168.1.x`. The app sends its control packets to `192.168.1.255` and the video to `192.168.1.1`.
+3. Let UDP in on ports 2000 and 5000 in the computer's firewall.
+4. Start the panel: `python3 scripts/painel_falso/painel_falso.py --ssid RE_BENCH_0001`. With `--ssid`, a session key sent with another
+   name is rejected, as the dash checks its own name; without it any name is taken.
+5. On the phone, with the bike off or out of reach, forget the dash in REau (so it looks for one by its name again), pick the access point
+   and connect as you would to the bike.
+
+`--selftest` tries the panel against a minimal phone side on the computer's own loopback, with no network, and the tests are in the same
+folder. The panel is written from the app's own code and answers only what that code shows the dash answering; anything else the phone sends
+is only logged. It proves the phone's side of the link, not that a dash takes it: for that, see the next section. `test_sincronia.py` reads
+the ports, the button codes, the packets and the exit sequence from the Kotlin sources, so a change in the app fails there until the panel follows.
 
 ## What not to change without a test on the bike
 

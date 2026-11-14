@@ -66,3 +66,6 @@ __pycache__/
 /app/slow-unit-*
 /app/oom-*
 /app/timeout-*
+
+# The bench panel's log and video (scripts/painel_falso): they may hold what the phone sent.
+painel_falso_saida/

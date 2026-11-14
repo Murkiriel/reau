@@ -26,7 +26,7 @@ arquivos do repositório (`docs/`, `NOTICE`, os READMEs, os changelogs, `app/src
 esses arquivos, então rodam de novo sozinhos quando um texto muda. Os testes instrumentados (`app/src/androidTest`) precisam de um
 emulador, como diz o README; os scripts estão em `scripts/emu/`.
 Os scripts em Python têm testes próprios (`python3 -B -m unittest discover -p "test_*.py"` dentro de `scripts/`, `scripts/registro/`,
-`scripts/dev/`, `scripts/emu/` e `bench/`; o último precisa do Pillow, fixado em `scripts/requirements.txt`), e a
+`scripts/dev/`, `scripts/emu/`, `scripts/painel_falso/` e `bench/`; o último precisa do Pillow, fixado em `scripts/requirements.txt`), e a
 integração contínua também os roda.
 
 Toda mudança de código vem com um teste novo ou ajustado. O projeto tem três idiomas: os textos que as pessoas leem vão em
@@ -95,6 +95,35 @@ quando quem publica assina, e pelo sha256 nos outros (muitos artefatos do Maven 
 O Gradle mantém os sha256 que já estão no arquivo, acrescenta os novos e põe um `trusted-key` para cada chave que assina os artefatos novos (e a exporta para o anel de chaves). Depois LEIA a diferença: de quem é a chave
 e para qual grupo ela é confiável; que nenhum sha256 foi removido; e que nenhum `ignored-key` (uma chave que não pôde ser baixada) esconde um artefato que antes tinha sha256, o que o deixaria
 sem verificação nenhuma. Faça o commit dos metadados e do anel de chaves juntos (o `gradle/verification-keyring.gpg`, a cópia binária que o Gradle também escreve, não é mantido). Depois rode o build de novo com `--offline`.
+
+## O painel falso de bancada
+
+O `scripts/painel_falso/painel_falso.py` faz o papel do painel da moto num computador, para que um celular de verdade com o REau se conecte e
+transmita sem a moto. Só usa a biblioteca padrão do Python. Ele escuta nas portas UDP do painel (2000 para o controle, 5000 para o vídeo; as
+respostas vão para a 2002 do celular), responde à saudação com uma chave pública RSA-1024 gerada na hora (a chave privada fica na memória e
+nunca é gravada), recebe a chave de sessão AES-256, manda o batimento do painel, responde a cada quadro de vídeo com o aviso do painel,
+remonta o vídeo RTP num arquivo `.h264` e aperta o joystick pela entrada padrão (`press left`; `help` lista os comandos). O que chega, o que
+é respondido e todo erro de protocolo vão para o terminal e para um arquivo de registro, os dois em `painel_falso_saida/` (o `--out` muda a
+pasta; `.log` e `.h264` nunca são versionados). O título da rota, a música e o nome de quem liga só aparecem pelo tamanho, a não ser com
+`--show-text`: não compartilhe um registro feito com ele.
+
+O celular acha o computador quando o computador é o que o app procura:
+
+1. Faça do computador um ponto de acesso Wi-Fi com WPA2, um nome que comece com `RE_` (por exemplo `RE_BENCH_0001`) e a senha que o app tem
+   para o painel (a de fábrica, `12345678`, se você não a mudou).
+2. Dê à interface do ponto de acesso o endereço `192.168.1.1` com a máscara `255.255.255.0`, e um servidor DHCP que entregue ao celular um
+   endereço `192.168.1.x`. O app manda os pacotes de controle para `192.168.1.255` e o vídeo para `192.168.1.1`.
+3. Libere a entrada de UDP nas portas 2000 e 5000 no firewall do computador.
+4. Ligue o painel falso: `python3 scripts/painel_falso/painel_falso.py --ssid RE_BENCH_0001`. Com o `--ssid`, uma chave de sessão mandada
+   com outro nome é recusada, como o painel confere o próprio nome; sem ele, qualquer nome é aceito.
+5. No celular, com a moto desligada ou fora de alcance, esqueça o painel no REau (para ele voltar a procurar um pelo nome), escolha o ponto
+   de acesso e ligue como ligaria à moto.
+
+O `--selftest` roda o painel falso contra um lado do celular mínimo no loopback do próprio computador, sem rede, e os testes ficam na mesma
+pasta. O painel falso foi escrito a partir do código do próprio app e só responde o que esse código mostra o painel respondendo; o resto do
+que o celular manda é só registrado. Ele prova o lado do celular, não que um painel aceite aquilo: para isso, veja a próxima seção. O
+`test_sincronia.py` lê as portas, os códigos dos botões, os pacotes e a sequência de saída do código Kotlin, então uma mudança no app falha
+ali até o painel falso acompanhar.
 
 ## O que não mudar sem teste na moto
 

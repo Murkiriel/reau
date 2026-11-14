@@ -26,7 +26,7 @@ repositorio (`docs/`, `NOTICE`, los README, los historiales de cambios, `app/src
 se ejecutan de nuevo solas cuando cambia un texto. Las pruebas instrumentadas (`app/src/androidTest`) necesitan un
 emulador, como dice el README; `scripts/emu/` tiene los scripts.
 Los scripts en Python tienen sus propias pruebas (`python3 -B -m unittest discover -p "test_*.py"` dentro de `scripts/`, `scripts/registro/`,
-`scripts/dev/`, `scripts/emu/` y `bench/`; el último necesita Pillow, fijado en `scripts/requirements.txt`), y la
+`scripts/dev/`, `scripts/emu/`, `scripts/painel_falso/` y `bench/`; el último necesita Pillow, fijado en `scripts/requirements.txt`), y la
 integración continua también las ejecuta.
 
 Todo cambio de código viene con una prueba nueva o ajustada. El proyecto tiene tres idiomas: los textos que lee la gente van en inglés
@@ -95,6 +95,35 @@ cuando quien publica firma, y por el sha256 en los demás (muchos artefactos del
 Gradle mantiene los sha256 que ya están en el archivo, añade los nuevos y pone un `trusted-key` para cada clave que firma los artefactos nuevos (y la exporta al llavero). Después LEE la diferencia: de quién es la clave
 y para qué grupo es de confianza; que no se quitó ningún sha256; y que ningún `ignored-key` (una clave que no se pudo descargar) esconde un artefacto que antes tenía sha256, lo que lo dejaría
 sin ninguna comprobación. Haz el commit de los metadatos y del llavero juntos (`gradle/verification-keyring.gpg`, la copia binaria que Gradle también escribe, no se guarda). Después ejecuta el build otra vez con `--offline`.
+
+## El panel falso de banco
+
+`scripts/painel_falso/painel_falso.py` hace el papel del panel de la moto en un ordenador, para que un teléfono de verdad con REau se conecte y
+transmita sin la moto. Solo usa la biblioteca estándar de Python. Escucha en los puertos UDP del panel (2000 para el control, 5000 para el
+vídeo; las respuestas van al 2002 del teléfono), responde al saludo con una clave pública RSA-1024 generada en el momento (la clave privada
+se queda en la memoria y nunca se graba), recibe la clave de sesión AES-256, envía el latido del panel, responde a cada cuadro de vídeo con
+el aviso del panel, vuelve a montar el vídeo RTP en un archivo `.h264` y pulsa el joystick por la entrada estándar (`press left`; `help`
+lista los comandos). Lo que llega, lo que se responde y todo error de protocolo van al terminal y a un archivo de registro, los dos en
+`painel_falso_saida/` (`--out` cambia la carpeta; `.log` y `.h264` nunca se versionan). El título de la ruta, la canción y el nombre de quien
+llama solo aparecen por su tamaño, salvo con `--show-text`: no compartas un registro hecho con él.
+
+El teléfono encuentra el ordenador cuando el ordenador es lo que la app busca:
+
+1. Haz del ordenador un punto de acceso Wi-Fi con WPA2, un nombre que empiece por `RE_` (por ejemplo `RE_BENCH_0001`) y la contraseña que la
+   app tiene para el panel (la de fábrica, `12345678`, si no la cambiaste).
+2. Da a la interfaz del punto de acceso la dirección `192.168.1.1` con la máscara `255.255.255.0`, y un servidor DHCP que entregue al
+   teléfono una dirección `192.168.1.x`. La app envía los paquetes de control a `192.168.1.255` y el vídeo a `192.168.1.1`.
+3. Permite la entrada de UDP en los puertos 2000 y 5000 en el cortafuegos del ordenador.
+4. Arranca el panel falso: `python3 scripts/painel_falso/painel_falso.py --ssid RE_BENCH_0001`. Con `--ssid`, una clave de sesión enviada
+   con otro nombre se rechaza, como el panel comprueba su propio nombre; sin él, se acepta cualquier nombre.
+5. En el teléfono, con la moto apagada o fuera de alcance, olvida el panel en REau (para que vuelva a buscar uno por el nombre), elige el
+   punto de acceso y conecta como lo harías con la moto.
+
+`--selftest` prueba el panel falso contra un lado del teléfono mínimo en el loopback del propio ordenador, sin red, y las pruebas están en la
+misma carpeta. El panel falso se escribió a partir del código de la propia app y solo responde lo que ese código muestra que el panel
+responde; lo demás que envía el teléfono solo se registra. Prueba el lado del teléfono, no que un panel lo acepte: para eso, mira la sección
+siguiente. `test_sincronia.py` lee los puertos, los códigos de los botones, los paquetes y la secuencia de salida del código Kotlin, así que
+un cambio en la app falla ahí hasta que el panel falso lo siga.
 
 ## Qué no cambiar sin una prueba en la moto
 

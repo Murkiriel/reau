@@ -2,7 +2,8 @@
 "Leva 2". Same format as MUTATIONS in mutacoes.py, which appends this list to its own: (name, file, old text, new text, test files that must catch it).
 
 The test files are Python (`registro/test_chaves.py` is found in scripts/registro, a bare name in scripts/, `dev/test_teste_cego.py` in scripts/dev): no Gradle runs for these.
-Every name starts with `leva2/`, so `python3 scripts/dev/mutacoes.py leva2/` runs only these.
+Every name of that work starts with `leva2/`, so `python3 scripts/dev/mutacoes.py leva2/` runs only these; the ones of the bench panel
+(scripts/painel_falso, 13/11/2026) start with `painel/`.
 """
 
 REG = "scripts/registro/"
@@ -209,4 +210,30 @@ MUTATIONS_SCRIPTS = [
      'teto de quadros solto: bateria a', 'teto de quadros preso: bateria a', ['registro/test_ler_registro_leva5.py']),
     ("leva5/chaves: a guarda da partida ligada por padrão agrupa todas as corridas", REG + "chaves.py",
      'valor == "true" and nome != GUARDA}', 'valor == "true"}', ["registro/test_chaves.py"]),
+    # ── scripts/painel_falso: the bench panel (13/11/2026). `python3 scripts/dev/mutacoes.py painel/` runs only these ──
+    ("painel/k1g: a leitura para na contagem de segmentos e perde o último campo do batimento do app", "scripts/painel_falso/k1g.py",
+     "    while at + 4 <= len(data):\n", "    while len(tlvs) < segments and at + 4 <= len(data):\n", ["painel_falso/test_k1g.py"]),
+    ("painel/cripto: um bloco PKCS#1 com 7 bytes de enchimento é aceito", "scripts/painel_falso/cripto.py",
+     "_MIN_PADDING = 8", "_MIN_PADDING = 7", ["painel_falso/test_cripto.py"]),
+    ("painel/rtp: o pacote atrasado conta como perda e entra no quadro", "scripts/painel_falso/rtp.py",
+     "            if ahead >= SEQ_MOD // 2:\n", "            if False:\n", ["painel_falso/test_rtp.py"]),
+    ("painel/rtp: o buraco na sequência não estraga o quadro em montagem", "scripts/painel_falso/rtp.py",
+     "damages=self._frame_ts is not None)", "damages=False)", ["painel_falso/test_rtp.py"]),
+    ("painel/rtp: o pacote de outra origem entra no quadro", "scripts/painel_falso/rtp.py",
+     "            if not self._other_source(source, n):\n                return None\n", "            self._other_source(source, n)\n", ["painel_falso/test_rtp.py"]),
+    ("painel/painel: o painel novo atende a saudação um segundo antes de estar pronto", "scripts/painel_falso/painel.py",
+     "elif self.age(now) < p.READY_COUNT:", "elif self.age(now) < p.READY_COUNT - 1:", ["painel_falso/test_painel.py"]),
+    ("painel/painel: a chave mandada com outro nome de painel é aceita", "scripts/painel_falso/painel.py",
+     "if self.expected_ssid is not None and ssid != self.expected_ssid:", "if False:", ["painel_falso/test_painel.py"]),
+    ("painel/painel: a sequência de saída vale completa com um comando a menos", "scripts/painel_falso/painel.py",
+     "if self.at == len(p.EXIT_SEQUENCE):", "if self.at == len(p.EXIT_SEQUENCE) - 1:", ["painel_falso/test_painel.py"]),
+    ("painel/painel: o botão vai com dois bytes em vez de um", "scripts/painel_falso/painel.py",
+     "if self._send(k1g.tlv(*p.BUTTON, code)):", "if self._send(k1g.tlv(*p.BUTTON, 0x00, code)):", ["painel_falso/test_painel.py"]),
+    ("painel/sincronia: a porta de controle do painel deixa de ser a do app", "scripts/painel_falso/protocolo.py",
+     "CTRL_PORT = 2000", "CTRL_PORT = 2001", ["painel_falso/test_sincronia.py"]),
+    ("painel/sincronia: um byte da sequência de saída deixa de ser o do app", "scripts/painel_falso/protocolo.py",
+     '("back", 0x06, 0x80, 0x12),', '("back", 0x06, 0x80, 0x13),', ["painel_falso/test_sincronia.py"]),
+    ("painel/selftest: a saída cortada do celular passa no --selftest", "scripts/painel_falso/painel_falso.py",
+     'check(_until(lambda: panel_.sessions == 1) and panel_.last_exit == ("complete", len(p.EXIT_SEQUENCE)),', "check(_until(lambda: panel_.sessions == 1),",
+     ["painel_falso/test_selftest.py"]),
 ]
