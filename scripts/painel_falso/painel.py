@@ -27,9 +27,15 @@ class ExitTracker:
 
     The first two also open the phone's first burst, so a sequence is only taken as one from the third (the "back"); cut short after that,
     it is told as incomplete, with how many of its commands came.
+
+    The app cancels its other senders just before the sequence, and a cancelled one still finishes the packet it was at: the answer to a
+    frame's notice (06 11, 06 12), a button's echo, the heartbeat, the projection keep-alive, a card. So a TLV that is none of the nine
+    commands may land between two of them, and it neither breaks the sequence nor starts it over. One of the commands out of its place
+    does, and so does a sequence that stops coming ([stalled]).
     """
 
     UNMISTAKABLE = 3
+    COMMANDS = frozenset((type_, sub, bytes([value])) for _, type_, sub, value in p.EXIT_SEQUENCE)
 
     def __init__(self):
         self.at = 0
@@ -38,6 +44,10 @@ class ExitTracker:
     def feed(self, tlv, now):
         """("complete", 9) at the last command, ("incomplete", n) when a sequence that had begun is broken by [tlv], else None."""
         got = (tlv.type, tlv.sub, tlv.value)
+        if got not in self.COMMANDS:
+            return None
+        if 0 < self.at < self.UNMISTAKABLE and now - self.last_step >= EXIT_STALL_S:
+            self.at = 0  # the two commands that also end a projection, long ago: not the beginning of this one
         if got == self._step(self.at):
             self.at += 1
             self.last_step = now

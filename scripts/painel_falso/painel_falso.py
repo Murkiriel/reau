@@ -8,17 +8,20 @@ package and the fake dash of its tests) and answers only what that code shows th
 
 Usage:
   python3 painel_falso.py [options]        the panel, until Ctrl+C or `quit`; commands are typed on the standard input (`help` lists them)
+  python3 painel_falso.py --ver            the same, and the video is also shown live in an ffplay window as it arrives
   python3 painel_falso.py --selftest       the panel and a minimal phone side on this machine's loopback, with no network; exit code 0 when all is well
 
 The computer has to be what the phone looks for: a Wi-Fi access point whose name begins with the dash's prefix, with this computer at the
-dash's address on it. CONTRIBUTING has the steps.
+dash's address on it. ponto_de_acesso.py, in this folder, makes one; CONTRIBUTING has the steps.
 """
 import argparse
 import datetime
 import os
 import queue
 import selectors
+import shutil
 import socket
+import subprocess
 import sys
 import tempfile
 import threading
@@ -37,20 +40,137 @@ DEFAULT_OUT = "painel_falso_saida"
 LOOPBACK = "127.0.0.1"
 
 
-class VideoFile:
-    """The frames of one session, Annex-B, as they come."""
+VIEWER = "ffplay"
+# What the viewer may be behind by, in frames, before the ones that follow are kept from it until the next keyframe.
+VIEWER_BACKLOG = 120
+VIEWER_LEAVE_S = 2.0
 
-    def __init__(self, path):
+
+def viewer_command(title, program=VIEWER):
+    """ffplay reading raw H.264 from its standard input and showing each frame as soon as it has it: no input buffer, no reordering
+    delay, late frames dropped, the 25 frames a second it would assume for a raw stream set aside (`setpts=0`), and gone when the stream ends."""
+    return [program, "-hide_banner", "-loglevel", "error", "-nostats", "-fflags", "nobuffer", "-flags", "low_delay", "-framedrop",
+            "-analyzeduration", "0", "-vf", "setpts=0", "-autoexit", "-window_title", title, "-f", "h264", "-i", "-"]
+
+
+def _is_keyframe(data):
+    """True when a frame as the sink gives it (a start code, then the NAL) is a parameter set or an IDR: where a decoder can begin."""
+    return len(data) > len(rtp.START_CODE) and data[len(rtp.START_CODE)] & 0x1F in (rtp.NAL_IDR, rtp.NAL_SPS)
+
+
+class LiveView:
+    """One session's video shown live: a viewer (ffplay) fed through its standard input.
+
+    The frames go through a queue and a thread of its own, so a viewer that stops reading (paused, or busy) never holds the panel back: past
+    [VIEWER_BACKLOG] frames, what follows is kept from it until the next keyframe. A viewer that could not start, or whose window was closed
+    (the pipe breaks), is said once and the frames stop going to it; the file is written all the same.
+    """
+
+    def __init__(self, log, command, popen=subprocess.Popen, backlog=VIEWER_BACKLOG):
+        self.log = log
+        self.alive = False
+        self.skipped = 0
+        self._behind = False
+        self._queue = queue.Queue(backlog)
+        self._process = None
+        try:
+            self._process = popen(command, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, bufsize=0)
+        except OSError as e:
+            log.event("viewer", "%s could not be started (%s): the video is only written to the file" % (command[0], e))
+            return
+        self.alive = True
+        self._thread = threading.Thread(target=self._feed, name="viewer", daemon=True)
+        self._thread.start()
+
+    def write(self, data):
+        """Hands a frame to the viewer. Never waits for it and never raises."""
+        if not self.alive:
+            return
+        if self._behind and not _is_keyframe(data):
+            self.skipped += 1
+            return
+        try:
+            self._queue.put_nowait(data)
+            self._behind = False
+        except queue.Full:
+            if not self._behind:
+                self.log.event("viewer", "the viewer is not keeping up: frames are kept from it until the next keyframe (the file gets them all)")
+            self._behind = True
+            self.skipped += 1
+
+    def _feed(self):
+        stdin = self._process.stdin
+        while True:
+            data = self._queue.get()
+            if data is None:
+                return
+            try:
+                view = memoryview(data)
+                while len(view):
+                    view = view[stdin.write(view) or len(view):]
+            except (OSError, ValueError) as e:  # the window was closed (a broken pipe), or the pipe was closed under the thread
+                if self.alive:
+                    self.alive = False
+                    code = self._process.poll()
+                    self.log.event("viewer", "the viewer is gone (%s%s): the video is only written to the file from here on" % (
+                        type(e).__name__, "" if code is None else ", exit code %d" % code))
+                return
+
+    def close(self, leave_s=VIEWER_LEAVE_S):
+        """The session is over: the viewer gets what is left, then the end of the stream, and is stopped if it does not leave by itself."""
+        if self._process is None:
+            return
+        was_alive, self.alive = self.alive, False
+        try:
+            self._queue.put_nowait(None)
+        except queue.Full:  # it is behind: what it has not taken yet is given up, so that the end of the stream gets to it
+            try:
+                while True:
+                    self._queue.get_nowait()
+            except queue.Empty:
+                self._queue.put(None)
+        self._thread.join(leave_s if was_alive else 0.1)
+        if self._thread.is_alive():  # still writing to a viewer that is not reading: only stopping the viewer frees it
+            self._stop()
+            self._thread.join(leave_s)
+        try:
+            self._process.stdin.close()
+        except OSError:
+            pass
+        try:
+            self._process.wait(leave_s)
+        except subprocess.TimeoutExpired:
+            self._stop()
+
+    def _stop(self):
+        try:
+            self._process.terminate()
+            self._process.wait(VIEWER_LEAVE_S)
+        except subprocess.TimeoutExpired:
+            self._process.kill()
+        except OSError:
+            pass
+
+
+class VideoFile:
+    """The frames of one session, Annex-B, as they come; with a [viewer], each frame written also goes to it."""
+
+    def __init__(self, path, viewer=None):
         self.path = path
         self.bytes = 0
+        self.viewer = viewer
         self._file = open(path, "wb")
 
     def write(self, data):
         self._file.write(data)
         self.bytes += len(data)
+        if self.viewer is not None:
+            self.viewer.write(data)
 
     def close(self):
         self._file.close()
+        if self.viewer is not None:
+            self.viewer.close()
 
 
 def broadcast_of(address):
@@ -65,10 +185,16 @@ def broadcast_of(address):
 class PanelServer:
     """The sockets around a [painel.FakePanel]: the control port, the video port, and the answers to the phone's own fixed port."""
 
-    def __init__(self, log, bind="", ctrl_port=p.CTRL_PORT, rtp_port=p.RTP_PORT, phone_port=p.RX_PORT, broadcast=None, out_dir=None, **options):
+    def __init__(self, log, bind="", ctrl_port=p.CTRL_PORT, rtp_port=p.RTP_PORT, phone_port=p.RX_PORT, broadcast=None, out_dir=None,
+                 view=False, popen=subprocess.Popen, find=shutil.which, **options):
         self.log = log
         self.phone_port = phone_port
         self.out_dir = out_dir
+        self.popen = popen
+        # --ver: each session's video also goes to a viewer of its own. Without the viewer installed, the video is only written.
+        self.viewer = find(VIEWER) if view else None
+        if view and not self.viewer:
+            log.event("viewer", "%s was not found (it comes with FFmpeg): the video is only written to the file" % VIEWER)
         self.commands = queue.Queue()
         self._stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         self._videos = 0
@@ -106,7 +232,10 @@ class PanelServer:
 
     def _open_video(self):
         self._videos += 1
-        return VideoFile(os.path.join(self.out_dir, "video-%s-%02d.h264" % (self._stamp, self._videos)))
+        viewer = None
+        if self.viewer:
+            viewer = LiveView(self.log, viewer_command("REau bench panel - session %d" % self._videos, self.viewer), popen=self.popen)
+        return VideoFile(os.path.join(self.out_dir, "video-%s-%02d.h264" % (self._stamp, self._videos)), viewer)
 
     def submit(self, line):
         """A command for the panel, from another thread (the keyboard, a script, the self-test)."""
@@ -268,6 +397,8 @@ def arguments(argv):
     parser.add_argument("--rtp-port", type=int, default=p.RTP_PORT, help="the video port (default %d, the dash's)" % p.RTP_PORT)
     parser.add_argument("--phone-port", type=int, default=p.RX_PORT, help="the phone's port the answers go to (default %d, the app's)" % p.RX_PORT)
     parser.add_argument("--out", default=DEFAULT_OUT, metavar="FOLDER", help="where the log and the .h264 files go (default ./%s)" % DEFAULT_OUT)
+    parser.add_argument("--ver", action="store_true",
+                        help="also show the video live, in an ffplay window for each session (the .h264 file is written all the same)")
     parser.add_argument("--ssid", metavar="NAME", help="the access point's name: a session key sent with another name is rejected (default: any name is taken)")
     parser.add_argument("--age", type=int, default=30, metavar="SECONDS",
                         help="the dash's age when the tool starts; under %d it ignores greetings until it gets there (default 30)" % p.READY_COUNT)
@@ -297,7 +428,7 @@ def main(argv=None):
     log = log_painel.Log(os.path.join(args.out, "painel-%s.log" % datetime.datetime.now().strftime("%Y%m%d-%H%M%S")), verbose=args.verbose)
     try:
         server = PanelServer(log, bind=args.bind, ctrl_port=args.ctrl_port, rtp_port=args.rtp_port, phone_port=args.phone_port,
-                             broadcast=args.broadcast, out_dir=args.out, ssid=args.ssid, age=args.age, ack=args.ack,
+                             broadcast=args.broadcast, out_dir=args.out, view=args.ver, ssid=args.ssid, age=args.age, ack=args.ack,
                              reject_first_key=args.reject_first_key, ignore_greetings=args.ignore_greetings, show_text=args.show_text,
                              silence_s=args.silence, stats_every=args.stats)
     except OSError as e:

@@ -438,16 +438,122 @@ class ExitTest(unittest.TestCase):
         self.assertEqual([104, 304], [video.bytes for video in bench.videos])
         self.assertEqual(0, bench.log.errors)
 
-    def test_a_sequence_broken_after_its_back_is_an_error(self):
+    def test_a_command_out_of_its_place_after_the_back_is_an_error(self):
         bench = Bench()
         bench.authenticate()
         for _, type_, sub, value in p.EXIT_SEQUENCE[:5]:
             bench.phone(k1g.tlv(type_, sub, value))
-        bench.phone(k1g.tlv(0x05, 0x56, 0x55))
+        bench.phone(k1g.tlv(0x05, 0x17, 0xAA))   # the boundary, with two of the four idles still to come
         self.assertEqual(("incomplete", 5), bench.panel.last_exit)
         self.assertEqual(1, bench.log.errors)
         self.assertTrue(bench.said("exit sequence came only up to command 5 of 9 (projection-stop projection-off back idle idle)"))
         self.assertEqual(0, bench.panel.sessions)
+
+    def test_a_sequence_that_starts_over_in_the_middle_is_an_error_and_the_new_one_counts(self):
+        bench = Bench()
+        bench.authenticate()
+        for _, type_, sub, value in p.EXIT_SEQUENCE[:7]:
+            bench.phone(k1g.tlv(type_, sub, value))
+        bench.goodbye()
+        self.assertEqual(1, bench.log.errors)
+        self.assertTrue(bench.said("exit sequence came only up to command 7 of 9"))
+        self.assertEqual(("complete", 9), bench.panel.last_exit)
+        self.assertEqual(1, bench.panel.sessions)
+
+    # What a sender the app cancelled may still put between two exit commands: the answers to a frame's notice, the projection keep-alive,
+    # the route's card, a TLV of the heartbeat.
+    INTERLEAVED = (k1g.tlv(*p.REPLY_IDR, 0x55), k1g.tlv(*p.REPLY_P, 0x55), k1g.tlv(*p.PROJECTION, 0x55), k1g.tlv(0x06, 0x08, 0xFF))
+
+    def test_an_answer_that_lands_between_two_exit_commands_does_not_break_the_sequence(self):
+        for between in self.INTERLEAVED:
+            for place in range(len(p.EXIT_SEQUENCE)):   # before the first command, then after each one but the last
+                with self.subTest(tlv=between.name, before_command=place + 1):
+                    bench = Bench()
+                    bench.authenticate()
+                    for i, (_, type_, sub, value) in enumerate(p.EXIT_SEQUENCE):
+                        if i == place:
+                            bench.phone(between)
+                        self.assertEqual(0, bench.panel.sessions)
+                        bench.phone(k1g.tlv(type_, sub, value))
+                    self.assertEqual(("complete", 9), bench.panel.last_exit)
+                    self.assertEqual(1, bench.panel.sessions)
+                    self.assertEqual(0, bench.log.errors)
+
+    def test_an_answer_between_every_two_exit_commands_does_not_break_it_either(self):
+        bench = Bench()
+        bench.authenticate()
+        for i, (_, type_, sub, value) in enumerate(p.EXIT_SEQUENCE):
+            bench.phone(self.INTERLEAVED[i % len(self.INTERLEAVED)])
+            bench.phone(k1g.tlv(type_, sub, value))
+        self.assertEqual(("complete", 9), bench.panel.last_exit)
+        self.assertEqual((1, 0), (bench.panel.sessions, bench.log.errors))
+
+    def test_an_answer_in_the_same_packet_as_an_exit_command_does_not_break_it(self):
+        bench = Bench()
+        bench.authenticate()
+        steps = [k1g.tlv(type_, sub, value) for _, type_, sub, value in p.EXIT_SEQUENCE]
+        bench.phone(steps[0], k1g.tlv(*p.REPLY_P, 0x55), steps[1])
+        for step in steps[2:]:
+            bench.phone(step)
+        self.assertEqual(("complete", 9), bench.panel.last_exit)
+        self.assertEqual(0, bench.log.errors)
+
+    def test_the_answers_that_landed_in_the_sequence_are_still_counted(self):
+        bench = Bench()
+        bench.authenticate()
+        steps = [k1g.tlv(type_, sub, value) for _, type_, sub, value in p.EXIT_SEQUENCE]
+        for step in steps[:4]:
+            bench.phone(step)
+        bench.phone(k1g.tlv(*p.REPLY_IDR, 0x55))
+        bench.phone(k1g.tlv(*p.REPLY_P, 0x55))
+        self.assertEqual({p.REPLY_IDR: 1, p.REPLY_P: 1}, bench.panel.replies)
+        self.assertEqual(4, bench.panel.exit.at)
+
+    def test_a_sequence_cut_short_is_still_an_error_whatever_else_the_phone_sends_after_it(self):
+        for sent in range(painel.ExitTracker.UNMISTAKABLE, len(p.EXIT_SEQUENCE)):
+            with self.subTest(commands=sent):
+                bench = Bench()
+                bench.authenticate()
+                for _, type_, sub, value in p.EXIT_SEQUENCE[:sent]:
+                    bench.phone(k1g.tlv(type_, sub, value))
+                bench.now += 0.5
+                for between in self.INTERLEAVED:   # the phone goes on with something else: that neither completes nor excuses it
+                    bench.phone(between)
+                bench.panel.tick()
+                self.assertIsNone(bench.panel.last_exit)
+                bench.now += 0.5
+                bench.panel.tick()
+                self.assertEqual(("incomplete", sent), bench.panel.last_exit)
+                self.assertEqual(1, bench.log.errors)
+                self.assertTrue(bench.said("exit sequence came only up to command %d of 9" % sent))
+                self.assertEqual(1, bench.panel.sessions)
+
+    def test_a_sequence_with_a_command_missing_is_an_error_at_every_place(self):
+        for missing in range(painel.ExitTracker.UNMISTAKABLE, len(p.EXIT_SEQUENCE)):
+            with self.subTest(missing=missing + 1):
+                bench = Bench()
+                bench.authenticate()
+                for i, (_, type_, sub, value) in enumerate(p.EXIT_SEQUENCE):
+                    if i != missing:
+                        bench.phone(k1g.tlv(type_, sub, value))
+                bench.now += painel.EXIT_STALL_S
+                bench.panel.tick()
+                self.assertEqual("incomplete", bench.panel.last_exit[0])
+                self.assertGreaterEqual(bench.log.errors, 1)
+                self.assertNotEqual(("complete", 9), bench.panel.last_exit)
+
+    def test_the_two_commands_that_ended_a_projection_long_ago_do_not_turn_a_back_buttons_echo_into_an_exit(self):
+        bench = Bench()
+        bench.authenticate()
+        bench.phone(k1g.tlv(0x05, 0x56, 0xAA))
+        bench.phone(k1g.tlv(0x06, 0x05, 0xAA))
+        bench.now += painel.EXIT_STALL_S
+        bench.panel.command("press back")
+        bench.phone(k1g.tlv(*p.BUTTON_ECHO, p.BUTTONS["back"]))   # the same bytes as the third exit command
+        bench.now += 2
+        bench.panel.tick()
+        self.assertIsNone(bench.panel.last_exit)
+        self.assertEqual((0, 0, 1), (bench.log.errors, bench.panel.sessions, bench.panel.echoes))
 
     def test_a_sequence_that_stops_coming_ends_the_session_after_a_second(self):
         bench = Bench()

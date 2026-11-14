@@ -107,15 +107,29 @@ lista los comandos). Lo que llega, lo que se responde y todo error de protocolo 
 `painel_falso_saida/` (`--out` cambia la carpeta; `.log` y `.h264` nunca se versionan). El título de la ruta, la canción y el nombre de quien
 llama solo aparecen por su tamaño, salvo con `--show-text`: no compartas un registro hecho con él.
 
-El teléfono encuentra el ordenador cuando el ordenador es lo que la app busca:
+El teléfono encuentra el ordenador cuando el ordenador es lo que la app busca: un punto de acceso Wi-Fi con WPA2, un nombre que empiece por
+`RE_` (por ejemplo `RE_BENCH_0001`) y la contraseña que la app tiene para el panel (la de fábrica, `12345678`, si no la cambiaste), con el
+ordenador en `192.168.1.1` (máscara `255.255.255.0`) y un servidor DHCP que entregue al teléfono una dirección `192.168.1.x`. La app envía
+los paquetes de control a `192.168.1.255` y el vídeo a `192.168.1.1`. En Linux con NetworkManager, `scripts/painel_falso/ponto_de_acesso.py`
+crea ese punto de acceso sin sacar el ordenador del Wi-Fi en el que está:
 
-1. Haz del ordenador un punto de acceso Wi-Fi con WPA2, un nombre que empiece por `RE_` (por ejemplo `RE_BENCH_0001`) y la contraseña que la
-   app tiene para el panel (la de fábrica, `12345678`, si no la cambiaste).
-2. Da a la interfaz del punto de acceso la dirección `192.168.1.1` con la máscara `255.255.255.0`, y un servidor DHCP que entregue al
-   teléfono una dirección `192.168.1.x`. La app envía los paquetes de control a `192.168.1.255` y el vídeo a `192.168.1.1`.
-3. Permite la entrada de UDP en los puertos 2000 y 5000 en el cortafuegos del ordenador.
+1. `python3 scripts/painel_falso/ponto_de_acesso.py check` solo lee, y dice si el punto de acceso puede levantarse ahí y por qué. La
+   tarjeta Wi-Fi tiene que aceptar una estación y un punto de acceso a la vez (`iw list` muestra `managed` y `AP` en una misma
+   combinación). La mayoría de las tarjetas que lo aceptan solo permiten un canal para los dos, así que el punto de acceso se levanta en el
+   canal en el que está la red del ordenador, también en 5 GHz; ese canal no puede ser uno en el que nada puede empezar a transmitir
+   (`no IR`, detección de radar), y un ordenador cuya red ya es `192.168.1.x` se rechaza. Donde no pueda levantarse, pon el ordenador en
+   internet por cable o usa un adaptador Wi-Fi USB, y haz a mano el punto de acceso descrito arriba.
+2. `sudo python3 scripts/painel_falso/ponto_de_acesso.py up` lo crea (`--ssid` y `--password` cambian el nombre y la contraseña;
+   `--dry-run` escribe los comandos y no ejecuta ninguno). Por debajo, añade en la misma tarjeta una interfaz virtual de tipo punto de
+   acceso (`reauap0`, con una dirección aleatoria administrada localmente) y, en ella, una conexión de NetworkManager en modo punto de
+   acceso con el método IPv4 "shared", que da la dirección y el servidor DHCP. Nunca llama a `sudo` por sí mismo. `down` en lugar de `up`
+   lo deshace todo, también después de un `up` que se quedó a medias.
+3. Haz lo que `up` dice al final: con una VPN activa, activa su "Local network sharing", o lo que envía el teléfono nunca llega al panel
+   falso; con un cortafuegos activo, permite la entrada de UDP en los puertos 2000 y 5000 (para `ufw` escribe el comando).
 4. Arranca el panel falso: `python3 scripts/painel_falso/painel_falso.py --ssid RE_BENCH_0001`. Con `--ssid`, una clave de sesión enviada
-   con otro nombre se rechaza, como el panel comprueba su propio nombre; sin él, se acepta cualquier nombre.
+   con otro nombre se rechaza, como el panel comprueba su propio nombre; sin él, se acepta cualquier nombre. `--ver` también muestra el
+   vídeo en directo, en una ventana de `ffplay` para cada sesión; sin `ffplay`, o una vez cerrada la ventana, el vídeo se sigue grabando
+   en el archivo.
 5. En el teléfono, con la moto apagada o fuera de alcance, olvida el panel en REau (para que vuelva a buscar uno por el nombre), elige el
    punto de acceso y conecta como lo harías con la moto.
 

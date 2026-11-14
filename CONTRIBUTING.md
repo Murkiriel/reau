@@ -107,15 +107,28 @@ answered and every protocol error go to the terminal and to a log file, both in 
 are never versioned). The route's title, the song and the caller's name are written only by their size unless `--show-text` is given: do
 not share a log made with it.
 
-The phone finds the computer when the computer is what the app looks for:
+The phone finds the computer when the computer is what the app looks for: a Wi-Fi access point with WPA2, a name that begins with `RE_`
+(say `RE_BENCH_0001`) and the passphrase the app has for the dash (the factory one, `12345678`, unless you changed it), with the computer
+at `192.168.1.1` (mask `255.255.255.0`) and a DHCP server that hands the phone an address in `192.168.1.x`. The app sends its control
+packets to `192.168.1.255` and the video to `192.168.1.1`. On Linux with NetworkManager, `scripts/painel_falso/ponto_de_acesso.py` makes
+that access point without taking the computer off its own Wi-Fi:
 
-1. Make the computer a Wi-Fi access point with WPA2, a name that begins with `RE_` (say `RE_BENCH_0001`) and the passphrase the app has
-   for the dash (the factory one, `12345678`, unless you changed it).
-2. Give the access point's interface the address `192.168.1.1` with the mask `255.255.255.0`, and a DHCP server that hands the phone an
-   address in `192.168.1.x`. The app sends its control packets to `192.168.1.255` and the video to `192.168.1.1`.
-3. Let UDP in on ports 2000 and 5000 in the computer's firewall.
+1. `python3 scripts/painel_falso/ponto_de_acesso.py check` only reads, and says whether the access point can go up here and why. The Wi-Fi
+   card has to take a station and an access point at once (`iw list` shows `managed` and `AP` in one combination). Most cards that do
+   allow a single channel for the two, so the access point goes up on the channel the computer's own network is on, 5 GHz included; that
+   channel must not be one where nothing may start transmitting (`no IR`, radar detection), and a computer whose network is already
+   `192.168.1.x` is refused. Where it cannot go up, put the computer on the internet by cable or use a USB Wi-Fi adapter, and make the
+   access point described above by hand.
+2. `sudo python3 scripts/painel_falso/ponto_de_acesso.py up` creates it (`--ssid` and `--password` change the name and the passphrase;
+   `--dry-run` writes the commands and runs none). Underneath, it adds a virtual interface of the access-point kind (`reauap0`, with a
+   random locally administered address) on the same card, and on it a NetworkManager connection in access-point mode with the "shared"
+   IPv4 method, which gives the address and the DHCP server. It never calls `sudo` itself. `down` in the place of `up` takes it all away
+   again, also after an `up` that stopped half-way.
+3. Do what `up` says at the end: with a VPN on, turn on its "Local network sharing", or what the phone sends never reaches the panel; with
+   a firewall on, let UDP in on ports 2000 and 5000 (for `ufw` it writes the command).
 4. Start the panel: `python3 scripts/painel_falso/painel_falso.py --ssid RE_BENCH_0001`. With `--ssid`, a session key sent with another
-   name is rejected, as the dash checks its own name; without it any name is taken.
+   name is rejected, as the dash checks its own name; without it any name is taken. `--ver` also shows the video live, in an `ffplay`
+   window for each session; without `ffplay`, or once the window is closed, the video is still written to the file.
 5. On the phone, with the bike off or out of reach, forget the dash in REau (so it looks for one by its name again), pick the access point
    and connect as you would to the bike.
 

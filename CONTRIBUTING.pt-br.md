@@ -107,15 +107,28 @@ remonta o vídeo RTP num arquivo `.h264` e aperta o joystick pela entrada padrã
 pasta; `.log` e `.h264` nunca são versionados). O título da rota, a música e o nome de quem liga só aparecem pelo tamanho, a não ser com
 `--show-text`: não compartilhe um registro feito com ele.
 
-O celular acha o computador quando o computador é o que o app procura:
+O celular acha o computador quando o computador é o que o app procura: um ponto de acesso Wi-Fi com WPA2, um nome que comece com `RE_`
+(por exemplo `RE_BENCH_0001`) e a senha que o app tem para o painel (a de fábrica, `12345678`, se você não a mudou), com o computador em
+`192.168.1.1` (máscara `255.255.255.0`) e um servidor DHCP que entregue ao celular um endereço `192.168.1.x`. O app manda os pacotes de
+controle para `192.168.1.255` e o vídeo para `192.168.1.1`. No Linux com o NetworkManager, o `scripts/painel_falso/ponto_de_acesso.py` cria
+esse ponto de acesso sem tirar o computador do Wi-Fi em que ele está:
 
-1. Faça do computador um ponto de acesso Wi-Fi com WPA2, um nome que comece com `RE_` (por exemplo `RE_BENCH_0001`) e a senha que o app tem
-   para o painel (a de fábrica, `12345678`, se você não a mudou).
-2. Dê à interface do ponto de acesso o endereço `192.168.1.1` com a máscara `255.255.255.0`, e um servidor DHCP que entregue ao celular um
-   endereço `192.168.1.x`. O app manda os pacotes de controle para `192.168.1.255` e o vídeo para `192.168.1.1`.
-3. Libere a entrada de UDP nas portas 2000 e 5000 no firewall do computador.
+1. O `python3 scripts/painel_falso/ponto_de_acesso.py check` só lê, e diz se o ponto de acesso pode subir ali e por quê. A placa Wi-Fi tem
+   de aceitar uma estação e um ponto de acesso ao mesmo tempo (o `iw list` mostra `managed` e `AP` numa mesma combinação). A maioria das
+   placas que aceitam só permite um canal para os dois, então o ponto de acesso sobe no canal em que a rede do computador está, inclusive
+   em 5 GHz; esse canal não pode ser um em que nada pode começar a transmitir (`no IR`, detecção de radar), e um computador cuja rede já é
+   `192.168.1.x` é recusado. Onde não der para subir, ponha o computador na internet por cabo ou use um adaptador Wi-Fi USB, e faça à mão
+   o ponto de acesso descrito acima.
+2. O `sudo python3 scripts/painel_falso/ponto_de_acesso.py up` o cria (o `--ssid` e o `--password` mudam o nome e a senha; o `--dry-run`
+   escreve os comandos e não roda nenhum). Por baixo, ele acrescenta na mesma placa uma interface virtual do tipo ponto de acesso
+   (`reauap0`, com um endereço aleatório administrado localmente) e, nela, uma conexão do NetworkManager em modo ponto de acesso com o
+   método IPv4 "shared", que dá o endereço e o servidor DHCP. Ele nunca chama o `sudo` sozinho. O `down` no lugar do `up` desfaz tudo,
+   também depois de um `up` que parou no meio.
+3. Faça o que o `up` diz no fim: com uma VPN ligada, ligue o "Local network sharing" dela, ou o que o celular manda nunca chega ao painel
+   falso; com um firewall ligado, libere a entrada de UDP nas portas 2000 e 5000 (para o `ufw` ele escreve o comando).
 4. Ligue o painel falso: `python3 scripts/painel_falso/painel_falso.py --ssid RE_BENCH_0001`. Com o `--ssid`, uma chave de sessão mandada
-   com outro nome é recusada, como o painel confere o próprio nome; sem ele, qualquer nome é aceito.
+   com outro nome é recusada, como o painel confere o próprio nome; sem ele, qualquer nome é aceito. O `--ver` também mostra o vídeo ao
+   vivo, numa janela do `ffplay` para cada sessão; sem o `ffplay`, ou depois de a janela ser fechada, o vídeo continua sendo gravado no arquivo.
 5. No celular, com a moto desligada ou fora de alcance, esqueça o painel no REau (para ele voltar a procurar um pelo nome), escolha o ponto
    de acesso e ligue como ligaria à moto.
 
