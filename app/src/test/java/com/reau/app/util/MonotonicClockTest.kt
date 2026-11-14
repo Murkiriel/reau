@@ -41,6 +41,7 @@ class MonotonicClockTest {
             "dash/DashSession.kt", "dash/DashWifiManager.kt",
             // What was taken out of the manager's file: the guard keeps covering the same code.
             "dash/WifiState.kt", "dash/ReconnectPace.kt", "dash/ScanEvidence.kt", "dash/DashSsid.kt", "dash/JoinRefusal.kt",
+            "dash/DashScan.kt", "dash/JoinedWifi.kt", "dash/NetNotes.kt",
             "web/WebGuard.kt", "service/ProjectionController.kt", "service/LiveSides.kt",
         )
         val timesOfDay = listOf("TelemetryEvent(", "ExitHistory.newest(", "getOffset(")

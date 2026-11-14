@@ -11,6 +11,8 @@ import java.io.File
  */
 class DashRecoveryIsWiredTest {
     private val wifi = File("src/main/java/com/reau/app/dash/DashWifiManager.kt").readText()
+    // What the manager reads of a Wi-Fi the phone joined by itself, in a file of its own since 14/11/2026.
+    private val joined = File("src/main/java/com/reau/app/dash/JoinedWifi.kt").readText()
     private val live = File("src/main/java/com/reau/app/service/LiveSides.kt").readText()
     private val session = File("src/main/java/com/reau/app/dash/DashSession.kt").readText()
 
@@ -38,16 +40,33 @@ class DashRecoveryIsWiredTest {
 
     @Test
     fun `a network found already connected is checked before and after it is taken, and again a moment later`() {
-        val use = wifi.between("private fun useAlreadyConnectedNetwork()", "private fun joinedNetworkUsable")
-        assertTrue(use.split("joinedNetworkUsable(activeNetwork)").size - 1 >= 2)
+        val use = wifi.between("private fun useAlreadyConnectedNetwork()", "private fun verifyJoinedLater")
+        assertTrue(use.split("joinedWifi.usable(activeNetwork)").size - 1 >= 2)
         assertTrue(use.contains("verifyJoinedLater(activeNetwork)"))
-        assertTrue("the watcher is registered before the second check", use.indexOf("watchJoined(activeNetwork)") < use.lastIndexOf("joinedNetworkUsable(activeNetwork)"))
+        assertTrue("the watcher is registered before the second check", use.indexOf("watchJoined(activeNetwork)") < use.lastIndexOf("joinedWifi.usable(activeNetwork)"))
+        assertTrue(wifi.between("private fun verifyJoinedLater", "private fun askForTheNetwork()").contains("!joinedWifi.usable(joined)"))
+        assertTrue(joined.between("fun usable(joined: Network)", "fun ssidOf(").contains("JoinedNetwork.usable(caps != null,"))
     }
 
     @Test
     fun `a refused network is never found as already connected again`() {
-        val find = wifi.between("private fun findAlreadyConnectedDashNetwork()", "private fun readActiveWifiSsid")
-        assertTrue(find.contains("isRefused(candidate)"))
+        val find = joined.between("fun find(", "fun activeSsid")
+        assertTrue(find.contains("if (isRefused(candidate)) return@firstOrNull false"))
+        assertTrue(
+            "the manager hands its refused networks to the search",
+            wifi.contains("private fun findAlreadyConnectedDashNetwork(): Pair<Network, String>? = joinedWifi.find(pendingSsid, pendingPrefix, refusedNetworks::has)"),
+        )
+        assertTrue(wifi.between("fun bindResult(bound: Network?, refused: Boolean)", "release()").contains("dead?.let(refusedNetworks::remember)"))
+    }
+
+    @Test
+    fun `what was known of the network is closed at its loss and forgotten by a fresh connect, where the manager's own fields were`() {
+        val lost = wifi.between("private fun bikeLost()", "private fun watchAfterLoss()")
+        assertTrue("the line of the loss is written with the facts, before they are let go", lost.indexOf("LinkLoss.lostLine(notes.facts,") in 0 until lost.indexOf("notes.lost()"))
+        assertTrue(lost.indexOf("DashHeard.tail?.reportOnce(") in 0 until lost.indexOf("notes.lost()"))
+        assertTrue("and before the network is forgotten", lost.indexOf("notes.lost()") < lost.indexOf("network = null"))
+        assertTrue(wifi.between("fun connect(ssid: String", "requestNetwork()").contains("notes.forget()"))
+        assertTrue(wifi.between("private fun noteNetwork(", "private fun capsRead(").contains("notes.note(caps?.let(::capsRead), MonotonicClock.nowMs())?.let { com.reau.app.data.RideDiagnostics.log(\"wifi\", it) }"))
     }
 
     @Test
@@ -62,7 +81,7 @@ class DashRecoveryIsWiredTest {
     @Test
     fun `the failed tries of a request feed the hung dash watch, from the unavailable and from the early release`() {
         assertTrue(wifi.between("override fun onUnavailable()", "override fun onLosing").contains("noteFailedTry()"))
-        assertTrue(wifi.between("private fun refileForSighting", "private fun newestSightingUs").contains("noteFailedTry()"))
+        assertTrue(wifi.between("private fun refileForSighting", "// ── A hung dash, and a network Android refuses").contains("noteFailedTry()"))
     }
 
     @Test

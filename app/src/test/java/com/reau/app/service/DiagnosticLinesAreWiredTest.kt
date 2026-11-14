@@ -15,6 +15,8 @@ class DiagnosticLinesAreWiredTest {
     private fun source(path: String) = File("src/main/java/com/reau/app/$path").readText()
 
     private val wifi = source("dash/DashWifiManager.kt")
+    // The manager's reading of the Wi-Fi list, in a file of its own since 14/11/2026.
+    private val scan = source("dash/DashScan.kt")
     private val session = source("dash/DashSession.kt")
     private val compositor = source("video/DashCompositor.kt")
 
@@ -35,22 +37,28 @@ class DiagnosticLinesAreWiredTest {
 
     @Test
     fun `every reading of the list that has networks goes into the trail, and the empty one is described with it`() {
-        assertTrue(wifi.after("private fun readScan()").contains("ScanHistory.trail.note("))
-        assertTrue(wifi.between("private fun searchDashSsid", "catch (e: Exception)").contains("ScanHistory.trail.note("))
-        val state = wifi.between("private fun emptyListState()", "/** Log only: whether the phone is joined")
+        assertTrue(scan.between("fun read()", "/** The newest stamp of the dash").contains("ScanHistory.trail.note("))
+        assertTrue(scan.between("private fun search(", "catch (e: Exception)").contains("ScanHistory.trail.note("))
+        val state = scan.between("private fun emptyListState(", "/** Log only: whether the phone is joined")
         assertTrue(state.contains("lastNonEmpty = ScanHistory.trail.describe("))
-        assertTrue(state.contains("wifiJoined = joinedWifi()"))
+        assertTrue(state.contains("wifiJoined = joinedWifi(network)"))
+        assertTrue("the manager's lookup is the scan's", wifi.contains("fun findDashSsid(prefix: String): String? = scan.find(prefix)"))
     }
 
     @Test
     fun `both lines of the request and the end of it read the list through the one function that keeps the trail`() {
-        assertTrue(wifi.between("private fun lastScanEvidence()", "/** Log only, read when").contains("readScan()"))
-        assertEquals("the list is read from the system in two places only: the lookup and readScan", 2, Regex("wifi\\.scanResults\\.mapNotNull \\{ r ->").findAll(wifi).count())
+        assertTrue(scan.between("fun evidence(", "/** Log only, read when").contains("scanEvidence(read(), ssid, prefix,"))
+        assertTrue(wifi.between("private fun lastScanEvidence()", "/**").contains("scan.evidence(pendingSsid, pendingPrefix, network)"))
+        val reading = Regex("wifi\\.scanResults\\.mapNotNull \\{ r ->")
+        assertEquals("the list is read from the system in two places only: the lookup and read", 2, reading.findAll(scan).count())
+        assertEquals("and never by the manager itself", 0, Regex("scanResults").findAll(wifi).count())
+        assertTrue("the failed try reads it through the scan too", wifi.between("private fun noteFailedTry()", "DashStuck.sighting(").contains("scan.read()"))
     }
 
     @Test
     fun `each look of a watch passes through the look log, which writes only when the list moved`() {
-        val look = wifi.between("fun seenInLastScan(", "/**")
+        assertTrue(wifi.contains("fun seenInLastScan(ssid: String, prefix: Boolean): Boolean = scan.seenRecently(ssid, prefix)"))
+        val look = scan.between("fun seenRecently(", "/**")
         assertTrue(look.contains("scanLooks.line(seen, ssid, prefix, nowUs)"))
         assertTrue(look.contains("RideDiagnostics.log(\"wifi\", it)"))
         assertTrue(look.indexOf("scanLooks.line") < look.indexOf("DashJoin.seenRecently"))

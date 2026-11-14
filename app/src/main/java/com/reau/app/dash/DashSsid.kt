@@ -25,7 +25,7 @@ internal object DashSsid {
     internal fun matchesPendingSsid(ssid: String, pendingSsid: String, pendingPrefix: Boolean): Boolean =
         if (pendingPrefix) ssid.startsWith(pendingSsid) else ssid == pendingSsid
 
-    /** The actual decision inside [DashWifiManager.findAlreadyConnectedDashNetwork]'s `cm.allNetworks` scan,
+    /** The actual decision inside [JoinedWifi.find]'s `cm.allNetworks` scan,
      * pulled out so it's unit-testable without a real ConnectivityManager — everything else in
      * that function is framework enumeration, this is the one real judgment call: a candidate
      * network with no readable SSID (some OEMs hide it without location permission) is accepted

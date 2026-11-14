@@ -1,14 +1,9 @@
 // The bike network coming and going is written to the `system` line.
 package com.reau.app.dash
 
-import android.Manifest
 import android.annotation.SuppressLint
-import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.content.Context
-import android.content.pm.PackageManager
-import android.content.pm.ServiceInfo
-import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -22,11 +17,9 @@ import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.RequiresApi
-import com.reau.app.dash.DashSsid.candidateMatchesActive
 import com.reau.app.dash.DashSsid.maskSsid
 import com.reau.app.dash.DashSsid.matchesPendingSsid
 import com.reau.app.dash.DashSsid.normalizeSsid
-import com.reau.app.dash.DashSsid.scanVerdict
 import com.reau.app.dash.JoinRules.CONNECT_TIMEOUT
 import com.reau.app.dash.JoinRules.Refusal
 import com.reau.app.dash.JoinRules.earlyInARow
@@ -34,7 +27,6 @@ import com.reau.app.dash.JoinRules.reconnectDue
 import com.reau.app.dash.JoinRules.refusal
 import com.reau.app.dash.JoinRules.shouldRetryOnUnavailable
 import com.reau.app.dash.JoinRules.timeoutForAttempt
-import com.reau.app.service.ProjectionService
 import com.reau.app.util.MonotonicClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -46,11 +38,6 @@ import kotlinx.coroutines.launch
 /** How often an unanswered request looks at the scan for the dash ([DashWifiManager.watchForTheDash]). */
 private const val WATCH_PERIOD_MS = 2_000L
 
-/** The scan lookups of every manager in the process: one at a time, and not again within a second (the managers of the projection and of the screen). */
-private val dashSearches = RecentSearch<DashFound>()
-
-/** What a scan lookup found: the name and whether the dash was seen recently (the scan list keeps a bike that left for minutes). */
-private data class DashFound(val name: String?, val fresh: Boolean)
 private const val MICROS_PER_MILLI = 1_000L
 private const val MS_PER_SECOND = 1_000L
 
@@ -76,14 +63,16 @@ class DashWifiManager(
 
     companion object {
         private const val TAG              = "DashWifiManager"
-        /** WifiInfo's own "no signal reading" (INVALID_RSSI is hidden from the public SDK). */
-        private const val NO_RSSI          = -127
         /** How many refused networks are remembered (they are few: one per refusal, cleared when the rider switches off). */
         private const val MAX_REFUSED      = 8
     }
 
     private val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val wifi = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+
+    // The readers of Android that keep nothing of the request: the Wi-Fi list, and the Wi-Fi the phone joined by itself.
+    private val scan = DashScan(context, wifi, cm)
+    private val joinedWifi = JoinedWifi(cm, wifi)
 
     /**
      * Is the phone's Wi‑Fi radio on? WifiNetworkSpecifier can only associate to the dash when
@@ -96,9 +85,6 @@ class DashWifiManager(
 
     private val _state = MutableStateFlow(WifiState())
     val state = _state.asStateFlow()
-
-    // The looks of the watches at the Wi-Fi list that went to the log (ScanLookLog).
-    private val scanLooks = ScanLookLog()
 
     /**
      * The dash WiFi network, exposed so the dash UDP sockets can be bound to it
@@ -148,8 +134,7 @@ class DashWifiManager(
     private var releasedUnansweredMs = 0L
     // What the phone knew of the network that is up (the line of its loss), and the channel of the connection that was lost,
     // to say on which channel the dash came back (LinkLoss).
-    @Volatile private var netFacts: NetFacts? = null
-    @Volatile private var lostMhz: Int? = null
+    private val notes = NetNotes()
     // How many times a first connection's request was put out again because the dash was in the scan and had not joined (DashJoin.refileSightedAndSlow).
     @Volatile private var sightedRefiles = 0
     // When the bike network was lost and has not come back since (0: it is there), for the pause between requests (ReconnectPace); said once.
@@ -158,7 +143,6 @@ class DashWifiManager(
     @Volatile private var joinedByPhone = false
     // The tries that found the dash's network unavailable since it was last there (for the line that is not written at every try).
     private var unavailableInARow = 0
-    @Volatile private var awaitingChannel = false
     // The loss being got back (microseconds since boot, as the scan's stamps; 0 = none), the watch over it and its last refiling.
     @Volatile private var lostAtUs = 0L
     @Volatile private var lossWatch: Job? = null
@@ -167,7 +151,7 @@ class DashWifiManager(
     private val bindRefusals = BindRefusals()
     // Which refusal the projection's "try now" after [RefusalRetry.AFTER_MS] belongs to; another refusal or a switch-off makes it stale.
     private var refusalSerial = 0
-    private val refusedNetworks = ArrayList<Network>()
+    private val refusedNetworks = RefusedNetworks<Network>(MAX_REFUSED)
     // The pause after a refusal that is not asked again at once (BindRefusals), added to the pace of the requests; 0 when there is none.
     @Volatile private var holdOffMs = 0L
     // The dash that is in the scan and refuses every join (its Wi-Fi hung), told to the rider once for an absence (DashStuck).
@@ -207,9 +191,7 @@ class DashWifiManager(
     fun connect(ssid: String, password: String = "", prefixMatch: Boolean = false) {
         wantConnected    = true
         everConnected    = false   // fresh user-initiated attempt
-        netFacts = null
-        lostMhz = null
-        awaitingChannel = false
+        notes.forget()
         unavailableInARow = 0
         sightedRefiles = 0
         holdOffMs = 0L
@@ -228,47 +210,14 @@ class DashWifiManager(
      * validates it inside the encrypted auth handshake — and Android 13+ redacts the SSID
      * of the connected network, so we can't read it back after connecting.
      */
-    fun findDashSsid(prefix: String): String? =
-        dashSearches.get(prefix, after = { if (it.fresh) DashSighting.sighted() }) { searchDashSsid(prefix) }.name
-
-    @SuppressLint("MissingPermission")
-    // ScanResult.SSID is deprecated: the WifiSsid replacing it needs Android 13, and this app starts at Android 10 (minSdk 29)
-    @Suppress("TooGenericExceptionCaught", "DEPRECATION") // a failed scan lookup is logged and means no SSID
-    private fun searchDashSsid(prefix: String): DashFound = try {
-        val wifi = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        val seen = wifi.scanResults.mapNotNull { r ->
-            r.SSID?.trim('"')?.takeIf { it.isNotBlank() }?.let { ScanSeen(it, r.level, r.frequency, r.timestamp) }
-        }
-        // With several dashes in sight (a meet, a parking lot) the one with the best recent signal is taken, not the first listed.
-        val nowUs = SystemClock.elapsedRealtime() * MICROS_PER_MILLI
-        ScanHistory.trail.note(seen.size, SystemClock.elapsedRealtime(), newestStamp(seen))
-        val choice = DashPick.strongest(seen, prefix, nowUs)
-        val said = choice?.describe() ?: "not found"
-        Log.i(TAG, "Scan lookup for '${maskSsid(prefix)}*' → $said")
-        // Happens BEFORE any connect attempt is logged -- if the dash is never found here,
-        // nothing else explains why connect() never even started.
-        com.reau.app.data.RideDiagnostics.log("wifi", "scan lookup for '${maskSsid(prefix)}*' → $said")
-        // Told by findDashSsid, outside the search's lock, and only for a dash seen recently: an old entry of the scan list is no news.
-        DashFound(choice?.name, fresh = choice != null && DashJoin.seenRecently(seen, choice.name, false, nowUs))
-    } catch (e: Exception) {
-        Log.w(TAG, "Scan lookup failed: ${e.message}")
-        com.reau.app.data.RideDiagnostics.warn("wifi", "scan lookup failed: ${e.javaClass.simpleName}: ${e.message}")
-        DashFound(null, fresh = false)
-    }
+    fun findDashSsid(prefix: String): String? = scan.find(prefix)
 
     /**
      * Whether the last Wi-Fi scan has [ssid] (or, with [prefix], a network starting with it) seen recently
      * ([DashJoin.SIGHTING_FRESH_MS]: the scan list keeps a dash that was switched off for minutes). False when it does not or
      * when the scan cannot be read or is empty: the caller only acts on a sighting.
      */
-    @SuppressLint("MissingPermission")
-    fun seenInLastScan(ssid: String, prefix: Boolean): Boolean {
-        val seen = readScan()
-        val nowUs = SystemClock.elapsedRealtime() * MICROS_PER_MILLI
-        // Every look of every watch passes here: the log says when the list moved, so the dash's age at REau's look is on record (ScanLookLog).
-        scanLooks.line(seen, ssid, prefix, nowUs)?.let { com.reau.app.data.RideDiagnostics.log("wifi", it) }
-        return DashJoin.seenRecently(seen, ssid, prefix, nowUs)
-    }
+    fun seenInLastScan(ssid: String, prefix: Boolean): Boolean = scan.seenRecently(ssid, prefix)
 
     /**
      * True while this manager is getting a lost bike network back by itself, recently enough to be trusted
@@ -294,7 +243,7 @@ class DashWifiManager(
             lostAtUs = 0L
             holdOffMs = 0L
             release()
-            synchronized(refusedNetworks) { refusedNetworks.clear() }
+            refusedNetworks.clear()
             _state.value = WifiState()
         }
         bindRefusals.bound()
@@ -314,7 +263,7 @@ class DashWifiManager(
      */
     private fun useAlreadyConnectedNetwork(): Boolean {
         val (activeNetwork, activeSsid) = findAlreadyConnectedDashNetwork() ?: return false
-        if (!joinedNetworkUsable(activeNetwork)) {
+        if (!joinedWifi.usable(activeNetwork)) {
             com.reau.app.data.RideDiagnostics.warn("wifi", JoinedNetwork.deadLine(activeNetwork, "when it was found"))
             return false
         }
@@ -323,7 +272,7 @@ class DashWifiManager(
         // right after, and one that goes in the next moments by [verifyJoinedLater] (31/10/2026: a network of 47 ms of life was taken as
         // connected for good, and no loss was ever heard of).
         watchJoined(activeNetwork)
-        if (!joinedNetworkUsable(activeNetwork)) {
+        if (!joinedWifi.usable(activeNetwork)) {
             dropWatcher()
             network = null
             com.reau.app.data.RideDiagnostics.warn("wifi", JoinedNetwork.deadLine(activeNetwork, "while it was being taken"))
@@ -353,17 +302,11 @@ class DashWifiManager(
         return true
     }
 
-    /** Android still knows [joined] as a Wi-Fi network ([JoinedNetwork.usable]); `allNetworks` can list one that is gone. */
-    private fun joinedNetworkUsable(joined: Network): Boolean {
-        val caps = cm.getNetworkCapabilities(joined)
-        return JoinedNetwork.usable(caps != null, caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true)
-    }
-
     /** A moment after [joined] was taken, sees that Android still has it; if not, it is a loss like any other ([bikeLost]). */
     private fun verifyJoinedLater(joined: Network) {
         scope.launch {
             delay(JoinedNetwork.CHECK_AFTER_MS)
-            if (wantConnected && network == joined && !joinedNetworkUsable(joined)) {
+            if (wantConnected && network == joined && !joinedWifi.usable(joined)) {
                 com.reau.app.data.RideDiagnostics.warn("wifi", JoinedNetwork.deadLine(joined, "${JoinedNetwork.CHECK_AFTER_MS} ms after it was taken"))
                 bikeLost()
             }
@@ -510,13 +453,6 @@ class DashWifiManager(
         }
     }
 
-    /** Read the connected network's SSID (strips the surrounding quotes Android adds). */
-    private fun resolveSsid(network: Network): String {
-        val caps = cm.getNetworkCapabilities(network) ?: return ""
-        val info = caps.transportInfo as? WifiInfo ?: return ""
-        return normalizeSsid(info.ssid)
-    }
-
     /**
      * Log only, for a request the system's dialog leaves "searching": which request this is and how long REau has been at
      * it, how long since the last one was let go unanswered, whether the screen is on and unlocked (the system's dialog
@@ -539,32 +475,7 @@ class DashWifiManager(
     }
 
     /** Log only: what the last Wi-Fi scan says of the dash, and how old that sighting is. */
-    @SuppressLint("MissingPermission")
-    private fun lastScanEvidence(): String =
-        scanEvidence(readScan(), pendingSsid, pendingPrefix, SystemClock.elapsedRealtime() * MICROS_PER_MILLI, ::emptyListState)
-
-    /** Log only, read when the list came back empty: the state that explains it (see [emptyScanState]). */
-    private fun emptyListState(): String {
-        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-        val me = ActivityManager.RunningAppProcessInfo().also { ActivityManager.getMyMemoryState(it) }
-        return emptyScanState(
-            locationType = ProjectionService.acceptedTypes and ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION != 0,
-            permission = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED,
-            systemLocationOn = locationManager?.isLocationEnabled,
-            importance = me.importance,
-            more = EmptyScanFacts(
-                lastNonEmpty = ScanHistory.trail.describe(SystemClock.elapsedRealtime(), SystemClock.elapsedRealtime() * MICROS_PER_MILLI),
-                wifiJoined = joinedWifi(),
-            ),
-        )
-    }
-
-    /** Log only: whether the phone is joined to a Wi-Fi, and whether the dash's own network is the one ([joinedWifiWords]). */
-    @Suppress("DEPRECATION") // allNetworks: the callbacks that replace it do not answer a one-off question
-    private fun joinedWifi(): String? = runCatching {
-        val wifiNetworks = cm.allNetworks.filter { cm.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true }
-        joinedWifiWords(wifiNetworks.size, network?.let { it in wifiNetworks } == true)
-    }.getOrNull()
+    private fun lastScanEvidence(): String = scan.evidence(pendingSsid, pendingPrefix, network)
 
     /** How long the request about to go out waits: more for a network the rider has not approved yet (DashJoin). */
     private fun chooseTimeout(): Int {
@@ -640,36 +551,7 @@ class DashWifiManager(
     /** The currently-associated WiFi network, IF its SSID matches [pendingSsid]/[pendingPrefix] —
      * lets [requestNetwork] reuse a connection the system already made instead of opening a new,
      * possibly-redundant request. */
-    @SuppressLint("MissingPermission")
-    @Suppress("DEPRECATION") // allNetworks: the callbacks that replace it do not answer a one-off question
-    private fun findAlreadyConnectedDashNetwork(): Pair<Network, String>? {
-        val activeSsid = readActiveWifiSsid()?.takeIf { matchesPendingSsid(it, pendingSsid, pendingPrefix) } ?: return null
-        val wifiNetwork = cm.allNetworks.firstOrNull { candidate ->
-            if (isRefused(candidate)) return@firstOrNull false
-            val caps = cm.getNetworkCapabilities(candidate) ?: return@firstOrNull false
-            if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return@firstOrNull false
-            val candidateSsid = normalizeSsid((caps.transportInfo as? WifiInfo)?.ssid).ifBlank { null }
-            candidateMatchesActive(candidateSsid, activeSsid)
-        } ?: return null
-        return wifiNetwork to activeSsid
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun readActiveWifiSsid(): String? = runCatching {
-        @Suppress("DEPRECATION")
-        normalizeSsid(wifi.connectionInfo?.ssid).ifBlank { null }
-    }.getOrNull()
-
-    /** Does the pending SSID show up in the latest scan? Same scan API [findDashSsid] already
-     * uses — reused here only to disambiguate the final give-up message in [requestNetwork]'s
-     * `onUnavailable()`. Null (not false) if the scan itself couldn't be read (e.g. no location
-     * permission) — a caller must NOT treat "couldn't check" the same as "confirmed absent". */
-    @SuppressLint("MissingPermission")
-    @Suppress("DEPRECATION") // ScanResult.SSID, as in searchDashSsid
-    private fun pendingSsidSeenInScan(): Boolean? = scanVerdict(
-        runCatching { wifi.scanResults.mapNotNull { it.SSID?.trim('"')?.takeIf { s -> s.isNotBlank() } } }.getOrNull(),
-        pendingSsid, pendingPrefix,
-    )
+    private fun findAlreadyConnectedDashNetwork(): Pair<Network, String>? = joinedWifi.find(pendingSsid, pendingPrefix, refusedNetworks::has)
 
     /** The bike Wi-Fi request's callback; on Android 12+ built with [DashName.callbackFlags] (see the call site). */
     private inner class BikeCallback : ConnectivityManager.NetworkCallback {
@@ -697,7 +579,7 @@ class DashWifiManager(
             noteNetwork(cm.getNetworkCapabilities(network))
             // SSID is read in onCapabilitiesChanged (transportInfo isn't populated here
             // yet on Android 13+). Try once anyway, else fall back to the pending value.
-            val resolved = resolveSsid(network).takeIf { it.isNotBlank() } ?: pendingSsid
+            val resolved = joinedWifi.ssidOf(network).takeIf { it.isNotBlank() } ?: pendingSsid
             rememberJoined(resolved)
             Log.i(TAG, "WiFi connected ✓  ssid='${maskSsid(resolved)}' network=$network (${tookMs}ms)")
             com.reau.app.data.RideDiagnostics.log(
@@ -752,7 +634,7 @@ class DashWifiManager(
             // several consecutive failures with no way to tell if the dash was just
             // out of range or the saved password had gone stale).
             // A quick refusal after the network worked, or several in a row, is a stuck dash (DashStuckTest).
-            val seenInScan = pendingSsidSeenInScan()
+            val seenInScan = scan.verdict(pendingSsid, pendingPrefix)
             quickRefusals = earlyInARow(quickRefusals, tookMs, requestTimeoutMs)
             val refusal = refusal(seenInScan, tookMs, requestTimeoutMs, joinedOnce, quickRefusals)
             val message = refusal.message(pendingSsid).let { (text, name) -> context.getString(text, name) }
@@ -808,26 +690,23 @@ class DashWifiManager(
     }
 
     /**
-     * Keeps what Android says of the network that is up ([NetFacts]); the first time the channel is known after a loss, says whether
+     * Keeps what Android says of the network that is up ([NetNotes]); the first time the channel is known after a loss, says whether
      * the dash came back on it. [caps] null (Android has no snapshot yet) changes nothing.
      */
     private fun noteNetwork(caps: NetworkCapabilities?) {
-        val before = netFacts
-        val info = caps?.transportInfo as? WifiInfo
-        val mhz = info?.frequency?.takeIf { it > 0 } ?: before?.mhz
-        val facts = NetFacts(
-            upAtMs = before?.upAtMs ?: MonotonicClock.nowMs(),
-            mhz = mhz,
-            rssiDbm = info?.rssi?.takeIf { it > NO_RSSI } ?: before?.rssiDbm,
-            specifier = caps?.let(::hasSpecifier) ?: before?.specifier,
-            validated = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) ?: before?.validated,
-            notRestricted = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED) ?: before?.notRestricted,
+        notes.note(caps?.let(::capsRead), MonotonicClock.nowMs())?.let { com.reau.app.data.RideDiagnostics.log("wifi", it) }
+    }
+
+    /** What Android says of the network in [caps], as it is given to [NetNotes]. */
+    private fun capsRead(caps: NetworkCapabilities): CapsRead {
+        val info = caps.transportInfo as? WifiInfo
+        return CapsRead(
+            mhz = info?.frequency,
+            rssiDbm = info?.rssi,
+            specifier = hasSpecifier(caps),
+            validated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED),
+            notRestricted = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED),
         )
-        netFacts = facts
-        if (awaitingChannel && mhz != null) {
-            awaitingChannel = false
-            LinkLoss.backLine(lostMhz, mhz)?.let { com.reau.app.data.RideDiagnostics.log("wifi", it) }
-        }
     }
 
     /** The log line for a passphrase Android refused: whatever Android says, the password itself is not in it. */
@@ -844,18 +723,16 @@ class DashWifiManager(
         stuck.lost(now, dashSpoke = DashHeard.agoMs(now) != null)
         val screenOn = (context.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.isInteractive
         com.reau.app.data.RideDiagnostics.warn(
-            "wifi", LinkLoss.lostLine(netFacts, now, DashHeard.agoMs(now), screenOn, RECONNECT_DELAY),
+            "wifi", LinkLoss.lostLine(notes.facts, now, DashHeard.agoMs(now), screenOn, RECONNECT_DELAY),
         )
         // What the phone itself says of its Wi-Fi and networks at this moment (the system's own lines are collected by adb, not by the app).
         com.reau.app.data.RideDiagnostics.log("wifi", PhoneSide.now(context))
         DashHeard.trail?.report("the Wi-Fi was lost", now)?.forEach { com.reau.app.data.RideDiagnostics.log("wifi", it) }
         // What was going out in the seconds before the silence: RTP per second, the biggest burst, the last keyframe and command.
-        DashHeard.tail?.reportOnce("the Wi-Fi was lost", netFacts?.let { "on this network for ${(now - it.upAtMs).coerceAtLeast(0) / MS_PER_SECOND} s" })
+        DashHeard.tail?.reportOnce("the Wi-Fi was lost", notes.facts?.let { "on this network for ${(now - it.upAtMs).coerceAtLeast(0) / MS_PER_SECOND} s" })
             ?.let { com.reau.app.data.RideDiagnostics.log("wifi", it) }
         // The next connection of this projection is compared with the channel this one had (kept if it is not known now).
-        netFacts?.mhz?.let { lostMhz = it }
-        awaitingChannel = lostMhz != null
-        netFacts = null
+        notes.lost()
         com.reau.app.service.SystemEvents.log(com.reau.app.service.SystemEvents.bikeNetwork(false))
         network = null
         _state.value = WifiState(
@@ -902,7 +779,7 @@ class DashWifiManager(
         val pause = reconnectJob?.isActive == true
         val sinceLostMs = (nowUs - lostAtUs) / MICROS_PER_MILLI
         val decision = DashJoin.refileAfterLossHeld(
-            requestFirstApproval, lostAtUs, newestSightingUs(), nowUs,
+            requestFirstApproval, lostAtUs, scan.newestSightingUs(pendingSsid, pendingPrefix), nowUs,
             requestAgeMs = nowMs - requestStartMs, inPause = pause,
             sinceLastRefileMs = if (lastRefileMs == 0L) null else nowMs - lastRefileMs,
             hold = hold, nowMs = SystemClock.elapsedRealtime(), joiningNow = { findAlreadyConnectedDashNetwork() != null },
@@ -929,22 +806,13 @@ class DashWifiManager(
 
     // ── A hung dash, and a network Android refuses ─────────────────────────
 
-    /** The last scan as [ScanSeen]s; null when it cannot be read. */
-    @SuppressLint("MissingPermission")
-    @Suppress("DEPRECATION") // ScanResult.SSID, as in searchDashSsid
-    private fun readScan(): List<ScanSeen>? = runCatching {
-        wifi.scanResults.mapNotNull { r ->
-            r.SSID?.trim('"')?.takeIf { it.isNotBlank() }?.let { ScanSeen(it, r.level, r.frequency, r.timestamp) }
-        }
-    }.getOrNull()?.also { ScanHistory.trail.note(it.size, SystemClock.elapsedRealtime(), newestStamp(it)) }
-
     /**
      * A try for the dash's network ended without it (the request ran out, or was let go before its time). With the dash in the scan at a good
      * signal, enough of them in a row mean its Wi-Fi hung ([StuckDashWatch]): the ride log says so once, and the rider is told to switch the
      * ignition off and on.
      */
     private fun noteFailedTry() {
-        val seen = readScan()
+        val seen = scan.read()
         val nowUs = SystemClock.elapsedRealtime() * MICROS_PER_MILLI
         val sighting = DashStuck.sighting(seen, pendingSsid, pendingPrefix, nowUs)
         val verdict = stuck.failedTry(MonotonicClock.nowMs(), sighting) ?: return
@@ -959,13 +827,6 @@ class DashWifiManager(
             com.reau.app.data.RideDiagnostics.log("wifi", "the dash is back (or REau was switched off): the notice of the hung dash is taken away")
             onDashStuck?.invoke(false)
         }
-    }
-
-    private fun isRefused(candidate: Network): Boolean = synchronized(refusedNetworks) { candidate in refusedNetworks }
-
-    private fun rememberRefused(refused: Network) = synchronized(refusedNetworks) {
-        if (refused !in refusedNetworks) refusedNetworks.add(refused)
-        while (refusedNetworks.size > MAX_REFUSED) refusedNetworks.removeAt(0)
     }
 
     /**
@@ -994,7 +855,7 @@ class DashWifiManager(
             val verdict = bindRefusals.refused(dead, phoneJoined)
             com.reau.app.data.RideDiagnostics.warn("wifi", verdict.line(dead, owner))
             val serial = ++refusalSerial
-            dead?.let(::rememberRefused)
+            dead?.let(refusedNetworks::remember)
             release()
             holdOffMs = if (verdict.step == BindRefusals.Step.BACK_OFF) verdict.backoffMs else 0L
             _state.value = WifiState(
@@ -1013,10 +874,10 @@ class DashWifiManager(
     }
 
     /** Whose the network in use is, for the ride log ([NetworkOwner]). */
-    private fun networkOwner(caps: NetworkCapabilities? = null): String = NetworkOwner.words(
+    private fun networkOwner(caps: NetworkCapabilities? = null): String = notes.owner(
         joinedByPhone, requests,
-        caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED) ?: netFacts?.notRestricted,
-        caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) ?: netFacts?.validated,
+        caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED),
+        caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED),
     )
 
     /**
@@ -1031,7 +892,7 @@ class DashWifiManager(
                 val now = network
                 val due = RefusalRetry.due(
                     wantConnected, serial != refusalSerial, _state.value.status == WifiConnStatus.CONNECTED && now != null,
-                    now != null && isRefused(now),
+                    now != null && refusedNetworks.has(now),
                 )
                 now.takeIf { due }
             } ?: return@launch
@@ -1046,15 +907,6 @@ class DashWifiManager(
         callbackRegistered = false
         networkCallback = null
     }
-
-    /** The newest stamp of the dash in the last scan; null for none, an empty scan or one that cannot be read. */
-    @SuppressLint("MissingPermission")
-    @Suppress("DEPRECATION") // ScanResult.SSID, as in searchDashSsid
-    private fun newestSightingUs(): Long? = runCatching {
-        wifi.scanResults.filter { r ->
-            r.SSID?.trim('"')?.let { it.isNotBlank() && matchesPendingSsid(it, pendingSsid, pendingPrefix) } == true
-        }.maxOfOrNull { it.timestamp }
-    }.getOrNull()
 
     /**
      * A dash network the phone had joined by itself is used without a request of REau's own, so no

@@ -162,6 +162,23 @@ internal class BindRefusals {
 }
 
 /**
+ * The networks Android refused a socket on (EPERM), so that none is taken as "already connected" again: at most [max], the oldest goes
+ * first. Generic only so that the JVM tests use it without an Android `Network` (RefusedNetworksTest). Its own lock, held for each call.
+ */
+internal class RefusedNetworks<T>(private val max: Int) {
+    private val list = ArrayList<T>()
+
+    fun has(candidate: T): Boolean = synchronized(list) { candidate in list }
+
+    fun remember(refused: T) = synchronized(list) {
+        if (refused !in list) list.add(refused)
+        while (list.size > max) list.removeAt(0)
+    }
+
+    fun clear() = synchronized(list) { list.clear() }
+}
+
+/**
  * The experimental retries of a refused bind ([com.reau.app.settings.REauSettings.experimentWifiBind]). Android sometimes refuses
  * `Network.bindSocket` with EPERM for a moment on a network that is fine (it is still being set up); [BindRefusals] and the manager let that
  * network go at once and ask for another. With the switch on, the session first tries the same network again, up to [MAX_RETRIES] times
