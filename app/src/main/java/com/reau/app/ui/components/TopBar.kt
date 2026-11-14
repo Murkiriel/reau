@@ -32,6 +32,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -97,7 +99,7 @@ fun REauTopBar(
                         MsIcon(R.drawable.ic_ms_arrow_back, 26.dp, ink, description = stringResource(R.string.action_back))
                     }
                 }
-                Text(brandTitle(title, brandGold()), style = titleStyle, color = ink, modifier = Modifier.weight(1f).testTag(titleTag))
+                Text(brandTitle(title, brandGold()), style = titleStyle, color = ink, modifier = Modifier.weight(1f).semantics { heading() }.testTag(titleTag))
                 // The actions take the bar's ink: Marfim on the Carvão chrome of the light theme too.
                 CompositionLocalProvider(LocalContentColor provides ink) { actions() }
             }

@@ -24,7 +24,16 @@ object Messages {
         get() = versionRequestFor(MINOR_DEFAULT)
 
     /** The version request for protocol 1.[minor]: major and minor as two 16-bit numbers. */
-    fun versionRequestFor(minor: Int): ByteArray = createRawMessage(0, 3, 1, byteArrayOf(0, 1, 0, minor.toByte()))
+    fun versionRequestFor(minor: Int): ByteArray = versionRequestFor(1, minor)
+
+    /** The version request for protocol [major].[minor]: both as 16-bit numbers (a number under 256 in the low byte). */
+    fun versionRequestFor(major: Int, minor: Int): ByteArray = createRawMessage(0, 3, 1, byteArrayOf(0, major.toByte(), 0, minor.toByte()))
+
+    /** The major and minor Android Auto answered in the first [length] bytes of [buffer]; null when the answer is too short. */
+    fun versionAnswered(buffer: ByteArray, length: Int): Pair<Int, Int>? {
+        fun number(at: Int) = (buffer[at].toInt() and 0xFF shl 8) or (buffer[at + 1].toInt() and 0xFF)
+        return if (length < VERSION_ANSWER_SIZE) null else number(MAJOR_AT) to number(MINOR_AT)
+    }
 
     /** The version Android Auto answered in the first [length] bytes of [buffer], for the log: "1.7, status 0". */
     fun versionAnswer(buffer: ByteArray, length: Int): String {
@@ -32,6 +41,24 @@ object Messages {
         fun number(at: Int) = (buffer[at].toInt() and 0xFF shl 8) or (buffer[at + 1].toInt() and 0xFF)
         return "${number(MAJOR_AT)}.${number(MINOR_AT)}, status ${number(STATUS_AT).toShort()}"
     }
+
+    /**
+     * The status of a version answer when it is not 0 (Android Auto refused the version asked for), null when it is 0 or the answer is too
+     * short to carry one. Only for the log: the handshake goes on as it always did, and a refused version fails at the TLS step.
+     */
+    fun versionRefusal(buffer: ByteArray, length: Int): Int? {
+        if (length < VERSION_ANSWER_SIZE) return null
+        val status = ((buffer[STATUS_AT].toInt() and 0xFF shl 8) or (buffer[STATUS_AT + 1].toInt() and 0xFF)).toShort().toInt()
+        return status.takeIf { it != 0 }
+    }
+
+    /** The log's line for a version answer with [status] not 0, asked for as 1.[minor]. */
+    fun versionRefusalLine(status: Int, minor: Int): String = versionRefusalLine(status, 1, minor)
+
+    /** The log's line for a version answer with [status] not 0, asked for as [major].[minor]. */
+    fun versionRefusalLine(status: Int, major: Int, minor: Int): String =
+        "Handshake: Android Auto answered the version request $major.$minor with status $status (not 0): it did not accept the version. " +
+            "The handshake goes on, and what fails next (the TLS step) comes from this."
 
     // byte ac_buf [] = {0, 3, 0, 4, 0, 4, 8, 0};
     val statusOk: ByteArray

@@ -76,7 +76,7 @@ class VideoLoopTest {
 
     /** A compositor with one picture in it and a loop on top, not started yet. */
     private fun newLoop(
-        settings: VideoLoop.Settings = VideoLoop.Settings(startFps = 16, ceilingFps = 16),
+        settings: VideoLoop.Settings = VideoLoop.Settings(ceilingFps = 16),
         link: () -> LinkSample? = { null },
     ): VideoLoop {
         val c = DashCompositor { log += it }.also { compositor = it }
@@ -251,7 +251,7 @@ class VideoLoopTest {
 
     @Test
     fun theVideoClockSettingSlowsTheStampsTheDashSees() {
-        val l = newLoop(VideoLoop.Settings(startFps = 16, ceilingFps = 16, clockSlowPercent = 5))
+        val l = newLoop(VideoLoop.Settings(ceilingFps = 16, clockSlowPercent = 5))
         assertTrue(l.start())
 
         // 248 ms of real time between repeats, stamped 5% short: 235.6 ms.
@@ -291,6 +291,42 @@ class VideoLoopTest {
     }
 
     /**
+     * A keyframe the output withheld (no SPS/PPS before it) is asked for again by the poll, and by no more than one ask every two
+     * seconds; the flag a throttled poll leaves behind is not kept for a later one. The withheld keyframe is made by hand: a new
+     * stream's output, taken from the real encoder before it has heard a parameter set (tried again when the encoder was first).
+     */
+    @Test
+    fun aKeyframeTheOutputWithheldIsAskedForAgainByThePollAtMostEveryTwoSeconds() {
+        val l = newLoop()
+        startSource()
+        val fake = Any()
+        val idr = byteArrayOf(0, 0, 0, 1, 0x65, 1, 2, 3)
+        fun withhold(out: RtpOutput) = out.onEncoded(fake, idr, true, 0)
+        var out: RtpOutput? = null
+        for (attempt in 1..20) {
+            assertTrue(l.start())
+            val candidate = checkNotNull(l.outputForTest)
+            candidate.switchTo(fake)
+            withhold(candidate)
+            if (candidate.idrWithheld > 0) {
+                out = candidate
+                break
+            }
+            l.stop()
+        }
+        val output = checkNotNull(out) { "no stream whose output had not heard a parameter set yet in 20 tries" }
+        fun asks() = log.count { "keyframe withheld for lack of SPS/PPS" in it }
+
+        awaitThat("the first ask") { asks() == 1 }
+        withhold(output)
+        Thread.sleep(2_600)
+        assertEquals("a second withheld keyframe within two seconds of the ask is not asked for, nor kept for a later poll: $log", 1, asks())
+
+        withhold(output)
+        awaitThat("the ask after two seconds") { asks() == 2 }
+    }
+
+    /**
      * Many restarts in a row, with a live source. On an encoder that holds a frame or two (hardware ones do), a
      * restart catches a frame already inside it, which comes out after the restart and before the keyframe; it
      * must never reach the dash. On the emulator this does NOT prove the loop holds its output: the software
@@ -320,7 +356,7 @@ class VideoLoopTest {
 
     @Test
     fun theCeilingOfTheSettingsCapsTheRate() {
-        val l = newLoop(VideoLoop.Settings(startFps = 16, ceilingFps = 8))
+        val l = newLoop(VideoLoop.Settings(ceilingFps = 8))
         startSource()
         assertTrue(l.start())
         val all = steadyUnits(tickMs = 125, count = 18)
@@ -340,7 +376,7 @@ class VideoLoopTest {
     @Test
     fun theConservativeEnvelopeRunsAsAskedAndTheLineSaysTheSpeedAndTheWifi() {
         val settings = VideoLoop.Settings(
-            startFps = 4, ceilingFps = 4, bitrateBps = 200_000, bitrateMode = com.reau.app.dash.BitrateMode.CBR, keyframeSec = 1,
+            ceilingFps = 4, bitrateBps = 200_000, bitrateMode = com.reau.app.dash.BitrateMode.CBR, keyframeSec = 1,
         )
         val l = newLoop(settings) { LinkSample(speedKmh = 72.0, wifiDbm = -60, wifiMbps = 52) }
         startSource()
@@ -349,36 +385,10 @@ class VideoLoopTest {
         while (log.none { it.startsWith("video fps target=4") && "full=true" in it } && System.currentTimeMillis() < deadline) Thread.sleep(200)
         stopSource()
 
-        assertTrue("got $log", log.any { "video loop start: 4 fps (ceiling 4), keyframe 1s fixed, 200 kbps (200 chosen) CBR" in it })
+        assertTrue("got $log", log.any { "video loop start: 4 fps (ceiling 4), keyframe 1s fixed (encoder asked 1 (every 4 frames at the hint), pace up to 4 fps), 200 kbps (200 chosen) CBR" in it })
         val line = log.first { it.startsWith("video fps target=4") && "full=true" in it }
         assertTrue(line, "speed~72km/h(max 72) wifi=-60dBm/52Mbps(worst)" in line)
         assertTrue(line, " kf=1s " in line)
-    }
-
-    /** The automatic rate: three healthy 5 s windows after a settling one, then the encoder is replaced. */
-    @Test
-    fun theRateClimbsToTheCeilingAndTheEncoderIsReplacedWithoutABreak() {
-        EncoderCapacity.assumeKeepsUp(16)
-        val l = newLoop(VideoLoop.Settings(startFps = 14, ceilingFps = 16))
-        startSource()
-        assertTrue(l.start())
-        // Five 5 s windows (a settling one and three healthy ones) are 20 s when every one is judged; the deadline allows
-        // a few windows the machine did not let count.
-        val deadline = SystemClock.elapsedRealtime() + CLIMB_MS
-        while (log.none { "encoder rebuilt: 16 fps" in it } && SystemClock.elapsedRealtime() < deadline) Thread.sleep(200)
-        assertTrue("the rate did not climb to 16 in $CLIMB_MS ms: ${log.filter { "video fps" in it || "rebuilt" in it }}", log.any { "encoder rebuilt: 16 fps" in it })
-        val rebuilt = dash.packets.size
-        awaitUnits("frames after the rebuild") { all -> all.count { it.lastPacket >= rebuilt } >= 12 }
-        stopSource()
-
-        val all = units()
-        val steps = stepsMs(all)
-        assertTrue("timestamps must keep increasing across the rebuild", steps.all { it in 1..1_000 })
-        assertEquals("before the climb a tick is 71 ms (14 a second)", 71L, steps.drop(4).take(20).groupingBy { it }.eachCount().maxByOrNull { it.value }?.key)
-        assertEquals("after it a tick is 62 ms (16 a second)", 62L, steps.takeLast(10).groupingBy { it }.eachCount().maxByOrNull { it.value }?.key)
-        val lines = log.filter { it.startsWith("video fps target=") }
-        assertTrue("a line every 5 s, got ${lines.size}: $lines", lines.size >= 4)
-        assertTrue("the first windows are measured at 14, got ${lines.first()}", "target=14" in lines.first())
     }
 
     @Test
@@ -420,7 +430,6 @@ class VideoLoopTest {
     private companion object {
         /** How long to wait for something that has to happen (frames, a log line): a deadline, not a duration. */
         const val AWAIT_MS = 20_000L
-        const val CLIMB_MS = 60_000L
         const val FU_A = 28
         const val NAL_IDR = 5
         const val NAL_SPS = 7

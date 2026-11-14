@@ -35,7 +35,6 @@ class UiStateTest {
         val state = MainUiState()
         assertTrue(state.battery.notices.isEmpty())
         assertFalse(state.server.networkOn)
-        assertFalse(state.server.auto)
         assertFalse(state.weatherOn)
         assertFalse(state.vpnHoldsREau)
         assertFalse(state.locationOff)

@@ -36,6 +36,8 @@ class SettingsScreenVideoTest {
 
     @Test
     fun theFourStreamValuesAreShownAndLocked() {
+        // They are behind "Detalhes" since 12/11/2026 (closed at first); the values and their lock are what they were.
+        compose.onNodeWithTag("profile_details").performScrollTo().performClick()
         for (tag in listOf("fps", "bitrate", "bitrate_mode", "keyframe")) {
             compose.onNodeWithTag("${tag}_locked").performScrollTo().assertIsDisplayed()
         }
@@ -44,6 +46,29 @@ class SettingsScreenVideoTest {
         for (tag in listOf("bitrate_plus", "bitrate_minus", "bitrate_vbr", "bitrate_cbr", "keyframe_1", "keyframe_2", "keyframe_auto")) {
             compose.onNodeWithTag(tag).assertDoesNotExist()
         }
+    }
+
+    @Test
+    fun theProfilesShowTheirNameAndShortLineAndTheNumbersAreBehindDetailsClosedAtFirst() {
+        for (tag in listOf("profile_a_locked", "profile_b_locked", "maneuver_fps_profile_locked", "speed_fps_profile_locked", "profile_details")) {
+            compose.onNodeWithTag(tag).performScrollTo().assertIsDisplayed()
+        }
+        compose.onNodeWithTag("profile_a_locked").assertTextContains("Perfil A", substring = true)
+        compose.onNodeWithTag("profile_a_locked").assertTextContains("mais fluida", substring = true)
+        compose.onNodeWithTag("profile_b_locked").assertTextContains("Perfil B", substring = true)
+        compose.onNodeWithTag("profile_b_locked").assertTextContains("mais leve", substring = true, ignoreCase = true)
+        for (tag in listOf("fps", "bitrate", "bitrate_mode", "keyframe")) compose.onNodeWithTag("${tag}_locked").assertDoesNotExist()
+        compose.onNodeWithTag("profile_details").assertTextContains("Detalhes", substring = true)
+    }
+
+    @Test
+    fun detailsOpenAndCloseAndTheValuesInsideAreTheFixedOnes() {
+        compose.onNodeWithTag("profile_details").performScrollTo().performClick()
+        compose.onNodeWithTag("fps_locked").performScrollTo().assertIsDisplayed().assertTextContains("4", substring = true)
+        compose.onNodeWithTag("bitrate_locked").assertTextContains("400 kbps", substring = true)
+        compose.onNodeWithTag("keyframe_locked").assertTextContains("1 s", substring = true)
+        compose.onNodeWithTag("profile_details").performScrollTo().performClick()
+        for (tag in listOf("fps", "bitrate", "bitrate_mode", "keyframe")) compose.onNodeWithTag("${tag}_locked").assertDoesNotExist()
     }
 
     @Test

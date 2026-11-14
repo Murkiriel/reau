@@ -1,0 +1,477 @@
+# Golden trace of the stream governor (plan 27, GovernadorOuroTest). Recorded from the code, never edited by hand.
+# Case 07-speed-wobble: one tier change every 10 s at most, however often the speed crosses the band.
+# A line is a poll that had an action (the time in ms, then one action per line); `reads:` are the values the video loop reads, when one changed.
+
+== 400 kbps ==
+      0  start
+         pace=500/500
+         bitrate=200000
+         sync=stream start
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+# 500 m from the maneuver, 50 and 70 km/h by turns of 3 s, for 90 s
+    250  log: nav profile: none -> FULL (data), pace 4 fps, encoder 4 fps
+         pace=250/500
+    500  bitrate=400000
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=400000 encoderKeyframeSec=2)
+   1000  sync=pace
+   1250  stats=5.0fps/360kbps
+   2000  sync=pace
+   2250  stats=4.0fps/240kbps
+   3000  sync=pace
+   3250  stats=4.0fps/240kbps
+   4000  sync=pace
+   4250  stats=4.0fps/240kbps
+   5000  sync=pace
+   5250  stats=4.0fps/240kbps
+   5500  log: video fps target=4 sent=4.0 (20frames/5.0s) composed=4.0 kbps=240 set=400k frame=7500B source=20 drawn=20 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~60km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=6[stream start:1,pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=20(4.0/s)
+   6000  sync=pace
+   6250  stats=4.0fps/240kbps
+   7000  sync=pace
+   7250  stats=4.0fps/240kbps
+   8000  sync=pace
+   8250  stats=4.0fps/240kbps
+   9000  sync=pace
+   9250  stats=4.0fps/240kbps
+  10000  sync=pace
+  10250  log: nav profile: FULL -> REDUCED (data), pace 2 fps, encoder 4 fps
+         pace=500/1000
+         bitrate=200000
+         stats=4.0fps/240kbps
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+  10500  log: video fps target=2 sent=3.8 (19frames/5.0s) composed=3.8 kbps=232 set=200k frame=7631B source=19 drawn=19 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~58km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=19(3.8/s)
+  11000  sync=pace
+  11250  stats=2.0fps/160kbps
+  12000  sync=pace
+  12250  stats=2.0fps/160kbps
+  13000  sync=pace
+  13250  stats=2.0fps/160kbps
+  14000  sync=pace
+  14250  stats=2.0fps/160kbps
+  15000  sync=pace
+  15250  stats=2.0fps/160kbps
+  15500  log: video fps target=2 sent=2.0 (10frames/5.0s) composed=2.0 kbps=160 set=200k frame=10000B source=10 drawn=10 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~58km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=10(2.0/s)
+  16000  sync=pace
+  16250  stats=2.0fps/160kbps
+  17000  sync=pace
+  17250  stats=2.0fps/160kbps
+  18000  sync=pace
+  18250  stats=2.0fps/160kbps
+  19000  sync=pace
+  19250  stats=2.0fps/160kbps
+  20000  sync=pace
+  20250  log: nav profile: REDUCED -> FULL (data), pace 4 fps, encoder 4 fps
+         pace=250/500
+         bitrate=400000
+         stats=2.0fps/160kbps
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=400000 encoderKeyframeSec=2)
+  20500  log: video fps target=4 sent=2.2 (11frames/5.0s) composed=2.2 kbps=168 set=400k frame=9545B source=11 drawn=11 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=false thermal=OK speed~60km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=11(2.2/s)
+  21000  sync=pace
+  21250  stats=4.0fps/240kbps
+  22000  sync=pace
+  22250  stats=4.0fps/240kbps
+  23000  sync=pace
+  23250  stats=4.0fps/240kbps
+  24000  sync=pace
+  24250  stats=4.0fps/240kbps
+  25000  sync=pace
+  25250  stats=4.0fps/240kbps
+  25500  log: video fps target=4 sent=4.0 (20frames/5.0s) composed=4.0 kbps=240 set=400k frame=7500B source=20 drawn=20 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~62km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=20(4.0/s)
+  26000  sync=pace
+  26250  stats=4.0fps/240kbps
+  27000  sync=pace
+  27250  stats=4.0fps/240kbps
+  28000  sync=pace
+  28250  stats=4.0fps/240kbps
+  29000  sync=pace
+  29250  stats=4.0fps/240kbps
+  30000  sync=pace
+  30250  stats=4.0fps/240kbps
+  30500  log: video fps target=4 sent=4.0 (20frames/5.0s) composed=4.0 kbps=240 set=400k frame=7500B source=20 drawn=20 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~62km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=20(4.0/s)
+  31000  sync=pace
+  31250  stats=4.0fps/240kbps
+  32000  sync=pace
+  32250  stats=4.0fps/240kbps
+  33000  sync=pace
+  33250  log: nav profile: FULL -> REDUCED (data), pace 2 fps, encoder 4 fps
+         pace=500/1000
+         bitrate=200000
+         stats=4.0fps/240kbps
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+  34000  sync=pace
+  34250  stats=2.0fps/160kbps
+  35000  sync=pace
+  35250  stats=2.0fps/160kbps
+  35500  log: video fps target=2 sent=3.0 (15frames/5.0s) composed=3.0 kbps=200 set=200k frame=8333B source=15 drawn=15 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~60km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=15(3.0/s)
+  36000  sync=pace
+  36250  stats=2.0fps/160kbps
+  37000  sync=pace
+  37250  stats=2.0fps/160kbps
+  38000  sync=pace
+  38250  stats=2.0fps/160kbps
+  39000  sync=pace
+  39250  stats=2.0fps/160kbps
+  40000  sync=pace
+  40250  stats=2.0fps/160kbps
+  40500  log: video fps target=2 sent=2.0 (10frames/5.0s) composed=2.0 kbps=160 set=200k frame=10000B source=10 drawn=10 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~58km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=10(2.0/s)
+  41000  sync=pace
+  41250  stats=2.0fps/160kbps
+  42000  sync=pace
+  42250  stats=2.0fps/160kbps
+  43000  sync=pace
+  43250  log: nav profile: REDUCED -> FULL (data), pace 4 fps, encoder 4 fps
+         pace=250/500
+         bitrate=400000
+         stats=2.0fps/160kbps
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=400000 encoderKeyframeSec=2)
+  44000  sync=pace
+  44250  stats=4.0fps/240kbps
+  45000  sync=pace
+  45250  stats=4.0fps/240kbps
+  45500  log: video fps target=4 sent=3.0 (15frames/5.0s) composed=3.0 kbps=200 set=400k frame=8333B source=15 drawn=15 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=false thermal=OK speed~58km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=15(3.0/s)
+  46000  sync=pace
+  46250  stats=4.0fps/240kbps
+  47000  sync=pace
+  47250  stats=4.0fps/240kbps
+  48000  sync=pace
+  48250  stats=4.0fps/240kbps
+  49000  sync=pace
+  49250  stats=4.0fps/240kbps
+  50000  sync=pace
+  50250  stats=4.0fps/240kbps
+  50500  log: video fps target=4 sent=4.0 (20frames/5.0s) composed=4.0 kbps=240 set=400k frame=7500B source=20 drawn=20 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~60km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=20(4.0/s)
+  51000  sync=pace
+  51250  stats=4.0fps/240kbps
+  52000  sync=pace
+  52250  stats=4.0fps/240kbps
+  53000  sync=pace
+  53250  log: nav profile: FULL -> REDUCED (data), pace 2 fps, encoder 4 fps
+         pace=500/1000
+         bitrate=200000
+         stats=4.0fps/240kbps
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+  54000  sync=pace
+  54250  stats=2.0fps/160kbps
+  55000  sync=pace
+  55250  stats=2.0fps/160kbps
+  55500  log: video fps target=2 sent=3.0 (15frames/5.0s) composed=3.0 kbps=200 set=200k frame=8333B source=15 drawn=15 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~62km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=15(3.0/s)
+  56000  sync=pace
+  56250  stats=2.0fps/160kbps
+  57000  sync=pace
+  57250  stats=2.0fps/160kbps
+  58000  sync=pace
+  58250  stats=2.0fps/160kbps
+  59000  sync=pace
+  59250  stats=2.0fps/160kbps
+  60000  sync=pace
+  60250  stats=2.0fps/160kbps
+  60500  log: video fps target=2 sent=2.0 (10frames/5.0s) composed=2.0 kbps=160 set=200k frame=10000B source=10 drawn=10 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~62km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=10(2.0/s)
+  61000  sync=pace
+  61250  stats=2.0fps/160kbps
+  62000  sync=pace
+  62250  stats=2.0fps/160kbps
+  63000  sync=pace
+  63250  stats=2.0fps/160kbps
+  64000  sync=pace
+  64250  stats=2.0fps/160kbps
+  65000  sync=pace
+  65250  stats=2.0fps/160kbps
+  65500  log: video fps target=2 sent=2.0 (10frames/5.0s) composed=2.0 kbps=160 set=200k frame=10000B source=10 drawn=10 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~60km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=10(2.0/s)
+  66000  sync=pace
+  66250  log: nav profile: REDUCED -> FULL (data), pace 4 fps, encoder 4 fps
+         pace=250/500
+         bitrate=400000
+         stats=2.0fps/160kbps
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=400000 encoderKeyframeSec=2)
+  67000  sync=pace
+  67250  stats=4.0fps/240kbps
+  68000  sync=pace
+  68250  stats=4.0fps/240kbps
+  69000  sync=pace
+  69250  stats=4.0fps/240kbps
+  70000  sync=pace
+  70250  stats=4.0fps/240kbps
+  70500  log: video fps target=4 sent=3.8 (19frames/5.0s) composed=3.8 kbps=232 set=400k frame=7631B source=19 drawn=19 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~58km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=19(3.8/s)
+  71000  sync=pace
+  71250  stats=4.0fps/240kbps
+  72000  sync=pace
+  72250  stats=4.0fps/240kbps
+  73000  sync=pace
+  73250  stats=4.0fps/240kbps
+  74000  sync=pace
+  74250  stats=4.0fps/240kbps
+  75000  sync=pace
+  75250  stats=4.0fps/240kbps
+  75500  log: video fps target=4 sent=4.0 (20frames/5.0s) composed=4.0 kbps=240 set=400k frame=7500B source=20 drawn=20 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~58km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=20(4.0/s)
+  76000  sync=pace
+  76250  log: nav profile: FULL -> REDUCED (data), pace 2 fps, encoder 4 fps
+         pace=500/1000
+         bitrate=200000
+         stats=4.0fps/240kbps
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+  77000  sync=pace
+  77250  stats=2.0fps/160kbps
+  78000  sync=pace
+  78250  stats=2.0fps/160kbps
+  79000  sync=pace
+  79250  stats=2.0fps/160kbps
+  80000  sync=pace
+  80250  stats=2.0fps/160kbps
+  80500  log: video fps target=2 sent=2.2 (11frames/5.0s) composed=2.2 kbps=168 set=200k frame=9545B source=11 drawn=11 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~60km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=11(2.2/s)
+  81000  sync=pace
+  81250  stats=2.0fps/160kbps
+  82000  sync=pace
+  82250  stats=2.0fps/160kbps
+  83000  sync=pace
+  83250  stats=2.0fps/160kbps
+  84000  sync=pace
+  84250  stats=2.0fps/160kbps
+  85000  sync=pace
+  85250  stats=2.0fps/160kbps
+  85500  log: video fps target=2 sent=2.0 (10frames/5.0s) composed=2.0 kbps=160 set=200k frame=10000B source=10 drawn=10 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~62km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=10(2.0/s)
+  86000  sync=pace
+  86250  log: nav profile: REDUCED -> FULL (data), pace 4 fps, encoder 4 fps
+         pace=250/500
+         bitrate=400000
+         stats=2.0fps/160kbps
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=400000 encoderKeyframeSec=2)
+  87000  sync=pace
+  87250  stats=4.0fps/240kbps
+  88000  sync=pace
+  88250  stats=4.0fps/240kbps
+  89000  sync=pace
+  89250  stats=4.0fps/240kbps
+  90000  sync=pace
+  90000  end, 360 polls
+
+== 200 kbps ==
+      0  start
+         pace=500/500
+         bitrate=100000
+         sync=stream start
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=100000 encoderKeyframeSec=2)
+# 500 m from the maneuver, 50 and 70 km/h by turns of 3 s, for 90 s
+    250  log: nav profile: none -> FULL (data), pace 4 fps, encoder 4 fps
+         pace=250/500
+    500  bitrate=200000
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+   1000  sync=pace
+   1250  stats=5.0fps/360kbps
+   2000  sync=pace
+   2250  stats=4.0fps/240kbps
+   3000  sync=pace
+   3250  stats=4.0fps/240kbps
+   4000  sync=pace
+   4250  stats=4.0fps/240kbps
+   5000  sync=pace
+   5250  stats=4.0fps/240kbps
+   5500  log: video fps target=4 sent=4.0 (20frames/5.0s) composed=4.0 kbps=240 set=200k frame=7500B source=20 drawn=20 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~60km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=6[stream start:1,pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=20(4.0/s)
+   6000  sync=pace
+   6250  stats=4.0fps/240kbps
+   7000  sync=pace
+   7250  stats=4.0fps/240kbps
+   8000  sync=pace
+   8250  stats=4.0fps/240kbps
+   9000  sync=pace
+   9250  stats=4.0fps/240kbps
+  10000  sync=pace
+  10250  log: nav profile: FULL -> REDUCED (data), pace 2 fps, encoder 4 fps
+         pace=500/1000
+         stats=4.0fps/240kbps
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+  10500  log: video fps target=2 sent=3.8 (19frames/5.0s) composed=3.8 kbps=232 set=200k frame=7631B source=19 drawn=19 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~58km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=19(3.8/s)
+  11000  sync=pace
+  11250  stats=2.0fps/160kbps
+  12000  sync=pace
+  12250  stats=2.0fps/160kbps
+  13000  sync=pace
+  13250  stats=2.0fps/160kbps
+  14000  sync=pace
+  14250  stats=2.0fps/160kbps
+  15000  sync=pace
+  15250  stats=2.0fps/160kbps
+  15500  log: video fps target=2 sent=2.0 (10frames/5.0s) composed=2.0 kbps=160 set=200k frame=10000B source=10 drawn=10 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~58km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=10(2.0/s)
+  16000  sync=pace
+  16250  stats=2.0fps/160kbps
+  17000  sync=pace
+  17250  stats=2.0fps/160kbps
+  18000  sync=pace
+  18250  stats=2.0fps/160kbps
+  19000  sync=pace
+  19250  stats=2.0fps/160kbps
+  20000  sync=pace
+  20250  log: nav profile: REDUCED -> FULL (data), pace 4 fps, encoder 4 fps
+         pace=250/500
+         stats=2.0fps/160kbps
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+  20500  log: video fps target=4 sent=2.2 (11frames/5.0s) composed=2.2 kbps=168 set=200k frame=9545B source=11 drawn=11 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=false thermal=OK speed~60km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=11(2.2/s)
+  21000  sync=pace
+  21250  stats=4.0fps/240kbps
+  22000  sync=pace
+  22250  stats=4.0fps/240kbps
+  23000  sync=pace
+  23250  stats=4.0fps/240kbps
+  24000  sync=pace
+  24250  stats=4.0fps/240kbps
+  25000  sync=pace
+  25250  stats=4.0fps/240kbps
+  25500  log: video fps target=4 sent=4.0 (20frames/5.0s) composed=4.0 kbps=240 set=200k frame=7500B source=20 drawn=20 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~62km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=20(4.0/s)
+  26000  sync=pace
+  26250  stats=4.0fps/240kbps
+  27000  sync=pace
+  27250  stats=4.0fps/240kbps
+  28000  sync=pace
+  28250  stats=4.0fps/240kbps
+  29000  sync=pace
+  29250  stats=4.0fps/240kbps
+  30000  sync=pace
+  30250  stats=4.0fps/240kbps
+  30500  log: video fps target=4 sent=4.0 (20frames/5.0s) composed=4.0 kbps=240 set=200k frame=7500B source=20 drawn=20 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~62km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=20(4.0/s)
+  31000  sync=pace
+  31250  stats=4.0fps/240kbps
+  32000  sync=pace
+  32250  stats=4.0fps/240kbps
+  33000  sync=pace
+  33250  log: nav profile: FULL -> REDUCED (data), pace 2 fps, encoder 4 fps
+         pace=500/1000
+         stats=4.0fps/240kbps
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+  34000  sync=pace
+  34250  stats=2.0fps/160kbps
+  35000  sync=pace
+  35250  stats=2.0fps/160kbps
+  35500  log: video fps target=2 sent=3.0 (15frames/5.0s) composed=3.0 kbps=200 set=200k frame=8333B source=15 drawn=15 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~60km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=15(3.0/s)
+  36000  sync=pace
+  36250  stats=2.0fps/160kbps
+  37000  sync=pace
+  37250  stats=2.0fps/160kbps
+  38000  sync=pace
+  38250  stats=2.0fps/160kbps
+  39000  sync=pace
+  39250  stats=2.0fps/160kbps
+  40000  sync=pace
+  40250  stats=2.0fps/160kbps
+  40500  log: video fps target=2 sent=2.0 (10frames/5.0s) composed=2.0 kbps=160 set=200k frame=10000B source=10 drawn=10 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~58km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=10(2.0/s)
+  41000  sync=pace
+  41250  stats=2.0fps/160kbps
+  42000  sync=pace
+  42250  stats=2.0fps/160kbps
+  43000  sync=pace
+  43250  log: nav profile: REDUCED -> FULL (data), pace 4 fps, encoder 4 fps
+         pace=250/500
+         stats=2.0fps/160kbps
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+  44000  sync=pace
+  44250  stats=4.0fps/240kbps
+  45000  sync=pace
+  45250  stats=4.0fps/240kbps
+  45500  log: video fps target=4 sent=3.0 (15frames/5.0s) composed=3.0 kbps=200 set=200k frame=8333B source=15 drawn=15 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=false thermal=OK speed~58km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=15(3.0/s)
+  46000  sync=pace
+  46250  stats=4.0fps/240kbps
+  47000  sync=pace
+  47250  stats=4.0fps/240kbps
+  48000  sync=pace
+  48250  stats=4.0fps/240kbps
+  49000  sync=pace
+  49250  stats=4.0fps/240kbps
+  50000  sync=pace
+  50250  stats=4.0fps/240kbps
+  50500  log: video fps target=4 sent=4.0 (20frames/5.0s) composed=4.0 kbps=240 set=200k frame=7500B source=20 drawn=20 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~60km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=20(4.0/s)
+  51000  sync=pace
+  51250  stats=4.0fps/240kbps
+  52000  sync=pace
+  52250  stats=4.0fps/240kbps
+  53000  sync=pace
+  53250  log: nav profile: FULL -> REDUCED (data), pace 2 fps, encoder 4 fps
+         pace=500/1000
+         stats=4.0fps/240kbps
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+  54000  sync=pace
+  54250  stats=2.0fps/160kbps
+  55000  sync=pace
+  55250  stats=2.0fps/160kbps
+  55500  log: video fps target=2 sent=3.0 (15frames/5.0s) composed=3.0 kbps=200 set=200k frame=8333B source=15 drawn=15 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~62km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=15(3.0/s)
+  56000  sync=pace
+  56250  stats=2.0fps/160kbps
+  57000  sync=pace
+  57250  stats=2.0fps/160kbps
+  58000  sync=pace
+  58250  stats=2.0fps/160kbps
+  59000  sync=pace
+  59250  stats=2.0fps/160kbps
+  60000  sync=pace
+  60250  stats=2.0fps/160kbps
+  60500  log: video fps target=2 sent=2.0 (10frames/5.0s) composed=2.0 kbps=160 set=200k frame=10000B source=10 drawn=10 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~62km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=10(2.0/s)
+  61000  sync=pace
+  61250  stats=2.0fps/160kbps
+  62000  sync=pace
+  62250  stats=2.0fps/160kbps
+  63000  sync=pace
+  63250  stats=2.0fps/160kbps
+  64000  sync=pace
+  64250  stats=2.0fps/160kbps
+  65000  sync=pace
+  65250  stats=2.0fps/160kbps
+  65500  log: video fps target=2 sent=2.0 (10frames/5.0s) composed=2.0 kbps=160 set=200k frame=10000B source=10 drawn=10 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~60km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=10(2.0/s)
+  66000  sync=pace
+  66250  log: nav profile: REDUCED -> FULL (data), pace 4 fps, encoder 4 fps
+         pace=250/500
+         stats=2.0fps/160kbps
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+  67000  sync=pace
+  67250  stats=4.0fps/240kbps
+  68000  sync=pace
+  68250  stats=4.0fps/240kbps
+  69000  sync=pace
+  69250  stats=4.0fps/240kbps
+  70000  sync=pace
+  70250  stats=4.0fps/240kbps
+  70500  log: video fps target=4 sent=3.8 (19frames/5.0s) composed=3.8 kbps=232 set=200k frame=7631B source=19 drawn=19 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~58km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=19(3.8/s)
+  71000  sync=pace
+  71250  stats=4.0fps/240kbps
+  72000  sync=pace
+  72250  stats=4.0fps/240kbps
+  73000  sync=pace
+  73250  stats=4.0fps/240kbps
+  74000  sync=pace
+  74250  stats=4.0fps/240kbps
+  75000  sync=pace
+  75250  stats=4.0fps/240kbps
+  75500  log: video fps target=4 sent=4.0 (20frames/5.0s) composed=4.0 kbps=240 set=200k frame=7500B source=20 drawn=20 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~58km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=20(4.0/s)
+  76000  sync=pace
+  76250  log: nav profile: FULL -> REDUCED (data), pace 2 fps, encoder 4 fps
+         pace=500/1000
+         stats=4.0fps/240kbps
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+  77000  sync=pace
+  77250  stats=2.0fps/160kbps
+  78000  sync=pace
+  78250  stats=2.0fps/160kbps
+  79000  sync=pace
+  79250  stats=2.0fps/160kbps
+  80000  sync=pace
+  80250  stats=2.0fps/160kbps
+  80500  log: video fps target=2 sent=2.2 (11frames/5.0s) composed=2.2 kbps=168 set=200k frame=9545B source=11 drawn=11 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~60km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=11(2.2/s)
+  81000  sync=pace
+  81250  stats=2.0fps/160kbps
+  82000  sync=pace
+  82250  stats=2.0fps/160kbps
+  83000  sync=pace
+  83250  stats=2.0fps/160kbps
+  84000  sync=pace
+  84250  stats=2.0fps/160kbps
+  85000  sync=pace
+  85250  stats=2.0fps/160kbps
+  85500  log: video fps target=2 sent=2.0 (10frames/5.0s) composed=2.0 kbps=160 set=200k frame=10000B source=10 drawn=10 repeated=0 compose=2.0ms encode=8.0ms late=0 tickwait=- full=true thermal=OK speed~62km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=5(max 15000B/11pkt) sync=5[pace:5] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=10(2.0/s)
+  86000  sync=pace
+  86250  log: nav profile: REDUCED -> FULL (data), pace 4 fps, encoder 4 fps
+         pace=250/500
+         stats=2.0fps/160kbps
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+  87000  sync=pace
+  87250  stats=4.0fps/240kbps
+  88000  sync=pace
+  88250  stats=4.0fps/240kbps
+  89000  sync=pace
+  89250  stats=4.0fps/240kbps
+  90000  sync=pace
+  90000  end, 360 polls

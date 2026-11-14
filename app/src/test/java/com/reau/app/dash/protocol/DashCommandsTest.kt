@@ -591,8 +591,30 @@ class DashCommandsTest {
     }
 
     @Test
+    fun `a 12-hour arrival time is the 24-hour four digits of the card`() {
+        for ((said, digits) in mapOf("2:35 PM" to "1435", "2:35 pm" to "1435", "2:35PM" to "1435", "2:35 p.m." to "1435", "2:35 p. m." to "1435",
+            "9:05 AM" to "0905", "12:05 AM" to "0005", "12:30 PM" to "1230", "11:59 PM" to "2359", "2:35\u202FPM" to "1435", "2:35\u00A0a.\u00A0m." to "0235")) {
+            assertEquals(said, digits, etaOf(DashCommands.routeCard("Waze", projectionOn = true, etaHHMM = said)))
+            assertEquals(said, digits, DashCommands.etaDigits(said))
+        }
+    }
+
+    @Test
+    fun `clock24 turns only a 12-hour time and says null for the rest`() {
+        assertEquals("14:35", DashCommands.clock24("2:35 PM"))
+        assertEquals("00:05", DashCommands.clock24("12:05 AM"))
+        for (not in listOf(null, "", "14:35", "1435", "2:35", "13:00 PM", "14:35 AM", "2:60 PM", "2:35 QM", "2:35 PMX", "ab:cd PM")) {
+            assertEquals(not.toString(), null, DashCommands.clock24(not))
+        }
+        // a time that is already in 24 hours reads as it always did
+        assertEquals("1435", DashCommands.etaDigits("14:35"))
+        assertEquals("0000", DashCommands.etaDigits("0:00"))
+        assertEquals(null, DashCommands.etaDigits("13:00 PM"))
+    }
+
+    @Test
     fun `an arrival time that is no time leaves the template's, as always`() {
-        for (bad in listOf("", "soon", "25:99", "8:5", "12345", "ab:cd")) {
+        for (bad in listOf("", "soon", "25:99", "8:5", "12345", "ab:cd", "14:35 PM", "2:35 XM")) {
             assertEquals(bad, "0303", etaOf(DashCommands.routeCard("Waze", projectionOn = true, etaHHMM = bad)))
         }
         assertEquals("0303", etaOf(DashCommands.routeCard("Waze", projectionOn = true)))

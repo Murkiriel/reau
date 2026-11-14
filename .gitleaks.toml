@@ -11,3 +11,7 @@ paths = ['''app/src/main/res/raw/aa_privkey''']
 [[allowlists]]
 description = "The sample Sec-WebSocket-Key of RFC 6455, used by the web server's tests"
 regexes = ['''dGhlIHNhbXBsZSBub25jZQ==''']   # the RFC's sample nonce itself: the rule tests the secret, not the header's name
+
+[[allowlists]]
+description = "The made-up dash Wi-Fi name the log reader's tests use in their sample lines (configKey=\"RE_AB12_345678\"): a sample, not a network"
+regexes = ['''RE_AB12_345678''']

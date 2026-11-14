@@ -8,7 +8,7 @@ import org.junit.Test
 /**
  * The line that says what each permission is for, on the permissions screen, is short (the owner's rule of 28/10/2026), by the section it is in:
  * the ones a library adds, the ones granted at install and the ones asked of the rider have one sentence of at most 33 words; the special
- * accesses, two sentences of at most 67 words (but the accessibility's and the screen's opening line keep to one sentence and 33 words). Counted in English, Portuguese and Spanish separately. The table is the catalog in the code
+ * accesses, two sentences of at most 67 words (but the screen's opening line keeps to one sentence and 33 words). Counted in English, Portuguese and Spanish separately. The table is the catalog in the code
  * ([com.reau.app.settings.AppPermissions]); a permission added without being classified there, or a text out of its limit, fails.
  */
 class PermissionTextsTest {
@@ -20,11 +20,8 @@ class PermissionTextsTest {
         "LIBRARY" to Limit(1, 33), "INSTALL" to Limit(1, 33), "ASKED" to Limit(1, 33), "SPECIAL" to Limit(2, 67),
     )
 
-    /** The texts that follow a stricter rule than their section's: the opening line of the screen and every text about the accessibility (owner, 28/10/2026): one sentence, 33 words. */
-    private val strict = mapOf(
-        "permissions_intro" to Limit(1, 33), "perm_accessibility_why" to Limit(1, 33), "permission_special_restricted" to Limit(1, 33),
-        "aa_server_auto" to Limit(1, 33), "aa_server_accessibility_off" to Limit(1, 33), "accessibility_ask_text" to Limit(1, 33),
-    )
+    /** The texts that follow a stricter rule than their section's: the opening line of the screen (owner, 28/10/2026): one sentence, 33 words. */
+    private val strict = mapOf("permissions_intro" to Limit(1, 33))
 
     /** (kind, name of the "why" string) of every permission of the catalog, read from the source, and the library's own. */
     private val catalog: List<Pair<String, String>> =
@@ -32,7 +29,7 @@ class PermissionTextsTest {
             .findAll(File(src, "main/java/com/reau/app/settings/AppPermissions.kt").readText()).map { it.groupValues[1] to it.groupValues[2] }.toList() +
             ("LIBRARY" to "perm_library_why")
 
-    private val files = listOf("main", "completa", "lite").flatMap { set ->
+    private val files = listOf("main").flatMap { set ->
         listOf("values", "values-pt", "values-es").flatMap { folder ->
             File(src, "$set/res/$folder").listFiles { f -> f.name.startsWith("strings") && f.extension == "xml" }.orEmpty().map { folder to it }
         }
@@ -42,7 +39,7 @@ class PermissionTextsTest {
 
     private fun sentences(text: String) = text.trim().split(Regex("""(?<=[.!?])["”’)]?\s+""")).count { it.isNotBlank() }
 
-    /** (language folder, name, text) of every "why" string with something in it (the Lite edition blanks the accessibility's). */
+    /** (language folder, name, text) of every "why" string with something in it. */
     private val texts = files.flatMap { (folder, file) ->
         Regex("""<string name="(perm_\w+_why)"[^>]*>(.*?)</string>""", RegexOption.DOT_MATCHES_ALL).findAll(file.readText())
             .filter { it.groupValues[2].isNotBlank() }.map { Triple(folder, it.groupValues[1], it.groupValues[2]) }
@@ -72,7 +69,7 @@ class PermissionTextsTest {
     }
 
     @Test
-    fun `the opening line of the screen and the accessibility's texts (what it reads, the restricted setting's help, the server switch's info, its status line and the dialog that asks) are one sentence of at most 33 words`() {
+    fun `the opening line of the screen is one sentence of at most 33 words`() {
         for ((name, limit) in strict) for (folder in listOf("values", "values-pt", "values-es")) {
             val text = texts.firstOrNull { it.first == folder && it.second == name }?.third ?: stringsOf(folder, name)
             assertTrue("$folder/$name: ${sentences(text)} sentences", sentences(text) <= limit.sentences)

@@ -1,0 +1,73 @@
+# Mutação amostrada, uma fatia por mês: a fatia do mês (janeiro 1/12, fevereiro 2/12 ... dezembro 12/12) do mesmo
+# scripts/dev/mutacoes.py que o qualidade.yml roda inteiro toda semana. Em um ano as 12 fatias cobrem todas as mutações, e cada mês
+# custa uma décima segunda parte de uma execução. Serve de rede de segurança leve, por exemplo se a rodada semanal for desligada para
+# poupar minutos; sem ferramenta nova (o script já aceita --fatia I/N). Só lê o código, não assina, não publica nada e não usa
+# segredo. Actions só as oficiais da GitHub, fixadas pelo commit (as mesmas do ci.yml).
+name: Mutação mensal
+
+on:
+  schedule:
+    - cron: "41 4 2 * *" # dia 2 de cada mês, 04:41 UTC (longe da segunda-feira do qualidade.yml)
+  workflow_dispatch:
+    inputs:
+      fatia:
+        description: "Fatia de 1 a 12 (vazio: a do mês atual)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutacao-mensal-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # O daemon fica ligado: com `daemon=false` cada mutação pagaria a partida do Gradle.
+  GRADLE_OPTS: -Dorg.gradle.console=plain
+
+jobs:
+  mutacao:
+    name: Mutação da fatia do mês
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: JDK 21 (Temurin) com cache do Gradle
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      # O número do mês (sem zero à esquerda) é a fatia; o campo à mão vale só se for um número de 1 a 12.
+      - name: Escolher a fatia
+        env:
+          PEDIDA: ${{ inputs.fatia }}
+        run: |
+          fatia="$(date -u +%-m)"
+          if [[ "$PEDIDA" =~ ^([1-9]|1[0-2])$ ]]; then fatia="$PEDIDA"; fi
+          echo "FATIA=$fatia" >> "$GITHUB_ENV"
+          echo "Fatia $fatia de 12" 
+
+      # Sai com 1 se alguma mutação sobreviver ou o trecho dela sumiu do arquivo; o log é guardado de qualquer jeito.
+      - name: Mutações
+        shell: bash # com -e e -o pipefail: o código de saída do Python não é engolido pelo tee
+        run: python3 scripts/dev/mutacoes.py --fatia "$FATIA/12" 2>&1 | tee mutacoes.log
+
+      - name: Resumo das mutações
+        if: always()
+        run: |
+          { echo "### Mutação mensal, fatia $FATIA de 12"; echo '```'; tail -n 25 mutacoes.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar o log
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: mutacoes-mensal-${{ env.FATIA }}
+          path: mutacoes.log
+          retention-days: 30

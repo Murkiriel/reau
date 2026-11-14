@@ -24,7 +24,7 @@ class AppPermissionsOnDeviceTest {
         assertTrue("Android lists them: $requested", requested.size >= 15)
         val library = requested.filter { AppPermissions.explain(it).kind == AppPermissions.Kind.LIBRARY }
         assertEquals("only AndroidX's receiver permission is a library's", listOf("${context.packageName}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"), library)
-        val rows = AppPermissions.rows(requested, { true }, accessibilityOn = true, batteryExempt = true)
-        assertEquals("each once, plus the two special accesses", requested.distinct().size + 2, rows.size)
+        val rows = AppPermissions.rows(requested, { true }, batteryExempt = true)
+        assertEquals("each once, plus the battery exemption", requested.distinct().size + 1, rows.size)
     }
 }

@@ -43,7 +43,7 @@ class PhoneVoice(private val context: Context, private val log: (String) -> Unit
             releaseHeadset()
         } else {
             recorder = started
-            log("microphone: listening on ${headset?.let { "the Bluetooth headset (${it.productName})" } ?: "the phone's own microphone"}")
+            log(CallAudioRoute.microphoneLine(headset?.type))
         }
         return started != null
     }

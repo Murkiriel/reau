@@ -24,8 +24,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.reau.app.Edition
 import com.reau.app.R
 import com.reau.app.settings.AppPermissions
 import com.reau.app.settings.AppPermissions.Kind
@@ -104,7 +102,7 @@ private fun Group(
             )
             Text(
                 stringResource(R.string.permissions_count, rows.count { it.granted }, rows.size),
-                style = REauMono.copy(fontSize = 11.sp), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = REauMono, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Column(Modifier.fillMaxWidth().clip(shape).background(MaterialTheme.colorScheme.surfaceContainer).border(1.dp, hairline(0.18f), shape)) {
@@ -113,14 +111,6 @@ private fun Group(
                 Permission(row, AppPermissions.ask(row, sdk, locationAllowed), AppPermissions.optional(row, functions, locationAllowed), actions.onAsk)
             }
             when (kind) {
-                Kind.SPECIAL -> {
-                    // After a clean install the ⋮ with "Permitir configurações restritas" is in the app info.
-                    if (rows.any { it.restricted }) Way(R.string.action_allow_restricted, "permissions_allow_restricted", actions.onOpenAppSettings)
-                    // The Lite edition has no accessibility service to open the settings of.
-                    if (Edition.hasAccessibility) {
-                        AccessibilityAsk(actions.onOpenAccessibility) { ask -> Way(R.string.action_open_accessibility, "permissions_open_accessibility", ask) }
-                    }
-                }
                 Kind.ASKED -> Way(R.string.permissions_open_app_settings, "permissions_open_app_settings", actions.onOpenAppSettings)
                 else -> Unit
             }
@@ -128,12 +118,11 @@ private fun Group(
     }
 }
 
-/** A row of a permission: a stuck accessibility says "Parado" and, in its why, what to do (never cut). */
+/** A row of a permission, with what it is for. */
 @Composable
 private fun Permission(row: AppPermissions.Row, ask: AppPermissions.Ask?, optional: Boolean, onAsk: (AppPermissions.Ask) -> Unit) {
     val e = row.explained
     val state = when {
-        row.stuck -> R.string.permission_special_stuck_short
         e.kind == Kind.SPECIAL && row.granted -> R.string.permission_special_on
         e.kind == Kind.SPECIAL -> R.string.permission_special_off
         row.granted -> R.string.permission_granted
@@ -141,15 +130,10 @@ private fun Permission(row: AppPermissions.Row, ask: AppPermissions.Ask?, option
         optional -> R.string.permission_optional
         else -> R.string.permission_denied
     }
-    val first = when {
-        row.stuck -> stringResource(R.string.permission_special_stuck)
-        row.restricted -> stringResource(R.string.permission_special_restricted)
-        else -> null
-    }
-    val why = stringResource(e.why).let { if (first != null) first + "\n\n" + it else it }
+    val why = stringResource(e.why)
     PermissionRow(
         stringResource(e.title), e.permission.takeIf { e.kind != Kind.SPECIAL }, row.granted, stringResource(state), why,
-        ask?.let { { onAsk(it) } }, "permission_${e.permission}", askTag = "ask_${e.permission}",
+        ask?.let { { onAsk(it) } }, "permission_${e.permission}", askTag = "ask_${e.permission}", optional = optional,
     )
 }
 

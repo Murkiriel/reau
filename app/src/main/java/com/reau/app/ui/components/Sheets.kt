@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.reau.app.R
 import com.reau.app.ui.theme.LocalREauDark
+import com.reau.app.ui.theme.REauSpace
 
 /**
  * The (i)'s sheet (a ModalBottomSheet): Carvão, radius 26 on top, a 36×4 handle, the title, the whole text (it scrolls
@@ -148,13 +149,13 @@ fun TabRail(options: List<TabOption>, selected: Int, onSelect: (Int) -> Unit) {
                 else -> colors.onPrimary
             }
             Column(
-                Modifier.weight(1f).heightIn(min = 44.dp).clip(RoundedCornerShape(10.dp)).background(fill)
+                Modifier.weight(1f).heightIn(min = REauSpace.touch).clip(RoundedCornerShape(10.dp)).background(fill)
                     .selectable(selected = chosen, role = Role.Tab) { onSelect(i) }.padding(6.dp).testTag(tag),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
                 Text(label, color = ink, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium))
-                sub?.let { Text(it, color = ink.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 14.sp)) }
+                sub?.let { Text(it, color = ink.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall) }
             }
         }
     }

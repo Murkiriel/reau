@@ -70,8 +70,8 @@ class MainActivityTest {
     private fun waitFor(condition: () -> Boolean) = compose.waitUntil(10_000) { condition() }
 
     private fun tap(tag: String) {
-        // The redesign: "back" sits in the fixed top bar, which never scrolls.
-        if (tag == "back") compose.onNodeWithTag(tag).performClick() else compose.onNodeWithTag(tag).performScrollTo().performClick()
+        // The redesign: "back" sits in the fixed top bar, which never scrolls; "toggle" (Ligar/Desligar) is pinned under what scrolls.
+        if (tag == "back" || tag == "toggle") compose.onNodeWithTag(tag).performClick() else compose.onNodeWithTag(tag).performScrollTo().performClick()
     }
 
     @Test

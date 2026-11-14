@@ -9,12 +9,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.reau.app.aa.AaLinkState
-import com.reau.app.aa.ServerResult
-import com.reau.app.service.AaServerStarter
 import com.reau.app.service.DashLink
 import com.reau.app.service.Phase
 import com.reau.app.service.Projection
@@ -49,7 +48,6 @@ class ScreensBothThemesTest {
     private val rows = AppPermissions.rows(
         requested = listOf("android.permission.INTERNET", "android.permission.RECORD_AUDIO", "android.permission.POST_NOTIFICATIONS"),
         granted = { it != "android.permission.RECORD_AUDIO" },
-        accessibilityOn = true,
         batteryExempt = false,
     )
 
@@ -61,8 +59,7 @@ class ScreensBothThemesTest {
         },
         "main_problem" to {
             val serverOff = Projection(phase = Phase.RUNNING, androidAuto = AaLinkState.SERVER_OFF, dash = DashLink.READY)
-            val server = ServerUi(auto = true, result = ServerResult.LOCKED, accessibility = AaServerStarter.Accessibility.CONNECTED)
-            MainScreen(MainUiState(serverOff, "17.9.664004", server = server, startedAtMs = 0), {}, {}, {}, clock = { 61_000L })
+            MainScreen(MainUiState(serverOff, "17.9.664004", startedAtMs = 0), {}, {}, {}, clock = { 61_000L })
         },
         "settings" to { SettingsScreen(REauSettings(), SettingsActions({}, {}, {}, {})) },
         "android_auto" to {
@@ -87,6 +84,10 @@ class ScreensBothThemesTest {
                 screen = content
                 night = dark
                 compose.waitForIdle()
+                // The log list reads its files off the main thread: wait for the first row before taking the picture.
+                if (name == "log") {
+                    compose.waitUntil(5_000) { compose.onAllNodesWithTag("log_file_0").fetchSemanticsNodes().isNotEmpty() }
+                }
                 val picture = compose.onRoot().captureToImage().asAndroidBitmap()
                 assertTrue(name, picture.width > 0 && picture.height > 0)
                 File(out, "${name}_${if (dark) "escuro" else "claro"}.png").outputStream().use { picture.compress(Bitmap.CompressFormat.PNG, 100, it) }

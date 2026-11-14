@@ -17,6 +17,14 @@ class CompositorRulesTest {
     }
 
     @Test
+    fun `the compositor is busy for as long as the frame it is in has run, and not at all between frames`() {
+        assertEquals("between frames", 0L, CompositorRules.busyMs(startedAtMs = 0, nowMs = 123_456))
+        assertEquals(0L, CompositorRules.busyMs(startedAtMs = 5_000, nowMs = 5_000))
+        assertEquals(1_250L, CompositorRules.busyMs(startedAtMs = 5_000, nowMs = 6_250))
+        assertEquals("a clock that went back is not a negative wait", 0L, CompositorRules.busyMs(startedAtMs = 5_000, nowMs = 4_000))
+    }
+
+    @Test
     fun `the first tick is anchored on now and the next ones keep the grid`() {
         assertEquals("never anchored", 1_250L, CompositorRules.nextTickAt(nextTickAtMs = 0, tickSpanMs = 250, nowMs = 1_000))
         assertEquals("never anchored, on a clock that has just begun", 350L, CompositorRules.nextTickAt(0, 250, 100))

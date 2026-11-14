@@ -19,7 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,7 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.reau.app.R
 import com.reau.app.dash.DashReadings
 import com.reau.app.service.SunPlace
@@ -67,7 +66,7 @@ import java.time.format.TextStyle
  * The weather on a screen of its own (not loose on the main screen), from a shortcut of the main screen: the switch
  * "Clima no painel", and, with it on: now, the next 8 hours and the next 8 days (one under another, with the coloured
  * icons), the 14-day chart, the wind, the UV index, the air quality, and the sun and the moon. Off, nothing of it
- * shows, and nothing is fetched or kept unless the info ring (also on by default) needs it.
+ * shows, and nothing is fetched or kept unless the info ring (off by default) needs it.
  *
  * [enabled] is the switch as the settings say it; [onToggle] saves it; [onBack] leaves the screen. The keeper fetches when the
  * screen is shown with the switch on (and when REau is opened, and while the projection runs).
@@ -91,10 +90,10 @@ fun WeatherScreen(enabled: Boolean, onToggle: (Boolean) -> Unit, onBack: () -> U
 @Composable
 private fun WeatherContent(enabled: Boolean, onToggle: (Boolean) -> Unit) {
     val context = LocalContext.current
-    val kept by WeatherKeeper.snapshot.collectAsState()
-    val why by WeatherKeeper.why.collectAsState()
+    val kept by WeatherKeeper.snapshot.collectAsStateWithLifecycle()
+    val why by WeatherKeeper.why.collectAsStateWithLifecycle()
     // The units the dash itself says it uses (03 03: Celsius or Fahrenheit; 03 04: kilometres or miles).
-    val dashSettings by DashReadings.settings.collectAsState()
+    val dashSettings by DashReadings.settings.collectAsStateWithLifecycle()
     val u = WeatherUnits.of(dashSettings)
     // Showing the screen, or switching the weather on, looks at once (the keeper waits between fetches by itself).
     LaunchedEffect(enabled) {
@@ -125,7 +124,7 @@ private fun WeatherContent(enabled: Boolean, onToggle: (Boolean) -> Unit) {
                 else -> stringResource(R.string.weather_state_ok, dayAndTime(kept!!.fetchedAtMs, locale))
             }
             add { ValueRow(stringResource(R.string.weather_state_title), state, "weather_state", mono = false) }
-            val sent = WeatherKeeper.forDash()
+            val sent = WeatherKeeper.forDash(freshOnly = SettingsStore.open(context).load().experimentWeatherAge)
             add {
                 ValueRow(
                     stringResource(R.string.weather_sent_title),
@@ -335,7 +334,7 @@ private fun ChartGroup(daily: List<DailyWeather>, u: WeatherUnits) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 daily.forEachIndexed { i, d ->
                     // The day of the month (the date's last two characters), every other one when crowded.
-                    if (daily.size <= 8 || i % 2 == 0) Text(d.dateIso.takeLast(2), style = REauMono.copy(fontSize = 10.sp), color = low)
+                    if (daily.size <= 8 || i % 2 == 0) Text(d.dateIso.takeLast(2), style = REauMono, color = low)
                 }
             }
         }

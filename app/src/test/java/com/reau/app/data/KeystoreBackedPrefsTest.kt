@@ -272,7 +272,9 @@ class KeystoreBackedPrefsTest {
         val p = prefs()
         p.edit().putStringSet("s", mutableSetOf("a")).commit()
         p.getStringSet("s", null)!!.add("hacked")
-        (p.all["s"] as MutableSet<String>).add("hacked-too")
+        @Suppress("UNCHECKED_CAST") // the point of the test: a cast to a set that can be changed must not reach the stored one
+        val stored = p.all["s"] as MutableSet<String>
+        stored.add("hacked-too")
         assertEquals(setOf("a"), p.getStringSet("s", null))
     }
 

@@ -14,7 +14,7 @@ class StreamGovernorConservativeTest {
     private var nowMs = 0L
 
     private fun governor(fps: Int = 4, bitrateBps: Int = 200_000, keyframeSec: Int = 1) =
-        StreamGovernor(AutoFpsController.Plan(fps, fps), bitrateCeilingBps = bitrateBps, fixedKeyframeSec = keyframeSec)
+        StreamGovernor(fps, bitrateCeilingBps = bitrateBps, fixedKeyframeSec = keyframeSec)
 
     private fun StreamGovernor.poll(drawn: Int = 0, bytesOut: Long = drawn * 1_000L, link: LinkSample? = null): List<Action> {
         nowMs += POLL_MS

@@ -13,14 +13,21 @@
     <string name="notif_title_server_off">Servidor de Android Auto apagado</string>
     <string name="notif_text_server_off">Activa \"Iniciar servidor de unidad principal\" en la configuración para desarrolladores de Android Auto</string>
     <string name="notif_title_unresponsive">Android Auto bloqueado</string>
-    <string name="notif_text_unresponsive">Acepta conexiones pero no responde: fuerza la detención de Android Auto</string>
-    <string name="notif_text_unresponsive_by_hand">Acepta conexiones pero no responde: detén e inicia su servidor de unidad principal en el menú ⋮ de Android Auto</string>
+    <string name="notif_text_unresponsive">Acepta conexiones pero no responde: detén e inicia su servidor de unidad principal en el menú ⋮ de Android Auto</string>
     <string name="notif_title_closing_previous">Android Auto está cerrando la sesión anterior</string>
     <string name="notif_text_closing_previous">Tarda hasta un minuto; REau lo intenta de nuevo sola</string>
     <string name="notif_title_no_video">Android Auto no tiene imagen</string>
     <string name="notif_text_no_video">El tablero sigue negro: fuerza la detención de Android Auto</string>
     <string name="notif_title_dash_lost">Tablero perdido</string>
     <string name="notif_text_dash_lost">La conexión con el tablero se cayó. REau vuelve sola; si pasa de un minuto con la moto encendida, apágala y enciéndela con la llave</string>
+    <string name="notif_alert_channel_name">Avisos del tablero</string>
+    <string name="notif_alert_channel_desc">Avisa con sonido y vibración cuando el tablero o el celular necesita algo de ti, como apagar y encender el contacto, o que el celular esté demasiado caliente</string>
+    <string name="notif_title_dash_stuck">El Wi-Fi del tablero se trabó</string>
+    <string name="notif_text_dash_stuck">El tablero está encendido pero no acepta la conexión. Apaga y vuelve a encender el contacto de la moto; REau se reconecta sola</string>
+    <string name="notif_title_phone_hot">El celular está caliente</string>
+    <string name="notif_text_phone_hot">El celular está caliente (%1$d °C). Sácalo del sol o del bolsillo cerrado, o desconecta el cargador, para que no reduzca el rendimiento</string>
+    <string name="notif_title_bind_refused">Android rechaza la red del tablero</string>
+    <string name="notif_text_bind_refused">Android rechazó el Wi-Fi del tablero varias veces seguidas. Apaga cualquier VPN y el cambio automático entre Wi-Fi y datos móviles; si sigue, apaga y enciende el Wi-Fi del celular. REau sigue intentando</string>
     <string name="notif_title_no_dash_stopped">Proyección apagada</string>
     <plurals name="notif_text_no_dash_stopped">
         <item quantity="one">El tablero no apareció durante %1$d minuto, así que REau se detuvo. Vuelve a encender la proyección cuando enciendas la moto</item>
@@ -72,12 +79,13 @@
     <string name="action_start">Encender</string>
     <string name="action_stop">Apagar</string>
     <string name="action_settings">Ajustes</string>
-    <string name="server_warning">Android Auto no acepta la conexión. En sus ajustes: toca \"Versión\" unas diez veces para desbloquear la configuración para desarrolladores y, en el menú ⋮, toca \"Iniciar servidor de unidad principal\". Después de reiniciar el teléfono, tienes que volver a activarlo.</string>
+    <string name="server_warning">Android Auto no acepta la conexión. Enciende a mano su servidor de unidad principal: en los ajustes de Android Auto, toca \"Versión\" unas diez veces para desbloquear la configuración para desarrolladores y, en el menú ⋮, toca \"Iniciar servidor de unidad principal\". REau se conecta sola en cuanto esté encendido. El servidor se apaga cuando termina la sesión (al tocar Apagar, por ejemplo) y después de reiniciar el teléfono: vuelve a encenderlo cada vez.</string>
     <string name="aa_screen_title">Pantalla de Android Auto</string>
     <string name="battery_not_exempt">Android puede pausar REau con la pantalla apagada para ahorrar batería. Excluye a REau de la optimización de batería para que la proyección no se caiga.</string>
     <string name="action_battery_exemption">Excluir a REau de la optimización</string>
     <string name="battery_saver_on">El ahorro de batería está activado: con la pantalla apagada, Android corta la red y la ubicación de las apps en segundo plano (la tarjeta de GPS del anillo de información puede entonces llegar con retraso). REau sigue funcionando gracias a su notificación fija; si el tablero o Android Auto se cae, desactiva el ahorro de batería.</string>
     <string name="action_battery_saver">Abrir el ahorro de batería</string>
+    <string name="action_open_alert_settings">Abrir los ajustes de los avisos</string>
     <string name="aa_screen_mask">Máscara del tablero: oscurece lo que no llega al cristal redondo del tablero, según el ajuste elegido abajo, y muestra dónde está el aro del tablero</string>
     <string name="gemini">Gemini con el joystick: escucha por el auricular Bluetooth del casco o, sin uno, por el micrófono del teléfono. Viene activado, pero el micrófono sigue cerrado hasta que se conceda el permiso (acceso Permisos). Este interruptor es lo que hace funcionar la acción \"Gemini\" de la página del joystick, y un cambio se aplica la próxima vez que enciendas.</string>
     <string name="aa_screen_view_only">Solo vista: tocar aquí no llega a Android Auto. El tablero sigue recibiendo la imagen con normalidad.</string>
@@ -92,7 +100,7 @@
     <string name="link_name_needed">Falta el nombre del Wi-Fi</string>
     <string name="headline_dash_name_needed">Falta el nombre completo del Wi-Fi del tablero</string>
     <string name="notif_title_dash_name_needed">Falta el nombre completo del Wi-Fi del tablero</string>
-    <string name="notif_text_dash_name_needed">Abre REau y escribe el nombre completo en Ajustes</string>
+    <string name="notif_text_dash_name_needed">Abre REau y escribe el nombre completo en Datos de la moto</string>
     <string name="dash_name_warning">El tablero solo acepta su nombre completo de Wi-Fi (por ejemplo RE_AB12_345678) y REau no pudo encontrarlo: Android solo deja que las apps busquen redes mientras REau está abierta en pantalla. Abre \"Datos de la moto\" y, en el grupo \"Wi-Fi del tablero\", escribe el nombre completo en el campo \"Nombre completo del Wi-Fi\" (si hay otro tablero guardado, toca \"Olvidar\" primero); o enciende la proyección con REau abierta.</string>
     <string name="dash_taken_warning">Otra app está usando el tablero (el puerto 2002 del teléfono está ocupado): probablemente otra app de tablero que está transmitiendo. Apaga su transmisión; REau lo intenta de nuevo sola.</string>
     <string name="action_card">Enviar fondo</string>
@@ -100,7 +108,7 @@
     <!-- The settings screen (ui/SettingsScreen). -->
     <string name="settings_title">Ajustes</string>
     <string name="action_back">Atrás</string>
-    <string name="applies_next_time">Con la proyección encendida, los ajustes marcados con EN VIVO se aplican de inmediato, y también el interruptor del Clima, la página del joystick, la pantalla del servidor de red y la Pantalla de Android Auto. Densidad y márgenes también, pero reinician Android Auto y la imagen se queda quieta unos segundos. Todos los demás se aplican la próxima vez que enciendas.</string>
+    <string name="applies_next_time">Con la proyección encendida, los ajustes marcados con EN VIVO se aplican de inmediato, y también el interruptor del Clima, la página del joystick, la pantalla del servidor de red y la Pantalla de Android Auto. La densidad también, pero reinicia Android Auto y la imagen se queda quieta unos segundos. Todos los demás se aplican la próxima vez que enciendas.</string>
     <string name="section_fit">Ajuste al domo</string>
     <string name="fit_crop">Recorte centrado</string>
     <string name="label_crop">Tamaño del recorte</string>
@@ -139,10 +147,9 @@
     <string name="headline_android_auto_unresponsive">Android Auto no responde</string>
     <string name="headline_android_auto_image_stale">Android Auto: imagen congelada</string>
     <string name="headline_android_auto_no_video">Android Auto: sin imagen</string>
-    <string name="aa_no_video_warning">Android Auto está conectado pero no envía imagen, y el tablero sigue negro. Fuerza su detención (Ajustes › Apps › Android Auto › Forzar detención); si REau dice que el servidor está apagado, toca Intentar de nuevo.</string>
-    <string name="aa_unresponsive_warning">Android Auto acepta la conexión pero no responde. Fuerza su detención (Ajustes › Apps › Android Auto › Forzar detención); REau lo intenta de nuevo sola.</string>
-    <string name="aa_unresponsive_by_hand_warning">Android Auto acepta la conexión pero no responde. En la configuración para desarrolladores de Android Auto, toca ⋮ y elige \"Detener servidor de unidad principal\", luego ⋮ y \"Iniciar servidor de unidad principal\"; REau lo intenta de nuevo sola.</string>
-    <string name="aa_other_edition_warning">%1$s también está instalada en este teléfono y puede estar usando Android Auto: su servidor de unidad principal atiende una sola sesión a la vez. Si está encendida, apágala (toca Apagar en ella), espera cerca de un minuto y REau se conecta sola.</string>
+    <string name="aa_no_video_warning">Android Auto está conectado pero no envía imagen, y el tablero sigue negro. Fuerza su detención (Ajustes › Apps › Android Auto › Forzar detención) y luego apaga y vuelve a encender REau. Con Android Auto 17.4 o más nuevo, revisa también que su servidor de unidad principal esté encendido.</string>
+    <string name="aa_unresponsive_warning">Android Auto acepta la conexión pero no responde. En la configuración para desarrolladores de Android Auto, toca ⋮ y elige \"Detener servidor de unidad principal\", luego ⋮ y \"Iniciar servidor de unidad principal\"; REau lo intenta de nuevo sola.</string>
+    <string name="aa_other_edition_warning">La app REau antigua, la del ícono con sello, sigue instalada en este teléfono y puede estar usando Android Auto: su servidor de unidad principal atiende una sola sesión a la vez. Esta app la reemplaza, así que puedes desinstalarla. Si está encendida, apágala (toca Apagar en ella), espera cerca de un minuto y REau se conecta sola.</string>
     <string name="joystick_title">Joystick del tablero</string>
     <string name="joystick_intro">Elige qué hace cada toque del joystick. Se aplica de inmediato, incluso con la proyección encendida.</string>
     <string name="joystick_music_on">El tablero muestra la canción que suena (tarjeta de música): el modo multimedia tiene un control de música.</string>
@@ -167,37 +174,6 @@
     <string name="joystick_action_zoom_in">Acercar</string>
     <string name="joystick_action_zoom_out">Alejar</string>
     <!-- The instrument cluster display experiment -->
-    <!-- Android Auto's head unit server switched on and off by the accessibility service -->
-    <string name="aa_server_auto">Enciende y apaga solo el servidor de Android Auto con la Accesibilidad, con el modo desarrollador de Android Auto activado (10 toques en \"Versión\"); algunas apps, como las bancarias, pueden negarse a abrir.</string>
-    <string name="aa_server_accessibility_connected">Accesibilidad de REau: activada</string>
-    <string name="aa_server_accessibility_enabled">Accesibilidad de REau: activada, pero aún sin conectar (desactívala y vuelve a activarla en Accesibilidad si sigue así)</string>
-    <string name="aa_server_accessibility_off">Para encender el servidor automáticamente, activa REau en Accesibilidad; Android 13 o más nuevo puede pedir antes \"Permitir ajustes restringidos\" en el ⋮ de la app, y la Protección avanzada puede bloquearlo.</string>
-    <string name="action_open_accessibility">Abrir Accesibilidad</string>
-    <string name="accessibility_ask_title">¿Permitir Accesibilidad?</string>
-    <string name="accessibility_ask_text">REau usa la Accesibilidad para encender el servidor de Android Auto automáticamente; algunas apps, como las bancarias, pueden negarse a abrir mientras esté permitida, y puedes desactivarla en los ajustes de Android.</string>
-    <string name="accessibility_ask_confirm">Continuar</string>
-    <string name="action_retry_aa_server">Intentar de nuevo</string>
-    <string name="aa_server_cover">Encendiendo el servidor de Android Auto…</string>
-    <string name="aa_server_cover_cancel">Cancelar</string>
-    <string name="aa_server_cover_stopping">Apagando el servidor de Android Auto…</string>
-    <string name="aa_server_cover_waiting">Esperando la respuesta del servidor…</string>
-    <string name="aa_server_stopping">Apagando el servidor de Android Auto…</string>
-    <string name="aa_server_working">Encendiendo el servidor de Android Auto…</string>
-    <string name="aa_server_started">Servidor de Android Auto encendido.</string>
-    <string name="aa_server_service_off">Para encender el servidor automáticamente, activa REau en Accesibilidad.</string>
-    <string name="aa_server_locked">Desbloquea el teléfono y toca Intentar de nuevo: los ajustes de Android Auto no se abren con la pantalla bloqueada.</string>
-    <string name="aa_server_not_installed">No se encontraron los ajustes de Android Auto en este teléfono.</string>
-    <string name="aa_server_settings_did_not_open">No se abrieron los ajustes de Android Auto.</string>
-    <string name="aa_server_unexpected_screen">Android Auto abrió otra pantalla. Abre Android Auto, atiende lo que pide e inténtalo de nuevo.</string>
-    <string name="aa_server_menu_did_not_open">El menú de Android Auto no se abrió a tiempo. Inténtalo de nuevo o enciéndelo a mano: ⋮ → Iniciar servidor de unidad principal.</string>
-    <string name="aa_server_developer_mode_off">El modo desarrollador de Android Auto está desactivado. Toca \"Abrir los ajustes de Android Auto\", baja hasta el final, toca \"Versión\" 10 veces, confirma, vuelve y toca Intentar de nuevo.</string>
-    <string name="aa_server_unknown_menu">Esta versión de Android Auto cambió el menú del servidor. Enciéndelo a mano: ⋮ → Iniciar servidor de unidad principal.</string>
-    <string name="aa_server_already_running">El servidor de Android Auto figura como encendido y no respondió. Toca Detener y luego Iniciar en el menú de Android Auto, o fuerza la detención de Android Auto.</string>
-    <string name="aa_server_not_up">Android Auto no inició el servidor. Inténtalo de nuevo.</string>
-    <string name="aa_server_interrupted">Inicio del servidor interrumpido.</string>
-    <string name="aa_server_aa_gone">Android Auto dejó de responder mientras REau leía su pantalla. Inténtalo de nuevo.</string>
-    <string name="aa_server_stopped">Servidor de Android Auto apagado.</string>
-    <string name="aa_server_left_on">El servidor de Android Auto quedó encendido (el teléfono estaba bloqueado o el servicio de accesibilidad de REau estaba apagado). Apágalo desde su notificación, si quieres.</string>
     <!-- The dash's bubble with no route, and the joystick in its map mode -->
     <string name="permissions_title">Permisos</string>
     <string name="permissions_intro">Lo que sale del teléfono va al tablero, a tu red solo con el servidor de red y a internet solo para el clima y las actualizaciones (mira \"REau y tus datos\").</string>
@@ -211,9 +187,6 @@
     <string name="permission_optional">Opcional: su interruptor está apagado</string>
     <string name="permission_special_on">Activado</string>
     <string name="permission_special_off">Desactivado</string>
-    <string name="permission_special_stuck">Activado, pero atascado (Android dice \"no funciona\"): desactívalo y vuelve a activarlo</string>
-    <string name="perm_accessibility_title">Accesibilidad (\"REau: servidor de Android Auto\")</string>
-    <string name="perm_accessibility_why">Lee qué pantalla muestra Android Auto para ajustar la imagen y escucha solo a Android Auto, a Google Maps y, con \"Contestar llamadas\" activado, las llamadas de WhatsApp, Telegram y Signal.</string>
     <string name="perm_battery_title">Exenta de la optimización de batería</string>
     <string name="perm_battery_why">Sin esto, Android puede pausar REau con la pantalla apagada y la proyección se cae. No es un permiso: es la lista de apps que Android deja funcionar en segundo plano.</string>
     <string name="perm_notifications_title">Notificaciones</string>
@@ -221,11 +194,11 @@
     <string name="perm_answer_calls_title">Contestar llamadas</string>
     <string name="perm_answer_calls_why">Contesta y cuelga llamadas con el joystick del tablero, con el interruptor \"Contestar llamadas\" activado.</string>
     <string name="perm_phone_state_title">Estado del teléfono</string>
-    <string name="perm_phone_state_why">Dice a REau si el teléfono suena o está en una llamada para que el joystick actúe en el momento correcto, sin leer números ni la lista de llamadas.</string>
+    <string name="perm_phone_state_why">Dice a REau si el teléfono suena o está en llamada, para que el joystick actúe a tiempo, y la generación de red (4G, 5G) para el tablero, sin leer números ni llamadas.</string>
     <string name="perm_microphone_title">Micrófono</string>
     <string name="perm_microphone_why">Lleva tu voz del auricular Bluetooth del casco (o del teléfono) a Android Auto para Gemini, con el interruptor \"Gemini\" activado, y REau no guarda el audio.</string>
     <string name="perm_location_title">Ubicación (aproximada y precisa)</string>
-    <string name="perm_location_why">Deja que Android dé a REau la lista de Wi-Fi para encontrar el tablero sin leer tu posición y, con \"Usar la ubicación\" activada, la última posición para el tema según el sol.</string>
+    <string name="perm_location_why">Deja que REau halle el tablero en el Wi-Fi tras otra app; con \"Usar la ubicación\", la posición redondeada a 11 km para sol y clima, y el rumbo GPS del anillo.</string>
     <string name="perm_internet_title">Abrir conexiones de red</string>
     <string name="perm_internet_why">Android la exige para cualquier conexión, pero REau solo usa internet para el clima opcional (Open-Meteo) y, cuando lo tocas, para la búsqueda de actualizaciones (GitHub).</string>
     <string name="perm_network_state_title">Ver las redes</string>
@@ -241,7 +214,7 @@
     <string name="perm_foreground_device_title">Servicio de dispositivo conectado</string>
     <string name="perm_foreground_device_why">El tipo de servicio que Android exige para la proyección desde Android 14: el tablero de la moto es un dispositivo conectado.</string>
     <string name="perm_foreground_location_title">Servicio de ubicación</string>
-    <string name="perm_foreground_location_why">El mismo servicio con el tipo ubicación, solo para la tarjeta de GPS del anillo de información: sin él Android no entrega la posición con la pantalla apagada.</string>
+    <string name="perm_foreground_location_why">El mismo servicio con el tipo ubicación: sin él, detrás de otra app o con la pantalla apagada, Android no entrega a REau la lista de Wi-Fi ni la posición del GPS.</string>
     <string name="perm_foreground_mic_title">Servicio de micrófono</string>
     <string name="perm_foreground_mic_why">El mismo servicio con el tipo micrófono, solo para Gemini con el joystick: sin él Android entrega silencio con la pantalla apagada.</string>
     <string name="perm_wake_lock_title">Mantener el teléfono despierto</string>
@@ -252,7 +225,7 @@
     <string name="perm_battery_request_why">Permite a REau mostrar la solicitud de Android para salir de la optimización de batería, y por sí solo no cambia nada.</string>
     <string name="perm_library_title">Permiso interno de una librería</string>
     <string name="perm_library_why">La añade una librería de Android (AndroidX) que REau usa, para proteger los avisos internos de la app, y no da acceso a nada del teléfono.</string>
-    <string name="ride_log">Registro de diagnóstico (activado por defecto): graba en el propio teléfono lo que pasa en REau, para encontrar errores después; nada sale del teléfono si no lo compartes. Cuando está apagado, REau no graba nada (ni el registro detallado ni la copia de los mensajes del sistema sobre REau); lo que ya se grabó queda hasta que lo borres (o hasta que termine el plazo de \"Borrar automáticamente\")</string>
+    <string name="ride_log">Registro de diagnóstico (activado por defecto): graba en el propio teléfono lo que pasa en REau, para encontrar errores después; nada sale del teléfono si no lo compartes. Cuando está apagado, REau no graba nada (ni el registro detallado ni la copia de los mensajes del sistema sobre REau), salvo el informe de caída de la app, que se graba en el teléfono aun así, queda solo en él y no sale por sí solo; lo que ya se grabó queda hasta que lo borres (o hasta que termine el plazo de \"Borrar automáticamente\")</string>
     <string name="delete_logs_title">¿Borrar los registros?</string>
     <string name="delete_logs_text">Borra todos los registros guardados en el teléfono y el último archivo compartido. Si el registro está activado, empieza de nuevo en un archivo nuevo. Esto no se puede deshacer.</string>
     <string name="delete_logs_recordings_text">Borra todos los registros guardados en el teléfono, el último archivo compartido y las grabaciones del video y de las sesiones de Android Auto. Si el registro está activado, empieza de nuevo en un archivo nuevo. Esto no se puede deshacer.</string>
@@ -267,7 +240,7 @@
     <string name="about_data_web_title">El navegador (solo si lo activas)</string>
     <string name="about_data_web">Solo con \"Encender el servidor de red\" (apagado por defecto), quien esté en la misma red e ingrese el PIN ve la imagen de Android Auto sin cifrado; evita redes de desconocidos.</string>
     <string name="about_data_stays_title">Qué se queda en el teléfono</string>
-    <string name="about_data_stays">El registro de diagnóstico no tiene posición, calles, canciones ni quién llama; las grabaciones opcionales (desactivadas en la app que instalas para rodar) sí lo guardan; ambos solo salen del teléfono por \"Compartir\".</string>
+    <string name="about_data_stays">El registro no tiene posición, calles, canciones ni quién llama; las grabaciones opcionales (desactivadas por defecto) sí; quedan en el teléfono, el informe de caída aun sin registro, y solo salen por \"Compartir\".</string>
     <string name="about_data_kept_title">Qué recuerda REau del tablero</string>
     <string name="about_data_kept">Nombre y contraseña del Wi-Fi del tablero y lo que informó, cifrados con una clave de Android, y la posición redondeada y el último clima, si existen, en la carpeta de la app.</string>
     <string name="about_data_control_title">Qué controlas tú</string>
@@ -285,8 +258,8 @@
     <string name="credits_android_auto">Android Auto en el teléfono</string>
     <string name="credits_dash">Tripper Dash</string>
     <string name="credits_libraries">Librerías y fuentes</string>
-    <string name="permissions_ask_all_note">Pide de una vez los permisos que Android solicita; la accesibilidad y la batería tienen sus propios botones en sus filas. Si Android no muestra la solicitud (la rechazaste antes), usa \"Abrir los permisos de REau en Android\".</string>
-    <string name="use_location">Activado por defecto, pero solo funciona cuando se concede el permiso de ubicación de Android. Con el tema según el sol, REau lee la última posición que Android ya tiene al abrir REau, sin encender el GPS, para conocer el amanecer y el atardecer donde estás; se queda solo en el teléfono, redondeada a unos 11 km, nunca va al registro y se olvida cuando esto se apaga. Ese permiso también deja que REau vea las redes Wi-Fi para encontrar el tablero, sin leer tu posición.</string>
+    <string name="permissions_ask_all_note">Pide de una vez los permisos que Android solicita; la batería tiene su propio botón en su fila. Si Android no muestra la solicitud (la rechazaste antes), usa \"Abrir los permisos de REau en Android\".</string>
+    <string name="use_location">Activado por defecto, pero solo funciona cuando se concede el permiso de ubicación. Con el tema según el sol, REau lee, al abrir, la última posición que Android ya tiene, sin encender el GPS, para conocer el amanecer y el atardecer donde estás; redondeada a unos 11 km, solo sale del teléfono hacia el servicio del clima, nunca va al registro y se olvida cuando esto se apaga. Ese permiso también deja que REau vea las redes Wi-Fi para encontrar el tablero, incluso detrás de otra app, sin leer tu posición; Android puede mostrar el ícono de ubicación.</string>
     <string name="log_keep_days">Borra automáticamente el registro y las grabaciones más antiguos que el tiempo elegido (se aplica de inmediato al elegir, y de nuevo al abrir la app y con cada archivo nuevo). Pasados %1$d MB, los registros más antiguos salen primero sin importar lo que elijas; las grabaciones tienen su propio tope, de %2$d MB.</string>
     <plurals name="log_keep_days_n">
         <item quantity="one">%1$d día</item>
@@ -334,8 +307,7 @@
     <string name="sub_card">Imagen fija, sin Android Auto</string>
     <string name="sub_server_off">Falta el servidor de unidad principal</string>
     <string name="sub_closing_previous">Tarda hasta un minuto; REau lo intenta de nuevo sola</string>
-    <string name="sub_unresponsive">Fuerza su detención; REau lo intenta de nuevo sola</string>
-    <string name="sub_unresponsive_by_hand">Detén e inicia su servidor en el menú ⋮; REau lo intenta de nuevo sola</string>
+    <string name="sub_unresponsive">Detén e inicia su servidor en el menú ⋮; REau lo intenta de nuevo sola</string>
     <string name="sub_image_stale">El tablero muestra la última imagen mientras la moto se mueve</string>
     <string name="stale_badge">IMAGEN CONGELADA</string>
     <string name="sub_no_video">El tablero está negro: fuerza la detención de Android Auto</string>
@@ -361,11 +333,15 @@
     <string name="warn_battery_saver_title">El ahorro de batería está activado</string>
     <string name="warn_location_title">La ubicación está apagada en el teléfono</string>
     <string name="warn_location">Con la Ubicación de Android apagada, el teléfono no devuelve la búsqueda de redes Wi-Fi, así que REau no puede ver la red del tablero y puede tardar más en unirse a ella; la tarjeta de GPS del anillo de información y el tema según el sol tampoco funcionan. Activa la Ubicación en los ajustes rápidos de Android.</string>
+    <string name="warn_alerts_muted_title">Los avisos del tablero están en silencio</string>
+    <string name="warn_alerts_muted">Android reproduce el canal “Avisos del tablero” sin sonido ni vibración, así que un tablero trabado, una red rechazada o un celular caliente no se oirían. Abre sus ajustes y dale sonido.</string>
+    <string name="warn_alerts_blocked_title">Los avisos del tablero están bloqueados</string>
+    <string name="warn_alerts_blocked">Android bloquea los avisos de REau (todas las notificaciones, o el canal “Avisos del tablero”), así que un tablero trabado, una red rechazada o un celular caliente no se avisarían. Abre los ajustes y permítelos.</string>
     <string name="warn_vpn_title">Una VPN frena a REau</string>
     <string name="warn_vpn">Con REau dentro de la VPN, Android no le deja usar el Wi-Fi del tablero. En la app de la VPN, deja a REau fuera (\"split tunneling\") y reconecta la VPN por completo.</string>
     <string name="warn_taken_title">Tablero en uso</string>
     <string name="warn_name_title">Falta el nombre completo del Wi-Fi</string>
-    <string name="action_open_settings_short">Abrir Ajustes</string>
+    <string name="action_open_bike_data_short">Abrir Datos de la moto</string>
     <string name="shortcuts_label">Accesos</string>
     <string name="tile_aa_screen">Pantalla de Android Auto</string>
     <string name="tile_aa_screen_sub">Ver y ajustar la imagen</string>
@@ -394,9 +370,43 @@
     <string name="group_map">Tema</string>
     <string name="group_on_dash">En el tablero</string>
     <string name="group_joystick">Joystick</string>
-    <string name="group_android_auto">Android Auto</string>
     <string name="group_video_profiles">Perfiles de video</string>
     <string name="group_card">Fondo</string>
+    <string name="group_connection_experiments">Conexión experimental</string>
+    <string name="group_video_experiments">Video experimental</string>
+    <string name="group_dash_experiments">Tablero experimental</string>
+    <string name="exp_pacing_title">Espaciar el video</string>
+    <string name="exp_pacing_sub">Experimental: pausa de 2 ms cada 4 paquetes de video, como máximo 400 por segundo</string>
+    <string name="exp_dscp_title">Marcar la prioridad del Wi-Fi en la debug</string>
+    <string name="exp_dscp_sub">Experimental: solo cambia la versión debug (la release siempre marca). Vale desde la próxima conexión</string>
+    <string name="exp_bitrate_title">Bitrate menor y adaptativo</string>
+    <string name="exp_bitrate_sub">Experimental: apunta a 200 kbps y sigue lo que el codificador realmente genera</string>
+    <string name="exp_wifi_title">Wi-Fi y EPERM</string>
+    <string name="exp_wifi_sub">Experimental: 5 intentos más en la misma red cuando Android rechaza conectar con el tablero (EPERM). El bloqueo de Wi-Fi de baja latencia salió de este interruptor: en Android 14 o posterior no cambiaba nada, y se mantiene la elección de quien ya lo tenía encendido. Vale desde la próxima conexión</string>
+    <string name="exp_encoder_watch_title">Rehacer el codificador mudo</string>
+    <string name="exp_encoder_watch_sub">Experimental: si el codificador de video recibe cuadros y no devuelve ninguno durante 3 s, se rehace (hasta 3 veces por transmisión)</string>
+    <string name="exp_focus_gap_title">Pausa mayor al pedir cuadro clave</string>
+    <string name="exp_focus_gap_sub">Experimental: cuando la imagen se rompe y se pide un cuadro clave a Android Auto, el foco de video vuelve después de 400 ms en vez de 100 ms. Vale desde el próximo pedido</string>
+    <string name="exp_wifi_band_title">Pedir el tablero solo en 2,4 GHz</string>
+    <string name="exp_wifi_band_sub">Experimental: el pedido del Wi-Fi del tablero dice la banda de 2,4 GHz (Android 12 o posterior). Un pedido sin respuesta se repite una vez sin la banda. Vale desde el próximo pedido</string>
+    <string name="exp_start_guard_title">Proteger el arranque</string>
+    <string name="exp_start_guard_sub">Experimental: si la app muere hasta 10 s después de un arranque hecho con interruptores experimentales encendidos, se apagan la próxima vez que la app se abre, y el registro lo dice</string>
+    <string name="exp_night_memory_title">Día y noche con memoria</string>
+    <string name="exp_night_memory_sub">Experimental: con el tema del mapa según el sol, el tema nocturno dura hasta la salida del sol en vez de terminar cerca de media hora antes. Vale desde la próxima mirada, en hasta un minuto</string>
+    <string name="exp_weather_age_title">El clima viejo sale del tablero</string>
+    <string name="exp_weather_age_sub">Experimental: el clima deja de enviarse al tablero cuando hace más de 30 minutos que se obtuvo (hoy, 3 horas). El tablero no tiene lugar para decir la edad del dato. Vale al instante</string>
+    <string name="exp_heat_ceiling_title">Tope de cuadros por el calor de la batería</string>
+    <string name="exp_heat_ceiling_sub">Experimental: desde 44 °C en la batería el ritmo máximo del video baja (75, 62 y 50 por ciento de él, a 44, 46 y 48 °C) y solo sube 3 °C por debajo de cada escalón. Para el teléfono cuyo estado térmico de Android nunca cambia. Vale al instante</string>
+    <string name="exp_gps_speed_title">Velocidad del GPS en los perfiles</string>
+    <string name="exp_gps_speed_sub">Experimental: el perfil por velocidad lee la velocidad del GPS cuando hay ruta y el GPS ya está encendido para el anillo de información (con “Usar la ubicación” activado); si no, la estimación de la ruta, como antes. No enciende el GPS. Vale al instante</string>
+    <string name="exp_recalc_title">Recalculando con un “inactivo” corto</string>
+    <string name="exp_recalc_sub">Experimental: un “inactivo” corto de Android Auto durante la ruta (hasta 8 s) aparece en el tablero como recalculando, en vez de borrar la ruta. Vale al instante</string>
+    <string name="exp_color_title">Colores del codificador explícitos</string>
+    <string name="exp_color_sub">Experimental: al codificador del tablero se le pide BT.601, rango limitado, SDR. Si el códec lo rechaza, se pide como antes, y el registro dice lo que aceptó. Vale desde el próximo video</string>
+    <string name="exp_protocol_six_title">Protocolo 6.0 de Android Auto</string>
+    <string name="exp_protocol_six_sub">Experimental: el apretón de manos pide la versión 6.0 del protocolo (hoy, 1.7). Si Android Auto la rechaza o el apretón de manos falla, se vuelve a pedir 1.7 hasta que la app se cierre, y el registro dice lo que se pidió y se respondió. Vale desde el próximo encendido</string>
+    <string name="exp_tolerant_rx_title">Vigilancia del tablero más tolerante</string>
+    <string name="exp_tolerant_rx_sub">Experimental: el silencio del tablero solo entra en el registro a los 12 s y tumba la sesión a los 60 s (hoy, 4 s); cuando el tablero vuelve, se pide un cuadro clave. Los paquetes de control salen con 12 ms entre sí. Vale desde la próxima conexión</string>
     <string name="pairing_known_title">Tablero conocido</string>
     <string name="pairing_known_info">Este es el tablero cuyo nombre completo de Wi-Fi REau ya conoce y que necesita para conectarse. \"Olvidar\" borra ese nombre, todo lo que el tablero ha reportado (los datos de la moto de abajo) y la red sugerida a Android; después, REau vuelve a buscar el tablero (con REau abierta, el nombre aparece solo) o tú escribes el nombre completo. Úsalo cuando cambies de moto o de tablero.</string>
     <string name="pairing_unknown_title">Ningún tablero conocido</string>
@@ -427,9 +437,6 @@
     <string name="answer_title">Contestar llamadas</string>
     <string name="gemini_title">Gemini</string>
     <string name="by_joystick_sub">Con el joystick del manillar</string>
-    <string name="server_title">Encender el servidor automáticamente</string>
-    <string name="server_sub_off">Apagado: lo enciendes a mano</string>
-    <string name="server_sub_on">Se enciende y se apaga con la proyección</string>
     <string name="fps_title">Tope de cuadros por segundo</string>
     <string name="profiles_fps_sub">Perfil A: 4. Perfil B: %1$d. Fijo</string>
     <string name="profiles_info">REau usa dos perfiles de video fijos para el tablero: el A, con %1$d fps y %2$d kbps, la imagen más fluida, y el B, la mitad (%3$d fps y %4$d kbps), más liviano para el Wi-Fi y el tablero. Entre ellos eligen el perfil por maniobra y el perfil por velocidad, justo debajo. Estos valores no se pueden cambiar.</string>
@@ -440,6 +447,13 @@
     <string name="bitrate_cbr">Constante</string>
     <string name="keyframe_title">Fotograma clave</string>
     <string name="profiles_on">Activado</string>
+    <string name="profile_a_title">Perfil A</string>
+    <string name="profile_a_sub">La imagen más fluida</string>
+    <string name="profile_b_title">Perfil B</string>
+    <string name="profile_b_sub">Más liviano para el Wi-Fi y para el tablero</string>
+    <string name="profile_fixed">Fijo</string>
+    <string name="profile_details_title">Detalles</string>
+    <string name="profile_details_sub">Los números de cada perfil, que no se cambian</string>
     <string name="maneuver_fps_title">Perfil por maniobra</string>
     <string name="maneuver_profile_info">Elige el perfil de video según la distancia a la próxima maniobra de la ruta: a menos de 1 km, A; más lejos, B, una vez que la distancia haya cambiado unos 200 m (para que no esté cambiando todo el tiempo). Solo decide mientras hay una ruta activa. Si el perfil por velocidad pide el B, gana el B.</string>
     <string name="speed_fps_title">Perfil por velocidad</string>
@@ -456,7 +470,7 @@
     <string name="section_button">Código de botón sobre el video</string>
     <string name="section_info_ring">Anillo de información en el tablero</string>
     <string name="info_ring_title">Anillo de información</string>
-    <string name="info_ring_sub">Lluvia, viento, UV, aire y sol, sobre el mapa</string>
+    <string name="info_ring_sub">Lluvia, viento y tormenta sobre el mapa; las demás tarjetas las activas tú</string>
     <string name="info_ring_info">Dibuja un anillo a la derecha de la imagen del tablero, donde el tablero no dibuja nada, con un dato a la vez que importa en la ruta: el clima (lluvia, viento, tormentas, UV, aire, sol, temperaturas) y la batería, la señal y el GPS del teléfono. El botón abajo del tablero en el modo mapa lo muestra y lo oculta; un contorno discontinuo indica un pronóstico viejo. Consulta a Open-Meteo cada 15 minutos, desde el lugar redondeado de \"Usar la ubicación\"; apagado, no se pide ni se guarda nada, salvo que \"Clima en el tablero\" esté activado.</string>
     <string name="info_ring_needs_location">Necesita \"Usar la ubicación\" activado (Ajustes → Tema) y conexión a internet en el teléfono.</string>
     <string name="info_ring_place_title">En el lugar del anillo de maniobras</string>
@@ -530,6 +544,7 @@
     <string name="web_waiting">La dirección y el PIN aparecen en un momento, cuando el servidor esté encendido.</string>
     <string name="web_no_address">Este teléfono no está en ninguna red local ahora mismo. Conéctate a una red Wi-Fi para obtener una dirección.</string>
     <string name="web_warning">Cualquiera que tenga esta dirección y el PIN, en la misma red, puede ver la pantalla de Android Auto (mapa, ruta, quién llama).</string>
+    <string name="web_network_notice">Úsalo solo en una red tuya, como la de tu casa o el punto de acceso de tu propio teléfono. Nunca en una Wi-Fi pública o ajena: el servidor no está cifrado, y cualquiera en la red puede ver el PIN, la imagen y los toques.</string>
     <string name="web_pin_label">PIN</string>
     <string name="web_copy">Copiar</string>
     <string name="web_copied">Copiado</string>
@@ -553,14 +568,16 @@
     <string name="ride_log_sub_on">Grabando en el teléfono</string>
     <string name="ride_log_sub_off">Apagado: no se graba nada</string>
     <string name="record_video_sub">Para depurar</string>
-    <string name="record_video_info">Guarda en el teléfono una copia del video enviado al tablero, con el mapa, la ruta y las tarjetas que muestra, para investigar problemas de imagen. Viene desactivada por defecto en la app que instalas para rodar y activada en la compilación de depuración; queda en la carpeta de la app y solo sale si usas \"Compartir › Con grabaciones\". Las grabaciones suman 200 MB como máximo (1 GB en la compilación de depuración), saliendo primero las más antiguas, y también salen por el plazo de \"Borrar automáticamente los más antiguos que\"; se aplica la próxima vez que enciendas.</string>
+    <string name="record_video_info">Guarda en el teléfono una copia del video enviado al tablero, con el mapa, la ruta y las tarjetas que muestra, para investigar problemas de imagen. Viene desactivada por defecto en la app que instalas para rodar y activada en la compilación de depuración; queda en la carpeta de la app y solo sale si usas \"Compartir › Con grabaciones\". Las grabaciones suman 200 MB como máximo (1024 MB en la compilación de depuración), saliendo primero las más antiguas, y también salen por el plazo de \"Borrar automáticamente los más antiguos que\"; se aplica la próxima vez que enciendas.</string>
     <string name="record_sessions_title">Grabar las sesiones de Android Auto</string>
     <string name="record_sessions_sub">Guarda el mapa y la ruta</string>
-    <string name="record_sessions_info">Graba todo lo que Android Auto envía en una conexión (imagen del mapa, ruta, música, quién llama, mensajes), guardando los últimos 50 a 100 MB, unos 3 a 15 minutos de ruta. Desactivada por defecto en la app que instalas para rodar y activada en la compilación de depuración, revela por dónde rodaste: queda en la carpeta de la app y solo sale si usas \"Compartir › Con grabaciones\". Suman 200 MB como máximo (1 GB en la compilación de depuración) y salen por el plazo de \"Borrar automáticamente los más antiguos que\"; se aplica la próxima vez que enciendas.</string>
+    <string name="record_sessions_info">Graba todo lo que Android Auto envía en una conexión (imagen, ruta, música, quién llama, mensajes), guardando los últimos 50 a 100 MB, 3 a 15 minutos de ruta (768 MB en la compilación de depuración). Desactivada por defecto en la app que instalas para rodar (activada en la de depuración), revela por dónde rodaste: queda en la carpeta de la app y solo sale si usas \"Compartir › Con grabaciones\". Suman hasta 200 MB (1024 MB en la de depuración) y salen por el plazo de \"Borrar automáticamente los más antiguos que\"; se aplica la próxima vez que enciendas.</string>
+    <string name="recordings_notice">Atención: las grabaciones contienen el mapa, es decir, por dónde rodaste, y los nombres de quien llama. Quedan solo en el teléfono.</string>
     <string name="detailed_title">Registro detallado</string>
     <string name="detailed_sub">Archivo mucho más grande</string>
     <string name="share_title">Compartir</string>
     <string name="share_sub">Sale del teléfono solo cuando tocas aquí</string>
+    <string name="share_recordings_notice">Atención: “Con grabaciones” saca del teléfono el mapa (por dónde rodaste) y los nombres de quien llama. Compártelo solo con alguien de confianza.</string>
     <string name="share_logs_short">Registros</string>
     <string name="share_recordings_short">Con grabaciones (grande)</string>
     <string name="delete_title">Borrar</string>
@@ -595,6 +612,24 @@
     <string name="move_y_hint">+ abajo, − arriba</string>
     <string name="technical_label">Técnico</string>
     <string name="fit_reset">Restablecer al valor por defecto</string>
+    <string name="fit_reset_title">¿Restablecer al valor por defecto?</string>
+    <string name="fit_reset_text">Esto borra tu ajuste de encaje, recorte, zoom y márgenes de la pestaña %1$s y vuelve a los valores de fábrica. La densidad no cambia. No se puede deshacer.</string>
+    <string name="fit_assistant_open">Asistente de ajuste</string>
+    <string name="fit_assistant_step">Paso %1$d de %2$d</string>
+    <string name="fit_assistant_start_text">En teléfonos distintos Android Auto puede dibujar la flecha de la maniobra y la velocidad en otro lugar. Con la proyección encendida, abre Waze o Maps en Android Auto y empieza una ruta. En la imagen de arriba, la parte clara es lo que llega al cristal del tablero. Empezar enciende la Máscara, si está apagada.</string>
+    <string name="fit_assistant_no_nav">Android Auto no está mostrando la navegación ahora: abre Waze o Maps en él para comprobar.</string>
+    <string name="fit_assistant_density">El ajuste de fábrica se midió con el DPI %2$d. El tuyo está en %1$d, así que es más probable que necesite ajuste.</string>
+    <string name="fit_assistant_maneuver_text">¿La flecha de la maniobra y la distancia hasta ella se ven enteras en la parte clara de la imagen de arriba?</string>
+    <string name="fit_assistant_speed_text">¿La velocidad se ve entera en la parte clara de la imagen de arriba? Si tu app de navegación no muestra la velocidad, responde sí.</string>
+    <string name="fit_assistant_adjust_tip">Cambia hasta que se vea entera. Cada toque vale al instante, en la imagen de arriba y en el tablero, y ya queda guardado.</string>
+    <string name="fit_assistant_size_tip">Un recorte más pequeño muestra más de la pantalla, con letras más pequeñas. Cada toque vale al instante, en la imagen de arriba y en el tablero, y ya queda guardado.</string>
+    <string name="fit_assistant_end_text">Listo. El ajuste de la navegación ya está guardado. Compruébalo en el tablero con la moto parada. Para repetirlo, toca Asistente de ajuste; todos los controles siguen abajo, en la pestaña Navegación.</string>
+    <string name="fit_assistant_begin">Empezar</string>
+    <string name="fit_assistant_skip">Omitir</string>
+    <string name="fit_assistant_yes">Sí, se ve</string>
+    <string name="fit_assistant_no">No, ajustar</string>
+    <string name="fit_assistant_good">Quedó bien</string>
+    <string name="fit_assistant_finish">Terminar</string>
 
     <!-- The redesign's joystick page. -->
     <string name="joystick_mode_map">Modo mapa</string>
@@ -640,9 +675,6 @@
     <!-- The redesign's permissions page. -->
     <string name="permissions_ask_all_n">Pedir los que faltan (%1$d)</string>
     <string name="permissions_count">%1$d/%2$d</string>
-    <string name="permission_special_stuck_short">Detenido</string>
-    <string name="permission_special_restricted">Si Android dice \"Ajuste restringido\" al activarlo, toca \"Permitir ajustes restringidos\" abajo, luego ⋮ en la esquina y \"Permitir ajustes restringidos\", y vuelve para activar la accesibilidad.</string>
-    <string name="action_allow_restricted">Permitir ajustes restringidos</string>
 
     <!-- The redesign's "O REau e os seus dados". -->
     <string name="about_summary_internet">Usa internet solo para el clima (en el tablero o en el anillo de información), cuando se concede la ubicación, y para buscar una versión nueva cuando lo tocas.</string>
@@ -665,12 +697,6 @@
     </plurals>
     <string name="cd_share_logs">Compartir los registros</string>
 
-    <!-- The redesign's server cover. -->
-    <string name="cover_step_open">Abriendo Android Auto</string>
-    <string name="cover_step_menu">Configuración para desarrolladores</string>
-    <string name="cover_step_start">Iniciar servidor de unidad principal</string>
-    <string name="cover_step_stop">Detener servidor de unidad principal</string>
-    <string name="cover_hint">Tarda unos segundos. No hace falta tocar nada.</string>
 
     <!-- Tela "Dados da moto": tudo o que o painel diz ao REau, só para ler. -->
     <string name="phone_status_title">Estado del teléfono</string>
@@ -828,7 +854,7 @@
     <string name="server_rule">Mientras está encendido, REau no busca el tablero.</string>
     <string name="web_view_wait_sub">En la pantalla de inicio, toca Encender primero.</string>
     <string name="web_view_wait_value">Detenido</string>
-    <!-- Android Auto 17.3 or older, asked to dial in, never did (Lite edition) -->
+    <!-- Android Auto 17.3 or older, asked to dial in, never did (old apps) -->
     <string name="notif_title_not_calling">Android Auto no llamó</string>
     <string name="notif_text_not_calling">Abre Android Auto, termina su configuración y luego apaga y vuelve a encender REau</string>
     <string name="link_not_calling">No llamó</string>
@@ -851,4 +877,16 @@
     <string name="update_button_check">Buscar ahora</string>
     <string name="update_button_open">Ver la versión</string>
     <string name="update_info">REau solo le pregunta a GitHub (api.github.com) cuando tocas; GitHub ve la dirección del teléfono, sin cuenta. No se descarga ni se instala nada.</string>
+    <string name="update_sign_title">Firma de este APK</string>
+    <string name="update_sign_expected">Esperada, de las versiones del proyecto (SHA-256)</string>
+    <string name="update_sign_installed">Del APK instalado (SHA-256)</string>
+    <string name="update_sign_match">Coinciden: este APK tiene la firma de las versiones del proyecto.</string>
+    <string name="update_sign_differ">Difieren: este APK no se firmó con la clave de las versiones del proyecto (una versión de prueba, por ejemplo).</string>
+    <string name="update_sign_debug">Versión de depuración: firmada con la clave de depuración, no con la de las versiones publicadas; no se espera que las dos coincidan.</string>
+    <string name="update_sign_unset">Esta versión no trae la huella del proyecto, así que no hay con qué compararla.</string>
+    <string name="update_sign_unreadable">Android no informó la firma de este APK.</string>
+
+    <!-- A small line on the main screen while the old app with the seal on its icon (id ending in .lite) is still installed -->
+    <string name="old_app_note">La app REau antigua (la del ícono con sello) sigue instalada. Ya no hace falta: puedes desinstalarla.</string>
+
 </resources>

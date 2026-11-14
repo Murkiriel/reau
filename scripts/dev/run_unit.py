@@ -1,6 +1,6 @@
 """Runs REau's JVM unit tests, optionally only some classes, and says plainly how it ended.
 
-Usage:  python scripts/dev/run_unit.py [--lite] [TestClass ...]
+Usage:  python scripts/dev/run_unit.py [TestClass ...]
 Gradle needs a JDK 21: JAVA_HOME set, or java on the PATH.
 Exit code 0 = green. Prints "NÃO COMPILOU" when the build broke before any test ran (a mutation runner must not
 count that as a test catching the change), or one "FALHOU: <test>" line per failed test.
@@ -18,10 +18,10 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
 def main(classes):
-    # "--lite" among the classes runs the Lite edition's tests instead (what differs between the editions, Edition.lite).
-    task = ":app:testLiteDebugUnitTest" if "--lite" in classes else ":app:testCompletaDebugUnitTest"
+    # One app since 0.3.0 (no editions): a single test task. The old "--lite" among the classes is ignored.
     classes = [name for name in classes if name != "--lite"]
-    command = [str(GRADLEW), task, "--console=plain"]
+    # -PreauAllowWarnings: the build fails on a compiler warning (app/build.gradle.kts), and a mutation may leave one by itself.
+    command = [str(GRADLEW), ":app:testDebugUnitTest", "--console=plain", "-PreauAllowWarnings"]
     for name in classes:
         command += ["--tests", f"*.{name}"]
     done = subprocess.run(command, cwd=ROOT, env=ENV, capture_output=True, text=True, encoding="utf-8",

@@ -67,6 +67,10 @@ class DashSession(
     private val readings: DashReadingSink? = null,
     /** The session's waits; a test shortens them (27/10/2026 review: the fake-dash tests took 86 s on the real ones). */
     private val timing: Timing = Timing(),
+    /** The experimental switch of the bind retries ([BindRetry]), read at each try to open the sockets; off, a refused bind goes straight to [onBindResult]. */
+    private val bindRetry: () -> Boolean = { false },
+    /** The experimental switch of the tolerant silence watch ([RxQuiet]), read at each turn of the watch: off, [Timing.rxWatchdogMs] of silence end the session. */
+    private val tolerantRx: () -> Boolean = { false },
 ) {
     /**
      * The waits of a session: [keyPatienceMs] for the dash's key before the greeting goes again, [rxWatchdogMs] of silence before the
@@ -76,6 +80,11 @@ class DashSession(
         val keyPatienceMs: Long = KEY_PATIENCE_MS,
         val rxWatchdogMs: Long = RX_WATCHDOG_MS,
         val watchdogTickMs: Long = WATCHDOG_TICK_MS,
+        /** The wait between two tries of a refused bind ([BindRetry.PAUSE_MS]). */
+        val bindRetryPauseMs: Long = BindRetry.PAUSE_MS,
+        /** With the tolerant watch: the silence that ends the session, and the one that is only noted in the log ([RxQuiet]). */
+        val rxGiveUpMs: Long = RxQuiet.GIVE_UP_MS,
+        val rxNoteMs: Long = RxQuiet.NOTE_MS,
     )
 
     /** What this session and the dash exchanged. */
@@ -114,11 +123,14 @@ class DashSession(
     private var resentOnNotice = false
     // Wall-clock of the last packet received from the dash — fed to the RX watchdog.
     @Volatile private var lastRxMs = 0L
+
+    // Packets from the dash since this session opened: what tells a weak link from a dash that did not accept ([authTimeoutReason]).
+    @Volatile private var rxPackets = 0
     // One-shot: the first time the dash reports it DECODED our video (09 06 55). If this never
     // appears in the ride log, the dash never accepted the stream — the likely "Timeout!" cause.
     @Volatile private var loggedFirstAck = false
     // Running count of 09 06 55 + 09 04 55 decode acks — the only dash-side signal of frames it
-    // actually decoded. Read as deltas per window by the automatic-fps controller.
+    // actually decoded. Read as deltas per window by the stream governor (the `dash=` of its 5 s line).
     private val decodeAcks = java.util.concurrent.atomic.AtomicLong(0)
     val decodedFrameCount: Long get() = decodeAcks.get()
 
@@ -133,6 +145,8 @@ class DashSession(
 
     // Wall-clock of entering STREAMING — see firstAckTimedOut's own doc for the real gap this closes.
     @Volatile private var streamingStartMs = 0L
+    // When this session's sockets were opened (0: not yet), for the line of what was sent before the dash went quiet.
+    @Volatile private var socketsOpenedMs = 0L
     // The network of this session, and the minute of Wi-Fi link before now (one sample every 5 s): see [linkProbe].
     @Volatile private var linkNetwork: android.net.Network? = null
     private val linkHistory = LinkHistory()
@@ -145,6 +159,9 @@ class DashSession(
     // kdoc for the full story, including the live failure this closes.
     @Volatile private var disconnecting = false
 
+    // The exit sequence of the disconnect going on (or the last), to log what the dash answers to it; see [ExitSequence].
+    @Volatile private var exitSequence: ExitSequence? = null
+
     // Which connect() the running session belongs to. Every coroutine a session launches
     // carries the number it was launched with, and fail()/READY from a session that is not the current one are
     // ignored: before this, a session that failed during authentication (its socket closed by fail()) kept its
@@ -152,12 +169,25 @@ class DashSession(
     // started the next session, that leftover's own fail() closed the new session's socket and put it in ERROR, or
     // its READY went out on a socket already closed.
     @Volatile private var sessionGeneration = 0
+    // Which session's failure fail() has already taken (none yet: NO_FAILED_SESSION). Taken in one atomic step: looking at ERROR and writing it
+    // at the end of the teardown were two steps, and two threads failing the same session could both pass the look (see fail()).
+    private val failedGeneration = java.util.concurrent.atomic.AtomicInteger(NO_FAILED_SESSION)
 
     var onButton: ((com.reau.app.dash.protocol.DashButtonEvent) -> Unit)? = null
 
     /** The maneuver ring (with its switch off) was shown or hidden, by a press or by the screen: a line saying which and why, for the debug text. */
     var onRingChange: ((String) -> Unit)? = null
     var onError:  ((String) -> Unit)? = null
+
+    /**
+     * Told how binding the session's sockets to the dash's network went: the network and whether Android refused it (EPERM, `true`) or the
+     * sockets opened (`false`). A refused network is no good to try again (31/10/2026: ten times in 4.5 minutes), so whoever holds the
+     * network drops it and asks for another. Called before the failure of a refusal is reported.
+     */
+    var onBindResult: ((network: android.net.Network?, refused: Boolean) -> Unit)? = null
+
+    /** The dash spoke again after a silence the tolerant watch noted (the milliseconds it lasted): the video is asked for a keyframe. */
+    var onRxBack: ((silentMs: Long) -> Unit)? = null
 
     private var notices0904 = 0
     private var notices0906 = 0
@@ -550,7 +580,7 @@ class DashSession(
      * activeNavPacket numbers every second.
      */
     private fun liveRouteCard(projectionOn: Boolean): ByteArray {
-        val n = nav
+        val n = shownNav()
         return if (n != null) DashCommands.routeCard(
             // The street while guiding, else REau.
             n.road.ifBlank { destinationName }, projectionOn,
@@ -583,13 +613,24 @@ class DashSession(
 
     /** The proximity bar (05 0C) for the distance to the turn, in metres whatever the unit the dash shows. */
     private fun proximityBar(n: NavFigures): Int {
-        val metres = if (n.primaryUnit == DashCommands.NAV_UNIT_KM_TENTHS) n.primaryDist * 100 else n.primaryDist
+        val metres = DashCommands.navMeters(n.primaryDist, n.primaryUnit)
         val keep = n.maneuver == com.reau.app.dash.nav.DashManeuverGlyphs.FORK_LEFT || n.maneuver == com.reau.app.dash.nav.DashManeuverGlyphs.FORK_RIGHT
         return DashCommands.proximityLevel(metres, keep)
     }
 
-    /** The ring's glyph while guiding: the maneuver itself (hiding it never worked). */
-    private fun ringGlyph(n: NavFigures): Int = bubbleManeuver(ringOn, n.maneuver)
+    /** The ring's glyph while guiding: the maneuver itself (hiding it never worked). A debug build's arrow test sends its own byte (see [shownNav]). */
+    private fun ringGlyph(n: NavFigures): Int = com.reau.app.devtools.ArrowTrial.byte() ?: bubbleManeuver(ringOn, n.maneuver)
+
+    /**
+     * The figures the cards and the nav packet are made from: the guidance's, or, while a debug build's arrow test is on
+     * ([com.reau.app.devtools.ArrowTrial], which a release does not have: it answers none there), a card with that arrow alone and no distance, even with no
+     * guidance. Nothing else reads this: the ring's own logic goes on with [nav].
+     */
+    private fun shownNav(): NavFigures? = com.reau.app.devtools.ArrowTrial.byte()?.let { trial ->
+        nav ?: NavFigures(
+            trial, 0, DashCommands.NAV_UNIT_METERS, 0, DashCommands.NAV_UNIT_METERS, null, "", DashCommands.REMAINING_OMIT, DashCommands.NEXT_MANEUVER_NONE,
+        )
+    } ?: nav
 
     /** The phone's clock as 4 digits, the ETA of the idle card's arrival pin. */
     private fun clockHHMM(): String = java.text.SimpleDateFormat("HHmm", java.util.Locale.US).format(java.util.Date())
@@ -644,6 +685,7 @@ class DashSession(
         if (clockNoticeBeforeStream) aliveWithoutAck = true
         coverPending = coverSlices != null // a stream is new to the dash: the picture again
         com.reau.app.data.RideDiagnostics.log("session", "→ STREAMING")
+        ImageGap.clock.streaming(MonotonicClock.nowMs())?.let { com.reau.app.data.RideDiagnostics.log("session", it) }
         // Projection-on route card + faster keep-alive begin now
         launchProjectionHeartbeat()
         launchRouteCardKeepAlive()
@@ -652,6 +694,9 @@ class DashSession(
     }
 
     fun sendRtp(packet: ByteArray) { socket?.sendRtp(packet) }
+
+    /** A keyframe went out in [packets] RTP packets: kept for the line written when the dash goes quiet ([SendTail]). */
+    fun keyframeSent(bytes: Int, packets: Int) = stats.sendTail.keyframe(bytes, packets)
 
     fun disconnect() {
         // Set FIRST, before anything else — see this flag's own kdoc: closing the socket below
@@ -670,18 +715,22 @@ class DashSession(
         nav = null
         forgetLastManeuver()
         socket?.let { sock ->
+            val exit = ExitSequence(MonotonicClock::nowMs).also { exitSequence = it }
+            // Each command is told after it: whether it reached the wire and when (ExitSequence), with the timing unchanged.
+            fun send(name: String, packet: ByteArray) = exit.step(name, runCatching { sock.send(packet) }.getOrDefault(false))
             val goodbye = Runnable {
-                runCatching { sock.send(DashCommands.projectionStop()) }
-                runCatching { sock.send(DashCommands.projectionOff()) }
+                send("projection-stop", DashCommands.projectionStop())
+                send("projection-off", DashCommands.projectionOff())
                 // Extended exit sequence documented by another open implementation (see
                 // DashCommands.exitBack's doc) — best-effort, additive, unverified on real hardware.
                 // Meant to give the dash a cleaner exit-to-menu instead of possibly staying "hung"
                 // until a power-cycle; each send is independently guarded so one failing never blocks
                 // the rest of teardown.
-                runCatching { sock.send(DashCommands.exitBack()) }
-                repeat(4) { runCatching { sock.send(DashCommands.exitProjectionIdle()) } }
-                repeat(2) { runCatching { sock.send(DashCommands.exitSessionBoundary()) } }
+                send("back", DashCommands.exitBack())
+                repeat(4) { send("idle", DashCommands.exitProjectionIdle()) }
+                repeat(2) { send("boundary", DashCommands.exitSessionBoundary()) }
                 sock.close()
+                com.reau.app.data.RideDiagnostics.log("session", exit.summary())
             }
             // A guard: today every caller is on the service's worker or the IO scope, but the rider's "disconnect" once called this
             // on the main thread, where Android refuses network: every send above failed with NetworkOnMainThreadException and the
@@ -727,7 +776,33 @@ class DashSession(
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Session error", e)
+            // The network that refused the socket is told first, so it is dropped before the projection tries the dash again.
+            if (NetworkBlock.isBindRefusal(e) && isCurrent(mine)) onBindResult?.invoke(network, true)
             fail(NetworkBlock.describe(e), mine) // an EPERM says the network was blocked
+        }
+    }
+
+    /**
+     * [socketFactory]'s socket. With the experimental switch on ([bindRetry]), a bind to [network] that Android refuses (EPERM) is tried again on
+     * the same network, [BindRetry.MAX_RETRIES] times with [BindRetry.PAUSE_MS] between, before the refusal is let through to the caller (and so to
+     * [onBindResult], which lets the network go). The wait is the coroutine's own (it holds no thread, and the session runs on the IO threads, never
+     * the main one); a session that was replaced meanwhile stops waiting. Each try builds the sockets from the start: a refused one closed what it had opened.
+     */
+    @Suppress("TooGenericExceptionCaught") // only a refused bind is retried; anything else is thrown again as it was
+    private suspend fun socketWithBindRetries(mine: Int, network: android.net.Network?): DashSocket {
+        var retries = 0
+        while (true) {
+            try {
+                return socketFactory(network).also {
+                    if (retries > 0) com.reau.app.data.RideDiagnostics.log("wifi", BindRetry.workedLine(network, retries))
+                }
+            } catch (e: Exception) {
+                val refusal = NetworkBlock.isBindRefusal(e)
+                if (!BindRetry.again(bindRetry(), refusal, retries) || !isCurrent(mine)) throw e
+                retries++
+                com.reau.app.data.RideDiagnostics.warn("wifi", BindRetry.retryLine(network, retries, timing.bindRetryPauseMs))
+                delay(timing.bindRetryPauseMs)
+            }
         }
     }
 
@@ -736,9 +811,9 @@ class DashSession(
      * after a failure already said through [fail] (the ports in use), or for a session connect() has replaced
      * meanwhile, whose sockets are closed again at once.
      */
-    private fun openSockets(mine: Int, ssid: String, network: android.net.Network?): DashSocket? {
+    private suspend fun openSockets(mine: Int, ssid: String, network: android.net.Network?): DashSocket? {
         val sock = try {
-            socketFactory(network)
+            socketWithBindRetries(mine, network)
         } catch (e: java.net.BindException) {
             fail("Port ${DashSocket.RX_PORT}/${DashSocket.CTRL_PORT} in use (${e.message})", mine)
             null
@@ -753,7 +828,11 @@ class DashSession(
                 socket = sock
                 sock.stats = stats
                 stats.trail.clear()
+                stats.sendTail.clear()
+                socketsOpenedMs = MonotonicClock.nowMs()
                 DashHeard.trail = stats.trail
+                DashHeard.tail = stats.sendTail
+                onBindResult?.invoke(network, false)
                 linkNetwork = network
                 linkHistory.clear()
                 linkBaselineLogged = false
@@ -768,6 +847,7 @@ class DashSession(
                 aliveWithoutAck = false
                 streamingStartMs = 0L
                 lastRxMs = 0L
+                rxPackets = 0
                 notices0904 = 0
                 notices0906 = 0
                 // RX loop MUST be running before the burst (early pubkey + no ICMP).
@@ -830,6 +910,8 @@ class DashSession(
                 authTimeoutReason(
                     heardFromDash = lastRxMs > 0L, ssid = ssid, keySeen = auth?.keySeen ?: true,
                     resends = resends, noticeAfterMs = clockNoticeAfterMs,
+                    rssiDbm = linkProbe(linkNetwork)?.rssiDbm, packets = rxPackets,
+                    waitedMs = MonotonicClock.nowMs() - burstStartMs,
                 ),
                 mine,
             )
@@ -877,6 +959,7 @@ class DashSession(
         val counter = DashReadiness.counterOf(value) ?: return
         firstHeartbeatAtMs = MonotonicClock.nowMs()
         firstHeartbeat = counter
+        ImageGap.clock.dashAge(firstHeartbeatAtMs, counter)
         com.reau.app.data.RideDiagnostics.log("auth", DashReadiness.ageLine(counter))
     }
 
@@ -939,6 +1022,13 @@ class DashSession(
         }
     }
 
+    /** A packet that reached the receive loop during our own disconnect: the dash answering the exit commands (only its TLV keys are written). */
+    private fun noteExitAnswer(pkt: ByteArray) {
+        val sequence = exitSequence ?: return
+        val keys = runCatching { K1GPacket.parseIncoming(pkt).joinToString(" ") { "%02X%02X".format(it.type, it.sub) } }.getOrDefault("?")
+        sequence.reply(keys)?.let { com.reau.app.data.RideDiagnostics.log("session", it) }
+    }
+
     // Packets in a row whose handling threw; a session starts it over.
     private val rxFailures = FailureStreak(RX_EXCEPTIONS_BEFORE_FAIL)
 
@@ -951,6 +1041,8 @@ class DashSession(
     @Suppress("TooGenericExceptionCaught") // whatever a packet makes the handler throw is contained here
     internal fun receivePacket(pkt: ByteArray, sock: DashSocket, mine: Int = sessionGeneration) {
         lastRxMs = MonotonicClock.nowMs()
+        if (disconnecting) noteExitAnswer(pkt)
+        rxPackets++
         DashHeard.heard(lastRxMs)
         try {
             dispatchIncoming(pkt, sock)
@@ -1116,6 +1208,7 @@ class DashSession(
         heartbeatJob = scope.launch(Dispatchers.IO) {
             var n = 0
             val sentSinceRx = HeartbeatsSinceRx()
+            val quiet = RxQuiet()
             while (isActive) {
                 val status = phoneStatusProvider()
                 runCatching { sock.send(DashCommands.heartbeat(weather = weatherProvider(), status = status, call = callNow())) }
@@ -1134,7 +1227,11 @@ class DashSession(
                 // RX watchdog: once the dash has spoken at all (rxSilenceFails), a long silence means it
                 // dropped (out of range / off). UDP gives no error, so detect it here and fail the
                 // session instead of streaming into the void while the UI still says "connected".
-                if (rxSilenceFails(_state.value, lastRxMs, MonotonicClock.nowMs(), timing.rxWatchdogMs, sentSinceRx.tick(lastRxMs))) {
+                val tolerant = tolerantRx()
+                val heartbeatsSinceRx = sentSinceRx.tick(lastRxMs)
+                noteQuiet(quiet, tolerant, heartbeatsSinceRx)
+                val silenceLimit = if (tolerant) timing.rxGiveUpMs else timing.rxWatchdogMs
+                if (rxSilenceFails(_state.value, lastRxMs, MonotonicClock.nowMs(), silenceLimit, heartbeatsSinceRx)) {
                     val silent = (MonotonicClock.nowMs() - lastRxMs) / 1000
                     Log.w(TAG, "RX watchdog: no dash packets for ${silent}s — link lost")
                     com.reau.app.data.RideDiagnostics.error("error", "RX watchdog: dash silent ${silent}s → link lost")
@@ -1179,6 +1276,18 @@ class DashSession(
         }
     }
 
+    /** The tolerant watch ([RxQuiet]), when its switch is on: a silence noted in the log, and the dash's return from one passed on to [onRxBack]. */
+    private fun noteQuiet(quiet: RxQuiet, tolerant: Boolean, heartbeatsSinceRx: Int) {
+        if (!tolerant) return quiet.reset()
+        val verdict = quiet.look(MonotonicClock.nowMs(), lastRxMs, _state.value == DashState.STREAMING, heartbeatsSinceRx, timing.rxNoteMs) ?: return
+        if (verdict.kind == RxQuiet.Kind.QUIET) {
+            com.reau.app.data.RideDiagnostics.warn("dash", RxQuiet.quietLine(verdict.ms))
+        } else {
+            com.reau.app.data.RideDiagnostics.log("dash", RxQuiet.backLine(verdict.ms))
+            onRxBack?.invoke(verdict.ms)
+        }
+    }
+
     /**
      * One 1 Hz heartbeat tick of the Wi-Fi link: a sample every [LinkReport.SAMPLE_EVERY_TICKS] s into the minute's
      * history, and, every [LinkReport.LOG_EVERY_TICKS] s, a line of the log with the moment and the trend (the ride's
@@ -1207,6 +1316,8 @@ class DashSession(
         if (now - trailLoggedMs < TRAIL_ONCE_MS) return
         trailLoggedMs = now
         stats.trail.report(why, now).forEach { com.reau.app.data.RideDiagnostics.log("link", it) }
+        val open = socketsOpenedMs.takeIf { it > 0L }?.let { "session open for ${(now - it) / MS_PER_SECOND} s" }
+        stats.sendTail.reportOnce(why, open)?.let { com.reau.app.data.RideDiagnostics.log("link", it) }
     }
 
     /** One dash-stats line every [statsEveryMs] while the session lives. */
@@ -1253,24 +1364,25 @@ class DashSession(
         navInfoJob?.cancel()
         navInfoJob = scope.launch(Dispatchers.IO) {
             while (isActive && _state.value == DashState.STREAMING) {
-                nav?.let { n ->
-                    socket?.send(
-                        DashCommands.activeNavPacket(
-                            maneuver = ringGlyph(n),
-                            primaryDist = n.primaryDist,
-                            primaryUnit = n.primaryUnit,
-                            totalDist = n.totalDist,
-                            totalUnit = n.totalUnit,
-                            road = n.road,
-                            decimalComma = decimalComma(),
-                            proximity = proximityBar(n),
-                            nextManeuver = nextShown(n),
-                        )
-                    )
-                }
+                navPacketNow()?.let { socket?.send(it) }
                 delay(ROUTE_CARD_MS)
             }
         }
+    }
+
+    /** The nav packet (05 02: the maneuver's bubble, the distances) as it goes to the dash now; null with no guidance (and no arrow test). */
+    internal fun navPacketNow(): ByteArray? = shownNav()?.let { n ->
+        DashCommands.activeNavPacket(
+            maneuver = ringGlyph(n),
+            primaryDist = n.primaryDist,
+            primaryUnit = n.primaryUnit,
+            totalDist = n.totalDist,
+            totalUnit = n.totalUnit,
+            road = n.road,
+            decimalComma = decimalComma(),
+            proximity = proximityBar(n),
+            nextManeuver = nextShown(n),
+        )
     }
 
     /** The music and call cards, every second while streaming (as the route card). */
@@ -1327,11 +1439,13 @@ class DashSession(
             Log.i(TAG, "fail() ignored — disconnect() already tore this session down cleanly: $msg")
             return
         }
-        if (_state.value == DashState.ERROR) {
+        if (_state.value == DashState.ERROR || !claimFailure(generation)) {
             Log.w(TAG, "fail() called again while already ERROR (ignored, real diagnosis already reported): $msg")
+            com.reau.app.data.RideDiagnostics.log("session", "a second cause of the same failure, not told to the rider: $msg")
             return
         }
         Log.e(TAG, "ERROR — $msg")
+        ImageGap.clock.lost(MonotonicClock.nowMs(), DashHeard.agoMs(MonotonicClock.nowMs()))
         logTrail("the session failed")
         com.reau.app.data.RideDiagnostics.error("error", "session fail: $msg")
         rxJob?.cancel(); heartbeatJob?.cancel(); projHbJob?.cancel(); routeCardJob?.cancel(); navInfoJob?.cancel()
@@ -1347,7 +1461,18 @@ class DashSession(
         onError?.invoke(msg)
     }
 
+    /**
+     * The first failure of session [generation] takes it, in one atomic step; any other gets false. ERROR is only written at the end of fail()'s
+     * teardown, after the socket is closed, and closing the socket is what wakes the receive loop with "Socket closed": on a busy phone that loop
+     * reached fail() before ERROR was written, passed the look at ERROR, and the rider got two notices for one drop (seen in CI, 11/11/2026).
+     * A new session has a new number, so nothing has to be put back.
+     */
+    private fun claimFailure(generation: Int): Boolean = failedGeneration.getAndSet(generation) != generation
+
     companion object {
+        /** No session has failed yet ([failedGeneration]); session numbers start at 0. */
+        private const val NO_FAILED_SESSION = -1
+
         /**
          * Whether the dash's keyframe-decoded notice (09 06 55) confirms the first frame: only while
          * streaming, when a keyframe was really sent. One before (seen on the phone, before any authentication) is
@@ -1387,7 +1512,7 @@ class DashSession(
          */
         /** The log's line of a [connect]: the dash's name masked (it ties a log to one bike). */
         internal fun connectLine(ssid: String, network: Any?): String =
-            "connect() — ssid='${DashWifiManager.maskSsid(ssid)}' network=$network"
+            "connect() — ssid='${DashSsid.maskSsid(ssid)}' network=$network"
 
         /** The patient pace of the greeting once the dash is ready, which [DashReadiness.Greeting] applies in the loop; kept as its own rule for the tests. */
         internal fun burstDue(sinceLastBurstMs: Long, keySeen: Boolean, resends: Int): Boolean =
@@ -1400,20 +1525,50 @@ class DashSession(
         internal fun resendOnClockNotice(state: DashState, keySeen: Boolean, alreadyDone: Boolean): Boolean =
             state == DashState.AUTHENTICATING && !keySeen && !alreadyDone
 
+        /**
+         * The dash only takes the stream with its screen set to Digital (found by better-dash and kept by EstrelaAustral); on another
+         * setting it answers and the authentication never closes. Said when the dash answered, not when it stayed silent (then it is off).
+         */
+        internal const val DIGITAL_HINT = "If it keeps happening, check that the dash is set to Appearance > Screen type > Digital."
+
+        /**
+         * The link was weak while the key exchange ran out: the signal at [WEAK_SIGNAL_DBM] or under, or fewer than [FEW_PACKETS] packets in the
+         * wait ([packets]; a dash within reach sends its heartbeat every second and its telemetry besides, 14 or more in 5 s in the logs).
+         */
+        internal fun weakLink(rssiDbm: Int?, packets: Int): Boolean =
+            (rssiDbm != null && rssiDbm <= WEAK_SIGNAL_DBM) || packets < FEW_PACKETS
+
+        /**
+         * Why the wait for the dash's key (07 01 01) ran out. A dash that answered and still did not accept points at the SSID or the screen type
+         * only on a link that was good: ride log of 05/11/2026 07:13:21, -80 dBm and 3 packets in 15 s, told the rider to check the name of a dash that
+         * was on and right ([rssiDbm], [packets] and [waitedMs] say how weak the link was; the defaults say nothing, as before).
+         */
+        @Suppress("LongParameterList") // the facts of one verdict
         internal fun authTimeoutReason(
             heardFromDash: Boolean,
             ssid: String,
             keySeen: Boolean = true,
             resends: Int = MAX_BURST_RESENDS,
             noticeAfterMs: Long = -1L,
+            rssiDbm: Int? = null,
+            packets: Int = Int.MAX_VALUE,
+            waitedMs: Long = AUTH_TIMEOUT,
         ): String = when {
+            heardFromDash && weakLink(rssiDbm, packets) ->
+                "Auth timed out — the dash answered but the link is weak (" +
+                    listOfNotNull(
+                        rssiDbm?.let { "$it dBm" },
+                        if (packets < FEW_PACKETS) "$packets packets in ${waitedMs / 1_000} s" else null,
+                    ).joinToString(", ") +
+                    "): the dash is probably too far from the phone or something is in between, not a wrong name. Move the phone closer to the dash."
             heardFromDash && !keySeen ->
                 "Auth timed out — the dash answered but never sent its key (07 00 / 07 03), " +
                     "even after the burst was sent again $resends times" +
-                    (if (noticeAfterMs >= 0) "; its own 10 s mark (09 06 55) came ${noticeAfterMs / 1_000} s after the first burst" else "") + "."
+                    (if (noticeAfterMs >= 0) "; its own 10 s mark (09 06 55) came ${noticeAfterMs / 1_000} s after the first burst" else "") +
+                    ". $DIGITAL_HINT"
             heardFromDash ->
                 "Auth timed out — the dash answered but never accepted (no 07 01 01). " +
-                    "Check SSID matches '${DashWifiManager.maskSsid(ssid)}'."
+                    "Check SSID matches '${DashSsid.maskSsid(ssid)}'. $DIGITAL_HINT"
             else -> "Auth timed out — not a single packet from the dash (bike off, or its Wi-Fi gone?)."
         }
 
@@ -1447,6 +1602,12 @@ class DashSession(
         /** The link of a session without a Wi-Fi network of its own (a test's, or a socket not bound to a network). */
         private val NO_NETWORK = Any()
         private const val AUTH_TIMEOUT  = 15_000L
+
+        /** A link at this signal or weaker is a dash too far away ([weakLink]). */
+        internal const val WEAK_SIGNAL_DBM = -75
+
+        /** Fewer packets than this from the dash in the whole wait for the key is a link too weak to carry the exchange ([weakLink]). */
+        internal const val FEW_PACKETS = 10
         /** Packets in a row whose handling threw before the session is failed (each one is dropped and the loop goes on). */
         internal const val RX_EXCEPTIONS_BEFORE_FAIL = 20
         /** How long the dash may take to offer its key after a burst before the burst is sent again, and how many times. */
@@ -1470,6 +1631,7 @@ class DashSession(
         // loss (blocked network, Android Auto restarting, the bike off).
         internal const val RX_WATCHDOG_MS = 4_000L
         private const val WATCHDOG_TICK_MS = 1_000L
+        private const val MS_PER_SECOND = 1_000L
         /** A watchdog's failure and the [fail] that follows it are one event: the packet trail is written once for both. */
         private const val TRAIL_ONCE_MS = 2_000L
         /** The bike's data is asked for again every 15 minutes while connected: 900 ticks of the 1 Hz heartbeat. */

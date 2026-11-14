@@ -9,6 +9,7 @@ import io
 import json
 import os
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -42,14 +43,33 @@ def fake_dex(types: list[str] | None = None, payload: bytes = b"") -> bytes:
             + b"".join(struct.pack("<I", i) for i in range(len(types))) + string_data + payload)
 
 
+def elf64(loads: list[tuple], relro: tuple | None = None) -> bytes:
+    """An ELF64 with just program headers: LOAD (offset, vaddr, filesz, memsz, align) and an optional GNU_RELRO (vaddr, memsz)."""
+    headers = [(1, off, va, fs, ms, al) for off, va, fs, ms, al in loads]
+    if relro:
+        headers.append((0x6474E552, relro[0], relro[0], relro[1], relro[1], 1))
+    out = bytearray(b"\x7fELF" + bytes([2, 1, 1]) + bytes(9))
+    out += bytes(0x40 - len(out))
+    struct.pack_into("<Q", out, 0x20, 0x40)
+    struct.pack_into("<HH", out, 0x36, 56, len(headers))
+    for p_type, offset, vaddr, filesz, memsz, align in headers:
+        out += struct.pack("<IIQQQQQQ", p_type, 4, offset, vaddr, vaddr, filesz, memsz, align)
+    return bytes(out)
+
+
+# A library that loads with 16 KB pages, and the shape of Conscrypt 2.5.3's arm64 one, which does not (RELRO ending at 0x203000, data after it).
+GOOD_SO = elf64([(0, 0, 0x10000, 0x10000, 0x4000)])
+BAD_SO = elf64([(0, 0, 0x1E8804, 0x1E8804, 0x4000), (0x1E8C20, 0x1ECC20, 0x184B0, 0x1A170, 0x4000)], relro=(0x1ECC20, 0x163E0))
+
+
 def make_apk(folder: str, dex: bytes = b"", extra: dict | None = None, types: list[str] | None = None,
-             profile: bool = True) -> str:
-    path = os.path.join(folder, "app.apk")
+             profile: bool = True, so: bytes = GOOD_SO, name: str = "app.apk") -> str:
+    path = os.path.join(folder, name)
     with zipfile.ZipFile(path, "w") as z:
         z.writestr("META-INF/androidx.core_core.version", "1.13.0")
         z.writestr("kotlin-tooling-metadata.properties", "x=1")
         z.writestr("res/raw/notes.properties", "not a library: not at the root")
-        z.writestr("lib/arm64-v8a/libexample.so", b"\x7fELF")
+        z.writestr("lib/arm64-v8a/libexample.so", so)
         z.writestr("classes.dex", fake_dex(types, dex))
         if profile:
             z.writestr(apk_audit.BASELINE_PROFILE, b"prof")
@@ -79,9 +99,8 @@ def xmltree(components: list[tuple], debuggable: bool = False, package: str = "c
     return "\n".join(lines) + "\n"
 
 
-# The components of the two real release manifests (28/10/2026): the Completa has the accessibility service, both have the rest.
+# The components of the real release manifest (the one app, 0.3.0): no accessibility service since 03/11/2026.
 RELEASE_COMPONENTS = [
-    ("service", "com.reau.app.service.AaServerAccessibilityService", False, True),
     ("activity", "com.reau.app.MainActivity", True, True),
     ("service", "com.reau.app.service.QuickStartTile", True, True),
     ("service", "com.reau.app.service.ProjectionService", False, False),
@@ -91,6 +110,18 @@ RELEASE_COMPONENTS = [
 ]
 RELEASE_MANIFEST = xmltree(RELEASE_COMPONENTS)
 RELEASE_ENTRIES = ["classes.dex", apk_audit.BASELINE_PROFILE]
+
+
+class BuildToolTest(unittest.TestCase):
+    def test_the_newest_build_tools_is_the_one_with_the_greatest_number_not_the_last_as_text(self):
+        with tempfile.TemporaryDirectory() as sdk:
+            for version in ("9.0.0", "35.0.0", "35.0.1", "34.0.0"):
+                folder = os.path.join(sdk, "build-tools", version)
+                os.makedirs(folder)
+                open(os.path.join(folder, "aapt2"), "w").close()
+            self.assertTrue(apk_audit.build_tool(sdk, "aapt2").endswith(os.path.join("35.0.1", "aapt2")))
+            self.assertIsNone(apk_audit.build_tool(sdk, "apksigner"))
+            self.assertEqual([35, 0, 1], apk_audit.version_key(os.path.join(sdk, "build-tools", "35.0.1", "aapt2")))
 
 
 class ScanZipTest(unittest.TestCase):
@@ -116,7 +147,7 @@ class ScanZipTest(unittest.TestCase):
 
 class PermissionsTest(unittest.TestCase):
 
-    def test_the_Lite_editions_own_permission_is_the_full_editions(self):
+    def test_the_old_Lite_editions_own_permission_is_still_read_as_the_apps(self):
         dump = "\n".join([
             "uses-permission: name='android.permission.INTERNET'",
             "uses-permission: name='com.reau.app.lite.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'",
@@ -125,6 +156,18 @@ class PermissionsTest(unittest.TestCase):
         with mock.patch.object(apk_audit.subprocess, "run", return_value=done):
             found = apk_audit.permissions("aapt2", "x.apk")
         self.assertEqual(["android.permission.INTERNET", "com.reau.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"], found)
+
+
+class CertificateTest(unittest.TestCase):
+    def test_the_certificate_of_a_failed_apksigner_is_not_valid_and_of_a_good_one_is(self):
+        def run(code):
+            done = subprocess.CompletedProcess([], code, stdout="Signer #1 certificate DN: CN=x\nother\n", stderr="DOES NOT VERIFY")
+            with mock.patch.object(apk_audit.subprocess, "run", return_value=done):
+                return apk_audit.certificate("apksigner", "a.apk")
+        self.assertEqual(("Signer #1 certificate DN: CN=x", True), run(0))
+        text, ok = run(1)
+        self.assertFalse(ok)
+        self.assertIn("FALHOU apksigner: DOES NOT VERIFY", text)
 
 
 class AgainstTheBaselineTest(unittest.TestCase):
@@ -136,8 +179,9 @@ class AgainstTheBaselineTest(unittest.TestCase):
         self.baseline = os.path.join(self.tmp.name, "baseline.json")
         self.perms = ["android.permission.INTERNET"]
         self.manifest = RELEASE_MANIFEST
+        self.signed = True
         for name, value in (("BASELINE", self.baseline), ("find_sdk", lambda: "sdk"),
-                            ("build_tool", lambda sdk, name: name), ("certificate", lambda signer, apk: "cert"),
+                            ("build_tool", lambda sdk, name: name), ("certificate", lambda signer, apk: ("cert", self.signed)),
                             ("permissions", lambda aapt2, apk: list(self.perms)),
                             ("manifest_text", lambda aapt2, apk: self.manifest)):
             patcher = mock.patch.object(apk_audit, name, value)
@@ -192,12 +236,61 @@ class AgainstTheBaselineTest(unittest.TestCase):
         self.assertIn("Nada gravado", out)
         self.assertEqual(before, os.path.getmtime(self.baseline))
 
+    def test_the_dex_files_of_the_apk_are_read_for_the_texts_only_the_real_debug_code_has(self):
+        # The release's devtools stubs are empty: a .dex that carries the real fault names is the debug code under the stubs' class names.
+        self.run_main(self.apk, "--gravar")
+        real = make_apk(self.tmp.name, dex=b"https://raw.githubusercontent.com/x DECODER_STALL", name="real.apk")
+        code, out = self.run_main(real)
+        self.assertEqual(1, code)
+        self.assertIn("FORMA DE RELEASE ERRADA", out)
+        self.assertIn("texto que só o código de debug de verdade tem: DECODER_STALL", out)
+        self.assertEqual(0, self.run_main(self.apk)[0])
+
+    def test_an_invalid_signature_exits_1_even_with_nothing_new_and_is_not_recorded(self):
+        self.run_main(self.apk, "--gravar")
+        self.signed = False
+        code, out = self.run_main(self.apk)
+        self.assertEqual(1, code)
+        self.assertIn("Nada novo", out)
+        self.assertIn("ASSINATURA INVÁLIDA", out)
+        before = os.path.getmtime(self.baseline)
+        code, out = self.run_main(self.apk, "--gravar")
+        self.assertEqual(1, code)
+        self.assertIn("Nada gravado", out)
+        self.assertEqual(before, os.path.getmtime(self.baseline))
+        # A debug APK is audited by its signature too.
+        self.assertEqual(1, self.run_main(self.apk, "--apk-debug")[0])
+
     def test_a_debug_apk_can_be_audited_without_the_release_shape(self):
         self.run_main(self.apk, "--gravar")
         self.manifest = xmltree(RELEASE_COMPONENTS, debuggable=True)
         code, out = self.run_main(self.apk, "--apk-debug")
         self.assertEqual(0, code)
         self.assertNotIn("FORMA DE RELEASE", out)
+
+    def test_a_native_library_that_does_not_load_with_16_kb_pages_exits_1_and_is_not_recorded(self):
+        self.run_main(self.apk, "--gravar")
+        bad = make_apk(self.tmp.name, dex=b"https://raw.githubusercontent.com/x", so=BAD_SO, name="bad.apk")
+        code, out = self.run_main(bad)
+        self.assertEqual(1, code)
+        self.assertIn("NÃO CARREGA COM PÁGINAS DE 16 KB", out)
+        self.assertIn("libexample.so", out)
+        before = os.path.getmtime(self.baseline)
+        code, out = self.run_main(bad, "--gravar")
+        self.assertEqual(1, code)
+        self.assertIn("Nada gravado", out)
+        self.assertEqual(before, os.path.getmtime(self.baseline))
+
+    def test_the_16_kb_check_also_applies_to_a_debug_apk(self):
+        self.run_main(self.apk, "--gravar")
+        bad = make_apk(self.tmp.name, dex=b"https://raw.githubusercontent.com/x", so=BAD_SO, name="bad.apk")
+        self.assertEqual(1, self.run_main(bad, "--apk-debug")[0])
+
+    def test_a_library_whose_header_cannot_be_read_is_a_problem_not_a_pass(self):
+        broken = make_apk(self.tmp.name, so=b"\x7fELF", name="broken.apk")
+        found = apk_audit.native_16kb(broken)
+        self.assertEqual(1, len(found), found)
+        self.assertIn("ilegível", found[0])
 
     def test_an_apk_that_cannot_be_read_for_its_shape_is_a_problem_not_a_pass(self):
         self.run_main(self.apk, "--gravar")
@@ -266,8 +359,11 @@ class ReleaseShapeTest(unittest.TestCase):
     def test_the_real_release_shape_passes(self):
         self.assertEqual([], self.shape())
 
-    def test_the_Lite_edition_has_no_accessibility_service_and_passes(self):
-        self.assertEqual([], self.shape(components=[c for c in RELEASE_COMPONENTS if "Accessibility" not in c[1]]))
+    def test_an_apk_that_still_declares_the_accessibility_service_fails_exported_or_not(self):
+        # Removed on 03/11/2026 (it must not show in Android's Accessibility settings): the expected change of the component baseline is that it is gone.
+        for exported in (True, False):
+            problems = self.shape(components=RELEASE_COMPONENTS + [("service", "com.reau.app.service.AaServerAccessibilityService", exported, True)])
+            self.assertEqual(["componente fora da lista (service): com.reau.app.service.AaServerAccessibilityService"], problems)
 
     def test_a_debuggable_apk_fails(self):
         problems = self.shape(debuggable=True)
@@ -277,6 +373,24 @@ class ReleaseShapeTest(unittest.TestCase):
     def test_a_class_of_the_debug_package_fails(self):
         problems = self.shape(classes=self.GOOD_CLASSES + ["com/reau/app/debug/CrashTestActivity"])
         self.assertEqual(["classe que só o debug tem: com/reau/app/debug/CrashTestActivity"], problems)
+
+    def test_the_three_empty_devtools_stubs_of_a_release_pass(self):
+        # The release's ArrowTrial, DebugTriggers and FaultInjection (src/release) are in com.reau.app.devtools, which is not the refused debug package.
+        stubs = ["com/reau/app/devtools/ArrowTrial", "com/reau/app/devtools/DebugTriggers", "com/reau/app/devtools/FaultInjection"]
+        self.assertEqual([], self.shape(classes=self.GOOD_CLASSES + stubs))
+        self.assertEqual([], apk_audit.release_shape(xmltree(RELEASE_COMPONENTS), self.GOOD_CLASSES + stubs, RELEASE_ENTRIES,
+                                                       [b"dex\n035 swallowDecoderOutput muteEncoderOutput"]))
+
+    def test_any_other_class_of_the_devtools_package_fails_the_real_fault_enum_and_a_new_one_included(self):
+        for name in ("com/reau/app/devtools/FaultInjection$Fault", "com/reau/app/devtools/ArrowTrial$Companion",
+                     "com/reau/app/devtools/DebugTriggers$rows$1", "com/reau/app/devtools/Other"):
+            self.assertEqual([f"classe que só o debug tem: {name}"], self.shape(classes=self.GOOD_CLASSES + [name]), name)
+
+    def test_the_real_debug_code_under_the_stubs_names_fails_by_its_texts(self):
+        for text in (b"DECODER_STALL", b"ENCODER_MUTE", b"FOCUS_CYCLE", b"debug trigger fired: x", b"fault injection armed"):
+            problems = apk_audit.release_shape(xmltree(RELEASE_COMPONENTS), self.GOOD_CLASSES, RELEASE_ENTRIES, [b"dex\n035 " + text])
+            self.assertEqual(1, len(problems), text)
+            self.assertIn("texto que só o código de debug de verdade tem", problems[0])
 
     def test_any_compose_tooling_class_fails_the_preview_annotations_included(self):
         for name in ("androidx/compose/ui/tooling/PreviewActivity", "androidx/compose/ui/tooling/ComposeViewAdapter",
@@ -302,8 +416,7 @@ class ReleaseShapeTest(unittest.TestCase):
             self.assertEqual(["componente fora da lista (activity): com.reau.app.debug.CrashTestActivity"], problems)
 
     def test_a_listed_component_that_became_exported_fails(self):
-        for name in ("com.reau.app.service.ProjectionService", "androidx.core.content.FileProvider",
-                     "com.reau.app.service.AaServerAccessibilityService"):
+        for name in ("com.reau.app.service.ProjectionService", "androidx.core.content.FileProvider"):
             components = [(t, n, True if n == name else e, f) for t, n, e, f in RELEASE_COMPONENTS]
             self.assertEqual([f"componente exportado que não devia ser ({dict((c[1], c[0]) for c in components)[name]}): {name}"],
                              self.shape(components=components), name)

@@ -1,7 +1,8 @@
 // Decodifica um .h264 (com o .csv de extrair.py) e, por quadro, escreve em <saida>/lit.bin: a parte acesa do quadro como o REau mede
 // (cópia 64x40 por amostragem bilinear do centro de cada pixel; acesa = luma >= 30), mais as contagens para os limiares LIM (15 a 60, de 5 em 5).
 // Também grava <saida>/fNNNNN.ppm dos quadros pedidos (números a partir de 1, na ordem de saída do decodificador).
-// Uso: dec5 arq.h264 arq.csv saida [n ...]        Liga com a libavcodec do sistema, sem cabeçalhos (as posições valem para a 61).
+// Uso: dec5 arq.h264 arq.csv saida [n ...]        Liga com a libavcodec do sistema, sem cabeçalhos (as posições valem para a 60 e a 61).
+// Compilar: gcc -O2 -o dec5 dec5.c /usr/lib/x86_64-linux-gnu/libavcodec.so.60 /usr/lib/x86_64-linux-gnu/libavutil.so.58 -lm   (sem os pacotes -dev: liga pelo caminho da biblioteca)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,7 +33,11 @@ int main(int argc, char** argv) {
   FILE* f = fopen(argv[1], "rb"); fseek(f, 0, SEEK_END); long L = ftell(f); fseek(f, 0, SEEK_SET);
   uint8_t* buf = malloc(L); if (fread(buf, 1, L, f) != (size_t)L) return 2; fclose(f);
   for (int i = 4; i < argc; i++) want[nwant++] = atoi(argv[i]);
-  FILE* c = fopen(argv[2], "r"); char line[256]; if (!fgets(line, 256, c)) return 2;
+  FILE* c = fopen(argv[2], "r"); char line[256]; if (!c || !fgets(line, 256, c)) return 2;
+  // .csv novo (cabeçalho bytes_in_file): a coluna já conta o código de início; antigo (bytes): soma 4 por quadro. Avisa se a soma não bate com o arquivo.
+  int extra = strstr(line, "bytes_in_file") ? 0 : 4; long soma = 0; int nq = 0;
+  { char l2[256]; while (fgets(l2, 256, c)) { int a, b, z, k; if (sscanf(l2, "%d,%d,%d,%d", &a, &b, &z, &k) == 4) { soma += z; nq++; } } rewind(c); if (!fgets(line, 256, c)) return 2; }
+  if (soma + (long)extra * nq != L) fprintf(stderr, "AVISO: soma do .csv (%ld + %d x %d) diferente do arquivo (%ld bytes): quadros desalinhados\n", soma, extra, nq, L);
   const AVCodec* codec = avcodec_find_decoder(27);
   AVCodecContext* ctx = avcodec_alloc_context3(codec); avcodec_open2(ctx, codec, NULL);
   AVPacket* pkt = av_packet_alloc(); AVFrame* fr = av_frame_alloc();
@@ -41,8 +46,9 @@ int main(int argc, char** argv) {
   while (1) {
     int idx, pts, sz, key;
     if (!eof) { if (!fgets(line, 256, c)) eof = 1; else sscanf(line, "%d,%d,%d,%d", &idx, &pts, &sz, &key); }
-    if (!eof) { long len = 4 + sz; av_new_packet(pkt, (int)len); uint8_t** pd = (uint8_t**)((char*)pkt + 24); memcpy(*pd, buf + off, len); off += len; avcodec_send_packet(ctx, pkt); av_packet_unref(pkt); }
+    if (!eof) { long len = extra + sz; if (off + len > L) { eof = 1; avcodec_send_packet(ctx, NULL); goto drenar; } av_new_packet(pkt, (int)len); uint8_t** pd = (uint8_t**)((char*)pkt + 24); memcpy(*pd, buf + off, len); off += len; avcodec_send_packet(ctx, pkt); av_packet_unref(pkt); }
     else avcodec_send_packet(ctx, NULL);
+    drenar:
     while (avcodec_receive_frame(ctx, fr) == 0) {
       uint8_t** data = (uint8_t**)fr; int* ls = (int*)((char*)fr + 64);
       int w = *(int*)((char*)fr + 104), h = *(int*)((char*)fr + 108);

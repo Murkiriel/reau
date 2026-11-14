@@ -129,4 +129,13 @@ class SystemEventsTest {
         assertEquals("usb disconnected", SystemEvents.usbLine(emptyMap()))
         assertEquals("a function that is off is not said", "usb connected, configured", SystemEvents.usbLine(mapOf("connected" to true, "configured" to true, "mtp" to false)))
     }
+
+    @Test
+    fun `only the USB data link and a charger plugged as USB change the USB`() {
+        assertEquals(true, SystemEvents.changesTheUsb(SystemEvents.USB_STATE) { error("not asked") })
+        assertEquals(true, SystemEvents.changesTheUsb(Intent.ACTION_POWER_CONNECTED) { android.os.BatteryManager.BATTERY_PLUGGED_USB })
+        assertEquals("a wall charger", false, SystemEvents.changesTheUsb(Intent.ACTION_POWER_CONNECTED) { android.os.BatteryManager.BATTERY_PLUGGED_AC })
+        assertEquals("an unknown plug", false, SystemEvents.changesTheUsb(Intent.ACTION_POWER_CONNECTED) { null })
+        assertEquals(false, SystemEvents.changesTheUsb(Intent.ACTION_SCREEN_ON) { error("not asked") })
+    }
 }

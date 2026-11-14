@@ -27,7 +27,7 @@ import kotlin.math.roundToInt
 /**
  * The weather for the dash, from Open-Meteo (free, no key, no account).
  *
- * Only while the rider's switch "Clima no painel" or the info ring is on (both are on by default) and "Usar a localização" has given a place. What leaves the phone:
+ * Only while the rider's switch "Clima no painel" or the info ring is on (the first is on by default, the ring is off) and "Usar a localização" has given a place. What leaves the phone:
  * the request, with the place rounded to a tenth of a degree (about 11 km), to api.open-meteo.com; the answer is kept on
  * the phone ([Snapshot]). Never in the ride log: no place, no temperature of the place, only that an update happened or why not.
  */
@@ -91,10 +91,21 @@ object WeatherKeeper {
     /** Older than this the weather is not told to the dash any more (three hours): better none than an old one. */
     const val USABLE_MS = 3 * 60 * 60_000L
 
+    /**
+     * With the experimental switch ([com.reau.app.settings.REauSettings.experimentWeatherAge]) older than this the weather is not told to the dash any more (half an
+     * hour: two fetches missed, where the info ring already marks the forecast as old, [InfoRing.STALE_MS]). The heartbeat has a temperature and an icon, and no room for an age.
+     */
+    const val FRESH_MS = 30 * 60_000L
+
+    private const val MINUTE_MS = 60_000L
+
     private val lock = Mutex()
     private val snapshotState = MutableStateFlow<Snapshot?>(null)
     private val whyState = MutableStateFlow(Why.NONE)
     @Volatile private var cachedPlace: DayNight.Place? = null
+
+    /** The waits after failed requests; touched only inside [lock]. */
+    private val backoff = WeatherBackoff()
 
     /** The last weather kept, from this run or an earlier one; null with none. */
     val snapshot: StateFlow<Snapshot?> get() = snapshotState
@@ -126,16 +137,25 @@ object WeatherKeeper {
         snapshotState.value = null
         whyState.value = Why.NONE
         cachedPlace = null
+        backoff.reset()
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { clear() }
     }
 
-    /** The weather as the dash's heartbeat takes it, or null: none yet, none usable, or a current reading with no temperature. */
-    fun forDash(nowMs: Long = System.currentTimeMillis()): DashCommands.Weather? = forDash(snapshotState.value, nowMs)
+    /**
+     * The weather as the dash's heartbeat takes it, or null: none yet, none usable, or a current reading with no temperature. [freshOnly] (the experimental
+     * switch) takes it away after [FRESH_MS] instead of [USABLE_MS].
+     */
+    fun forDash(nowMs: Long = System.currentTimeMillis(), freshOnly: Boolean = false): DashCommands.Weather? =
+        forDash(snapshotState.value, nowMs, freshOnly = freshOnly)
 
-    internal fun forDash(snapshot: Snapshot?, nowMs: Long, monoNowMs: Long = MonotonicClock.nowMs()): DashCommands.Weather? {
+    internal fun forDash(
+        snapshot: Snapshot?, nowMs: Long, monoNowMs: Long = MonotonicClock.nowMs(), freshOnly: Boolean = false,
+    ): DashCommands.Weather? {
         snapshot ?: return null
-        if (snapshot.ageMs(nowMs, monoNowMs) > USABLE_MS) return null
+        if (snapshot.ageMs(nowMs, monoNowMs) > (if (freshOnly) FRESH_MS else USABLE_MS)) return null
         val now = snapshot.forecast.current ?: return null
+        // A temperature that is not a number (a broken answer) is no weather: rounding it throws.
+        if (!now.temperatureC.isFinite()) return null
         val icon = WeatherCondition.forCode(now.weatherCode).dashIcon ?: DashCommands.WEATHER_NONE
         return DashCommands.Weather(now.temperatureC.roundToInt(), icon)
     }
@@ -143,7 +163,9 @@ object WeatherKeeper {
     /**
      * Fetches when the weather kept is older than [maxAgeMs] ([REFRESH_MS]; [OPEN_GAP_MS] when REau was just opened) or from
      * another place. With "Clima no painel" and the info ring both off it does nothing at all: never a request, never a trace. With "Usar a
-     * localização" off, or no place learned yet, it says so ([why]) and fetches nothing.
+     * localização" off, or no place learned yet (or the location permission revoked: [SunPlace.saved] gives none), it says so ([why]) and fetches nothing.
+     * After a request that failed it waits longer each time ([WeatherBackoff]: 1, 2, 4, 8, then 15 minutes) when [respectBackoff] is set, as the
+     * projection's minute-by-minute look sets it; opening REau or its Clima screen asks at once, and its failure counts too.
      */
     @Suppress("CyclomaticComplexMethod") // one branch per field or case of the format it reads or writes
     suspend fun refreshIfStale(
@@ -151,18 +173,16 @@ object WeatherKeeper {
         nowMs: Long = System.currentTimeMillis(),
         maxAgeMs: Long = REFRESH_MS,
         monoNowMs: Long = MonotonicClock.nowMs(),
+        respectBackoff: Boolean = false,
     ) = lock.withLock {
         val app = context.applicationContext
         val settings = SettingsStore.open(app).load()
         if (!settings.weatherWanted) return@withLock
         attach(app)
         val place = SunPlace.saved(app, settings.useLocation)
-        if (place == null) {
-            whyState.value = Why.NO_PLACE
-            return@withLock
-        }
-        val kept = snapshotState.value
-        if (kept != null && cachedPlace == place && kept.ageMs(nowMs, monoNowMs) < maxAgeMs) return@withLock
+        val gate = WeatherGate(maxAgeMs, respectBackoff, backoff).verdict(place, snapshotState.value, cachedPlace, nowMs, monoNowMs)
+        if (gate == WeatherGate.Verdict.NO_PLACE) whyState.value = Why.NO_PLACE
+        if (gate != WeatherGate.Verdict.GO || place == null) return@withLock
         val networks = withInternet(app)
         if (networks.isEmpty()) {
             whyState.value = Why.NO_NETWORK
@@ -190,7 +210,8 @@ object WeatherKeeper {
         if (!SettingsStore.open(app).load().weatherWanted) return@withLock
         if (forecast?.current == null) {
             whyState.value = Why.FAILED
-            RideDiagnostics.log("weather", "the weather service gave nothing usable")
+            val wait = backoff.failed(monoNowMs)
+            RideDiagnostics.log("weather", "the weather service gave nothing usable (${backoff.failures} in a row): next try in ${wait / MINUTE_MS} min")
             return@withLock
         }
         // Air quality is a separate host, asked through the network that worked; a failure there leaves only that card out.
@@ -200,6 +221,7 @@ object WeatherKeeper {
         snapshotState.value = Snapshot(forecast, nowMs, air, monoAtMs = MonotonicClock.nowMs())
         cachedPlace = place
         whyState.value = Why.NONE
+        backoff.succeeded()
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
             putString(KEY_JSON, json)
             putString(KEY_AIR, airJson?.takeIf { air != null })
@@ -228,6 +250,7 @@ object WeatherKeeper {
      * The networks that really reach the internet (validated), the system's default first, the VPNs last; never the dash's
      * Wi-Fi, which has none.
      */
+    @Suppress("DEPRECATION") // allNetworks: the callbacks that replace it do not answer a one-off question
     private fun withInternet(context: Context): List<Network> {
         val manager = context.getSystemService(ConnectivityManager::class.java) ?: return emptyList()
         fun usable(network: Network): Boolean = manager.getNetworkCapabilities(network)?.let {

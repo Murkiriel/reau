@@ -85,4 +85,43 @@ class FrameQueueTest {
         assertNull(q.take(0))
         repeat(4) { assertTrue(q.offer(frame(10, it), 0, 10)) }
     }
+
+    @Test
+    fun `with the limit raised to the warming one, sixty frames wait and the next is refused`() {
+        val q = FrameQueue()
+        q.limit = FrameQueue.WARMING_LIMIT
+        repeat(60) { assertTrue("frame $it waits", q.offer(frame(10, it), 0, 10)) }
+        assertFalse("the sixty-first is refused", q.offer(frame(10, 9), 0, 10))
+        assertEquals(60, q.waiting)
+    }
+
+    @Test
+    fun `lowering the limit drops no waiting frame and keeps new ones out until the queue is down to it`() {
+        val q = FrameQueue()
+        q.limit = FrameQueue.WARMING_LIMIT
+        repeat(10) { q.offer(frame(10, it), 0, 10) }
+        q.limit = 4
+        assertEquals("nothing taken away", 10, q.waiting)
+        assertFalse(q.offer(frame(10, 99), 0, 10))
+        repeat(6) { q.recycle(checkNotNull(q.take(0))) } // four left
+        assertFalse("still full at four", q.offer(frame(10, 99), 0, 10))
+        q.recycle(checkNotNull(q.take(0)))
+        assertTrue("room at three", q.offer(frame(10, 99), 0, 10))
+        val order = generateSequence { q.take(0) }.map { it.data[0].toInt() }.toList()
+        assertEquals("in the order they came", listOf(7, 8, 9, 99), order)
+    }
+
+    @Test
+    fun `an offer waiting for a place gets in when the limit is raised`() {
+        val q = FrameQueue()
+        repeat(4) { q.offer(frame(10, it), 0, 10) }
+        Thread {
+            Thread.sleep(100)
+            q.limit = 5
+        }.start()
+        val start = System.nanoTime()
+        assertTrue("it waited and then got in", q.offer(frame(10, 9), 0, 10, waitMs = 5_000))
+        assertTrue("the moment the limit rose, not when its time ran out", (System.nanoTime() - start) / 1_000_000 < 2_000)
+        assertEquals(5, q.waiting)
+    }
 }

@@ -8,7 +8,7 @@ import org.junit.Test
 /**
  * The pure rule by which the Wi-Fi manager says whether it is getting a lost bike
  * network back by itself right now, for the projection's own retry to join instead of replacing it (a top-level
- * function of DashWifiManager.kt, next to the constants it reads).
+ * function of ReconnectPace.kt, next to the constants it reads).
  */
 class DashWifiReconnectUnderWayTest {
 

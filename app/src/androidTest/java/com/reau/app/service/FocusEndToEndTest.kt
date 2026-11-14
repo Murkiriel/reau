@@ -42,6 +42,7 @@ class FocusEndToEndTest {
 
     @After
     fun tearDown() {
+        holding?.close()
         ProjectionService.stop(context)
         await("stopped", 10_000) { ProjectionService.projection.value.phase == Phase.STOPPED }
         await("the service gone", 10_000) { !serviceRunning() }
@@ -71,7 +72,8 @@ class FocusEndToEndTest {
                     aaOptions = AaReceiver.Options(aaPort, AaReceiver.Timing(redialMs = 300, afterDropMs = 200)),
                     dashSocket = { DashSocket(null, ctrlDest = dash.ctrlDest, rtpDest = dash.rtpDest) },
                     linkUp = { _, _ -> loopbackLinkUp },
-                    settings = REauSettings(clearAaFocus = clearFocus),
+                    // The joystick page of the test is the plain one (the sides send the wheel to Android Auto); the owner's page zooms on the map instead.
+                    settings = REauSettings(clearAaFocus = clearFocus, joystick = ""),
                     focusIdleMs = 1_500,
                 ),
             )
@@ -99,14 +101,32 @@ class FocusEndToEndTest {
         return out
     }
 
+    /** The screen shown, as the picture's net would say it. */
+    private var holding: AutoCloseable? = null
+
+    private fun screenIs(expected: com.reau.app.aa.AaScreen) {
+        holding = com.reau.app.aa.ScreenShown.keep(expected)
+    }
+
     @Test
     fun aQuietSpellAfterTheJoystickEndsInOneCancelledTouch() {
         start(clearFocus = true)
+        screenIs(com.reau.app.aa.AaScreen.NAV)
         dash.pressButton(0x13) // the map mode's right: the wheel
         val inputs = inputsFor(5_000)
         assertTrue("the press went: $inputs", inputs.firstOrNull() == "wheel")
         assertEquals("then one tap: $inputs", listOf("touch TOUCH_ACTION_DOWN 400,240", "touch TOUCH_ACTION_CANCEL 400,240"),
             inputs.filter { it.startsWith("touch") })
+    }
+
+    @Test
+    fun inTheAppMenuNoTapEvenAfterTheQuietSpell() {
+        start(clearFocus = true)
+        screenIs(com.reau.app.aa.AaScreen.MENU)
+        dash.pressButton(0x13)
+        val inputs = inputsFor(5_000)
+        assertTrue("the press went: $inputs", "wheel" in inputs)
+        assertTrue("no tap in the app menu: $inputs", inputs.none { it.startsWith("touch") })
     }
 
     @Test

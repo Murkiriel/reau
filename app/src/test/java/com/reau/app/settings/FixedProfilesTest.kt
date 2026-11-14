@@ -160,8 +160,8 @@ class FixedProfilesTest {
     }
 
     @Test
-    fun `the protocol request always goes up to three times, and the debug options that went are gone`() {
-        assertEquals(3, REauSettings().aaConfig.versionRequests)
+    fun `the protocol request is sent once, and the debug options that went are gone`() {
+        assertEquals(1, REauSettings().aaConfig.versionRequests)
         val names = REauSettings::class.java.declaredFields.map { it.name }
         assertEquals(emptyList<String>(), names.filter { it in listOf("aaSingleVersionRequest", "diagLinkOnly", "fasterMenu", "diagNoDscp") })
     }

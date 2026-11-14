@@ -8,7 +8,7 @@ import org.junit.Test
 /** The count of how long the bike network has been lost, which [DashWifiManager] keeps for [ReconnectPace]'s long pause. */
 class AbsenceClockTest {
     private val minute = 60_000L
-    private val SHORT_PAUSE_MS = 4_000L // the 4 s pause of a reconnection (RECONNECT_DELAY, private to the manager)
+    private val SHORT_PAUSE_MS = 4_000L // the 4 s pause of a reconnection (RECONNECT_DELAY, in ReconnectPace.kt)
 
     @Test
     fun `the pause is the short one until the dash has been away for 3 minutes, then the long one`() {

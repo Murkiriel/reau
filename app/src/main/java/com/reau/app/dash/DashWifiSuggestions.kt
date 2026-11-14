@@ -73,7 +73,7 @@ object DashWifiSuggestions {
         val status = runCatching { wifi.addNetworkSuggestions(listOf(suggestion)) }
             .onFailure { Log.w(TAG, "addNetworkSuggestions threw: ${it.message}") }
             .getOrNull()
-        val masked = DashWifiManager.maskSsid(ssid)
+        val masked = DashSsid.maskSsid(ssid)
         Log.i(TAG, "addNetworkSuggestions('$masked') -> status=$status")
         // status 0 == WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS; anything else means Android will not auto-join.
         RideDiagnostics.log(

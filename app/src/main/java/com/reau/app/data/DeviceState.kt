@@ -14,7 +14,7 @@ data class DeviceState(
     val batteryMv: Int?,
     /** PowerManager's thermal status, 0 (none) to 6 (shutdown). */
     val thermal: Int?,
-    /** PowerManager's thermal headroom: 1.0 is where the phone starts to throttle. */
+    /** PowerManager's thermal headroom: 1.0 is where the phone starts to throttle. Not asked in this build ([ThermalHeadroomNote]): always null. */
     val headroom: Float?,
     val appUsedMb: Int,
     val appMaxMb: Int,
@@ -112,4 +112,14 @@ class DeviceStateLog(private val periodMs: Long, private val write: (String) -> 
     private companion object {
         const val MS_PER_S = 1000
     }
+}
+
+/**
+ * The ride log's note, once per projection, that this build does not ask Android for the thermal headroom (the analysis of 08/11/2026 found this
+ * phone's thermal HAL dead and flooding the system log along with that query, every 5 s). Whoever reads the log, and the analysis, then know why
+ * `headroom=` is not in the `device …` lines. It does not start with `device ` (the reader takes those for the looks at the phone).
+ */
+object ThermalHeadroomNote {
+    const val LINE = "thermal headroom not asked in this build (a test): no headroom= in the device lines; the heat warning uses the battery temperature " +
+        "and the fps ceiling uses the thermal status"
 }

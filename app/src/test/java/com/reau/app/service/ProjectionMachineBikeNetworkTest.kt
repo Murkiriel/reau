@@ -107,4 +107,39 @@ class ProjectionMachineBikeNetworkTest {
         assertEquals(listOf(CancelDashRetry), effects)
         assertEquals(DashLink.OFF, state.dash)
     }
+
+    /**
+     * Ride log of 06/11/2026, 17:47:21: the dash had been gone for 3 min 15 s after five tries; the session failed (EPERM) and the machine armed the
+     * wait of 30 s although the Wi-Fi manager had another network up 20 ms after the refusal. The manager now tells the Wi-Fi is up 2 s later.
+     */
+    private fun failedAfterFiveTries(): Long {
+        running()
+        on(DashChanged(DashLink.DROPPED), nowMs = 0L)
+        var at = 0L
+        repeat(4) {
+            at += 20_000L
+            on(DashRetryDue, at)
+            on(DashChanged(DashLink.DROPPED), at)
+        }
+        at = 195_000L
+        on(DashRetryDue, at)
+        val wait = on(DashChanged(DashLink.DROPPED), at).filterIsInstance<RetryDashIn>().single().delayMs
+        assertEquals("the 30 s of the log", 30_000L, wait)
+        return at
+    }
+
+    @Test
+    fun `the failure after the refusal arms 30 s, and the Wi-Fi news two seconds later cuts it and tries the dash`() {
+        val at = failedAfterFiveTries()
+        assertEquals(listOf(CancelDashRetry, StartDash), on(BikeNetworkAvailable, at + 2_000L))
+        assertEquals(DashLink.CONNECTING, state.dash)
+    }
+
+    @Test
+    fun `the news before the failure reached the machine would have been lost, which is why it comes after a moment`() {
+        running()
+        on(DashRetryDue, 195_000L)
+        assertEquals(DashLink.CONNECTING, state.dash)
+        assertTrue("the session had not failed yet: nothing to cut", on(BikeNetworkAvailable, 195_020L).isEmpty())
+    }
 }

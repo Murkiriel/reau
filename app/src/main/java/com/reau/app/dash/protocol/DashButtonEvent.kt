@@ -9,14 +9,10 @@ package com.reau.app.dash.protocol
  * `BTN_MAP_ZOOM_IN`/etc, which WERE the ones actually driving the `when`) with a single mapper
  * both the ack path and the app-action path can share.
  *
- * [NextTrack]/[PrevTrack] are unverified on our hardware — taken from another project,
- * whose dash forwards these same joystick
- * codes (0x09/0x0A) as next/previous-track ONLY while the dash's own now-playing screen is up,
- * the map's zoom codes (0x14/0x13) otherwise. We never put the dash in that state (the "now
- * playing" widget is deliberately not wired, to stay clear of Play Protect),
- * so these two should never actually arrive in our stream; kept mapped (not [Unknown]) so if they
- * ever do, [com.reau.app.data.RideDiagnostics] logs a recognizable label instead of a
- * bare hex code, confirming or refuting the hypothesis from a ride log.
+ * [NextTrack]/[PrevTrack] (0x09/0x0A) do arrive on our hardware: the ride logs of 04, 06, 07 and 08/11/2026 have them 122 times,
+ * always after a [JoystickIn] (0x18) put the dash in its own media mode, where the joystick's sides send these instead of the map's
+ * zoom codes (0x14/0x13); Android Auto answered and redrew at each one. The earlier note here, taken from another project, said they would never arrive because the dash's
+ * "now playing" widget is not wired; the dash's media mode is reached by its own joystick, without that widget.
  */
 sealed class DashButtonEvent {
     abstract val code: Int

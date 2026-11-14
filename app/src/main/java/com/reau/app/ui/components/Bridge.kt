@@ -61,22 +61,26 @@ import com.reau.app.ui.theme.REauMono
 
 /**
  * The bridge card of the main screen: the headline and its line, the two sides joined by the bridge line, and the
- * Ligar/Desligar button. [on] is a projection that is not stopped; [elapsed] its time (mm:ss).
+ * Ligar/Desligar button (unless [withButton] is off). [on] is a projection that is not stopped; [elapsed] its time (mm:ss) and [sub] the line under the
+ * headline, both given as functions that are called only where they are shown: what ticks every second (the time, the seconds
+ * since the dash went) recomposes the one text, not the card or the screen around it.
  */
 @Composable
 fun BridgeCard(
     headline: String,
-    sub: String,
+    sub: () -> String,
     aa: BridgeSide,
     panel: BridgeSide,
     on: Boolean,
-    elapsed: String?,
+    elapsed: () -> String?,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
     /** Drawn over the corner of Android Auto's side (the server's icon). */
     aaOverlay: @Composable BoxScope.() -> Unit = {},
     /** The stop is still being carried out: the button says "Desligando…" and cannot be pressed. */
     stopping: Boolean = false,
+    /** False when the screen keeps the button apart, pinned under what scrolls ([PrimaryPowerButton]): the card is then the headline and the sides. */
+    withButton: Boolean = true,
 ) {
     val shape = MaterialTheme.shapes.extraLarge
     Column(
@@ -90,10 +94,7 @@ fun BridgeCard(
                 // A change of state (connected, lost, stopped) is read out by TalkBack by itself; the line under it counts seconds and is not.
                 textAlign = TextAlign.Center, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }.testTag("status"),
             )
-            Text(
-                sub, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center, modifier = Modifier.testTag("status_sub"),
-            )
+            SubLine(sub)
         }
         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f).fillMaxHeight()) {
@@ -103,8 +104,17 @@ fun BridgeCard(
             BridgeLine(ComponentLogic.bridgeKind(aa.kind, panel.kind), Modifier.width(26.dp).padding(horizontal = 2.dp))
             StatusSide(panel.label, panel.value, panel.kind, R.drawable.ic_ms_two_wheeler, Modifier.weight(1f).fillMaxHeight(), panel.tag)
         }
-        PrimaryPowerButton(on, elapsed, onToggle, stopping = stopping)
+        if (withButton) PrimaryPowerButton(on, elapsed, onToggle, stopping = stopping)
     }
+}
+
+/** The line under the headline: [sub] is called here, so a line that counts seconds recomposes only this text. */
+@Composable
+private fun SubLine(sub: () -> String) {
+    Text(
+        sub(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center, modifier = Modifier.testTag("status_sub"),
+    )
 }
 
 /**
@@ -133,13 +143,13 @@ fun StatusSide(label: String, value: String, kind: StatusKind, @DrawableRes devi
         }
         Text(
             label.uppercase(), color = colors.onSurfaceVariant, textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.labelMedium.copy(fontSize = 10.sp, letterSpacing = 0.16.em),
+            style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.16.em),
         )
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             StatusIcon(kind, 18.dp)
             Text(
                 value, textAlign = TextAlign.Center, style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp, lineHeight = 18.sp),
-                color = if (kind == StatusKind.IDLE || !dark) colors.onSurface else kind.color(),
+                color = kind.textColor(),
             )
         }
     }
@@ -154,26 +164,27 @@ fun BridgeLine(kind: StatusKind, modifier: Modifier = Modifier) {
     val color = if (kind == StatusKind.IDLE) MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f) else kind.color()
     val shift = if (kind == StatusKind.CONNECTING && rememberAnimationsOn()) {
         rememberInfiniteTransition(label = "bridge")
-            .animateFloat(0f, DASH_PERIOD_DP, infiniteRepeatable(tween(SLIDE_MS, easing = LinearEasing), RepeatMode.Restart), label = "bridge").value
+            .animateFloat(0f, DASH_PERIOD_DP, infiniteRepeatable(tween(SLIDE_MS, easing = LinearEasing), RepeatMode.Restart), label = "bridge")
     } else {
-        0f
+        null
     }
     Canvas(modifier.fillMaxWidth().height(3.dp).testTag("bridge_line")) {
         val y = size.height / 2
         val dash = (DASH_PERIOD_DP / 2).dp.toPx()
-        val effect = if (kind == StatusKind.OK) null else PathEffect.dashPathEffect(floatArrayOf(dash, dash), -shift.dp.toPx())
+        // The shift is read here, in the draw step: each frame of the sliding redraws the line and recomposes nothing.
+        val effect = if (kind == StatusKind.OK) null else PathEffect.dashPathEffect(floatArrayOf(dash, dash), -(shift?.value ?: 0f).dp.toPx())
         drawLine(color, Offset(0f, y), Offset(size.width, y), strokeWidth = size.height, cap = StrokeCap.Butt, pathEffect = effect)
     }
 }
 
 /**
  * The main button, 72 dp (one golden button per screen at most): Ligar in Ouro; with the projection on, Desligar with
- * the time since it started ([elapsed], tag `elapsed`), outlined in the dark theme and Carvão in the light one. While the
+ * the time since it started ([elapsed], tag `elapsed`; called only inside the time's own text, so the clock's second recomposes that text and not the button), outlined in the dark theme and Carvão in the light one. While the
  * stop is carried out ([stopping], the projection already off), the Ligar button is disabled and says "Desligando…", so
  * that a tap that could not start anything does not look like a dead button.
  */
 @Composable
-fun PrimaryPowerButton(on: Boolean, elapsed: String?, onClick: () -> Unit, modifier: Modifier = Modifier, stopping: Boolean = false) {
+fun PrimaryPowerButton(on: Boolean, elapsed: () -> String?, onClick: () -> Unit, modifier: Modifier = Modifier, stopping: Boolean = false) {
     val dark = LocalREauDark.current
     val colors = MaterialTheme.colorScheme
     val status = LocalREauStatus.current
@@ -196,13 +207,7 @@ fun PrimaryPowerButton(on: Boolean, elapsed: String?, onClick: () -> Unit, modif
         MsIcon(R.drawable.ic_ms_stop_circle, 30.dp, colors.primary)
         Spacer(Modifier.width(12.dp))
         Text(stringResource(R.string.action_stop), style = MaterialTheme.typography.labelLarge.copy(fontSize = 20.sp, lineHeight = 24.sp))
-        if (elapsed != null) {
-            Spacer(Modifier.width(12.dp))
-            Text(
-                elapsed, color = colors.secondary, modifier = Modifier.testTag("elapsed"),
-                style = REauMono.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
-            )
-        }
+        ElapsedText(elapsed)
     }
     if (dark) {
         OutlinedButton(
@@ -219,3 +224,14 @@ fun PrimaryPowerButton(on: Boolean, elapsed: String?, onClick: () -> Unit, modif
 
 private const val DASH_PERIOD_DP = 10f
 private const val SLIDE_MS = 500
+
+/** The time on Desligar, with its space before it; [elapsed] is read here, so it is this text that the clock's tick recomposes. */
+@Composable
+private fun ElapsedText(elapsed: () -> String?) {
+    val text = elapsed() ?: return
+    Spacer(Modifier.width(12.dp))
+    Text(
+        text, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.testTag("elapsed"),
+        style = REauMono.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
+    )
+}

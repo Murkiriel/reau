@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -26,21 +26,27 @@ import com.reau.app.ui.components.rememberAnimationsOn
 /** The status colour of the network server's icon: green while it is up, quiet otherwise. */
 internal fun serverKind(on: Boolean): StatusKind = if (on) StatusKind.OK else StatusKind.IDLE
 
-/** The server icon's opacity: blinking while the network server is up (unless Android's animations are off), dim when it is not. */
+/**
+ * The server icon's opacity, as a function read in the icon's layer (the draw step): blinking while the network server is up (unless
+ * Android's animations are off), dim when it is not. Read there, the blinking redraws the icon and recomposes nothing.
+ */
 @Composable
-private fun rememberServerAlpha(on: Boolean): Float = when {
-    !on -> DIM
-    !rememberAnimationsOn() -> 1f
+private fun rememberServerAlpha(on: Boolean): () -> Float = when {
+    !on -> DIM_ALPHA
+    !rememberAnimationsOn() -> FULL_ALPHA
     else -> {
         val pulse = infiniteRepeatable<Float>(tween(BLINK_MS), RepeatMode.Reverse)
-        rememberInfiniteTransition(label = "server").animateFloat(1f, BLINK_LOW, pulse, label = "server").value
+        val blink = rememberInfiniteTransition(label = "server").animateFloat(1f, BLINK_LOW, pulse, label = "server")
+        val read: () -> Float = { blink.value }
+        read
     }
 }
 
 /** The server's icon, in its status colour and blinking while the network server is up; shown by the badge and by the server screen. */
 @Composable
 internal fun ServerGlyph(on: Boolean, size: Dp, modifier: Modifier = Modifier, description: String? = null) {
-    MsIcon(R.drawable.ic_ms_dns, size, serverKind(on).color(), modifier.alpha(rememberServerAlpha(on)), description)
+    val alpha = rememberServerAlpha(on)
+    MsIcon(R.drawable.ic_ms_dns, size, serverKind(on).color(), modifier.graphicsLayer { this.alpha = alpha() }, description)
 }
 
 /**
@@ -64,3 +70,5 @@ private const val ICON_DP = 20
 private const val BLINK_MS = 700
 private const val BLINK_LOW = 0.25f
 private const val DIM = 0.55f
+private val DIM_ALPHA: () -> Float = { DIM }
+private val FULL_ALPHA: () -> Float = { 1f }

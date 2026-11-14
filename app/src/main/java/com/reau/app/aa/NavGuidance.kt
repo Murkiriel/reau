@@ -22,7 +22,16 @@ data class NavGuidance(
     val nextManeuverType: Int = -1,
     val nextRoundaboutExit: Int = 0,
 ) {
+    /** Whether this is the guidance that Android Auto's navigation status "inactive" published ([INACTIVE_BY_STATUS]); the end of a session or a cluster stop is not. */
+    val endedByStatus: Boolean get() = this === INACTIVE_BY_STATUS
+
     companion object {
         val INACTIVE = NavGuidance(active = false)
+
+        /**
+         * What the status message "inactive" publishes: equal to [INACTIVE] (so everything that compares or de-duplicates sees the same value) but another
+         * object, which is all [endedByStatus] looks at. Real recalculations reach the dash as this message, for 1 to 7 s, between two active ones.
+         */
+        val INACTIVE_BY_STATUS = NavGuidance(active = false)
     }
 }

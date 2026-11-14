@@ -43,4 +43,16 @@ class ForegroundTypesTest {
         )
         assertEquals("not asked, not tried", listOf(device), ForegroundTypes.ladder(microphone = false, location = false, sdk = 34))
     }
+
+    @Test
+    fun `the names of the types, for the log`() {
+        val device = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+        val location = ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        val mic = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        assertEquals("connectedDevice", ForegroundTypes.names(device))
+        assertEquals("connectedDevice|location", ForegroundTypes.names(device or location))
+        assertEquals("connectedDevice|microphone|location", ForegroundTypes.names(device or mic or location))
+        assertEquals("none", ForegroundTypes.names(0))
+        assertEquals("connectedDevice|other(0x1)", ForegroundTypes.names(device or 1))
+    }
 }

@@ -39,7 +39,7 @@ class AapReadTest {
                 return chunk.size
             }
             val n = minOf(length, wire.size)
-            repeat(n) { buf[it] = wire.poll() }
+            repeat(n) { buf[it] = wire.poll()!! }
             return if (n == length) n else whenEmpty
         }
     }

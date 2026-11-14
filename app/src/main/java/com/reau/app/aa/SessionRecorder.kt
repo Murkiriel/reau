@@ -1,9 +1,11 @@
 package com.reau.app.aa
 
 import java.io.BufferedOutputStream
+import java.io.Closeable
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -46,7 +48,7 @@ class SessionRecording(val startedAtMs: Long, val messages: List<RecordedMessage
  */
 internal class SessionRecorder(
     private val dir: File,
-    private val name: String,
+    val name: String,
     private val maxBytes: Long,
     private val log: (String) -> Unit,
     private val nowMs: () -> Long = System::currentTimeMillis,
@@ -133,6 +135,44 @@ internal class SessionRecorder(
     /** The session ended: closes the file. */
     @Synchronized
     fun close() = finish("closed")
+
+    /** One half of a ring, opened for [MarkFreezer] to copy: [length] bytes of [input] (the file may go on growing, or be renamed, after this). */
+    class Part(val input: FileInputStream, val length: Long)
+
+    /**
+     * What a [snapshot] holds: the two halves of the ring as they were at that moment ([older] is `name.1.aasession`, [newer] `name.aasession`),
+     * for the ring's [rollovers] count of [sessionName]. Closes both streams.
+     */
+    class Snapshot(val sessionName: String, val rollovers: Int, val older: Part?, val newer: Part?) : Closeable {
+        val bytes: Long get() = (older?.length ?: 0L) + (newer?.length ?: 0L)
+
+        override fun close() {
+            runCatching { older?.input?.close() }
+            runCatching { newer?.input?.close() }
+        }
+    }
+
+    /**
+     * The ring as it is now, for a copy that the ring will not overwrite (the rider's mark, [MarkFreezer]). It is quick and never copies
+     * a byte: it flushes what the stream holds and opens the two files, with the length each has now, so the read thread that writes here
+     * (this is its lock) is not held for the copy, which the caller makes elsewhere. A file opened stays readable if the ring renames or
+     * drops it afterwards. Null when nothing was written yet, or the files could not be opened.
+     */
+    @Synchronized
+    fun snapshot(): Snapshot? {
+        var older: Part? = null
+        var newer: Part? = null
+        try {
+            out?.flush()
+            if (previous.isFile) older = Part(FileInputStream(previous), previous.length())
+            if (file.isFile) newer = Part(FileInputStream(file), file.length())
+        } catch (e: IOException) {
+            log("session recording: opening the files for a copy failed: $e")
+            Snapshot(name, rollovers, older, newer).close()
+            return null
+        }
+        return if (older == null && newer == null) null else Snapshot(name, rollovers, older, newer)
+    }
 
     private fun open(): DataOutputStream {
         dir.mkdirs()

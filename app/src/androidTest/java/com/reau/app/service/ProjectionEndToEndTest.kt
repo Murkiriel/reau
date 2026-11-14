@@ -366,17 +366,8 @@ class ProjectionEndToEndTest {
         }
     }
 
-    /**
-     * Google Maps in front, as the accessibility service would read it: the joystick's zoom is only for the navigation
-     * apps, and the emulator has no service to say so. Held past the screen's wait, so the reading is taken.
-     */
-    private fun onTheMap() {
-        val maps = listOf(com.reau.app.aa.AaScreenRule.Display(9, "GhostActivityDisplay:ComponentInfo{x/GmmCarProjectionService}", true))
-        com.reau.app.aa.AaScreens.watch.update(maps, SystemClock.elapsedRealtime())
-        Thread.sleep(com.reau.app.aa.AaScreens.HOLD_MS + 100)
-        com.reau.app.aa.AaScreens.watch.update(maps, SystemClock.elapsedRealtime())
-        assertEquals("the screen", com.reau.app.aa.AaScreen.NAV, com.reau.app.aa.AaScreens.watch.screen.value)
-    }
+    /** Google Maps in front, as the picture would say it: the joystick's zoom is only for the navigation apps, and the emulator's Android Auto has no picture. */
+    private fun onTheMap() = com.reau.app.aa.ScreenShown.put(com.reau.app.aa.AaScreen.NAV)
 
     /** Reads [peer]'s messages until one of [type] comes, for up to [timeoutMs]; null if none did. */
     private fun awaitMessage(peer: FakeAndroidAutoPeer, type: Int, timeoutMs: Long = 10_000): FakeAndroidAutoPeer.Received? {

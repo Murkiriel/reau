@@ -33,6 +33,10 @@ object CallAudioRoute {
 
     fun deviceName(type: Int?): String = if (type == null) "none" else DEVICES[type] ?: "type $type"
 
+    /** The line for the microphone the assistant's voice is heard on: the kind of the headset ([headsetType]), never its name; null, the phone's own. */
+    fun microphoneLine(headsetType: Int?): String =
+        "microphone: listening on ${headsetType?.let { "a Bluetooth headset (${deviceName(it)})" } ?: "the phone's own microphone"}"
+
     fun line(mode: Int, deviceType: Int?, scoOn: Boolean, volume: Int, max: Int): String =
         "audio route: mode=${modeName(mode)} device=${deviceName(deviceType)} sco=$scoOn volume=$volume/$max"
 

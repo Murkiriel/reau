@@ -33,6 +33,13 @@ interface DashLinkUp {
     fun onBikeNetwork(listener: () -> Unit) = Unit
 
     /**
+     * Where the session tells how binding its sockets to the dash's network went (the network, and whether Android refused it with EPERM: a
+     * network that is dead, set aside or held by a VPN); null when nothing listens. A refused network is dropped and asked for again; the next
+     * [start] must not hand it back (ride log of 31/10/2026).
+     */
+    val onBindResult: ((network: Network?, refused: Boolean) -> Unit)? get() = null
+
+    /**
      * [listener] is told, on any thread, whether the network a start is about to ask for is one the rider has not
      * approved yet AND the dash was seen in the last Wi-Fi scan (so Android will really ask them in its dialog), and again
      * with false once it is joined; it replaces the one before. With the dash out of range no dialog comes, so no hint.
@@ -56,6 +63,7 @@ interface DashLinkUp {
  * [Joining.waitMs]; past that it reports a failure, so the machine keeps its own pace, and the next start asks anew if the
  * manager has gone quiet meanwhile (see `DashWifiManager.reconnectUnderWay`).
  */
+@Suppress("TooManyFunctions") // one small function per case (start, the two watches, ask, report); splitting them would only scatter the same thing
 internal class WifiDashLinkUp(
     private val scope: CoroutineScope,
     private val wifiState: StateFlow<WifiState>,
@@ -64,6 +72,9 @@ internal class WifiDashLinkUp(
     private val disconnect: () -> Unit,
     private val pairing: Pairing,
 ) : DashLinkUp {
+    /** Where the session's bind results go: the Wi-Fi manager, which drops a network the sockets could not be bound to. */
+    @Volatile override var onBindResult: ((network: Network?, refused: Boolean) -> Unit)? = null
+
     /**
      * How a reconnection of the Wi-Fi manager's own is joined, set before the first [start]; the default
      * never joins (a test's). [Joining.underWay] says whether the manager is getting a lost bike network back by
@@ -105,8 +116,15 @@ internal class WifiDashLinkUp(
     // to the projection, which tries the dash at once instead of at the end of its 2, 4, 8, 16 s wait (11:47:38 seen, 11:47:45 asked).
     private var sightingWatch: Job? = null
 
+    // The same look at the scan in the pause after a failed request for a network already approved ([watchPause]), and when the pause was last cut.
+    private var pauseWatch: Job? = null
+    @Volatile private var lastPauseCutNs: Long? = null
+
     /** How often the scan is looked at while waiting for a sighting; a test makes it short. */
     @Volatile var sightingPollMs: Long = SIGHTING_POLL_MS
+
+    /** The least between a failed request and the sighting that cuts the pause after it ([DashJoin.PAUSE_CUT_MIN_GAP_MS]); a test makes it short. */
+    @Volatile var pauseCutMinGapMs: Long = DashJoin.PAUSE_CUT_MIN_GAP_MS
 
     // The log line about waiting for a sighting is said once per wait, not at every retry (the first ones are seconds apart).
     @Volatile private var waitingForSighting = false
@@ -148,6 +166,10 @@ internal class WifiDashLinkUp(
         const val SIGHTING_POLL_MS = 2_000L
         const val SIGHTING_WATCH_MAX_MS = 60_000L
 
+        /** The pause after a failed request is the controller's wait (2 s up to the minute of a long absence): the watch outlasts it, and the next start ends it. */
+        const val PAUSE_WATCH_MAX_MS = 120_000L
+        private const val NANOS_PER_MILLI = 1_000_000L
+
         const val DASH_NOT_SEEN_YET = "painel ainda não visto na varredura do Wi-Fi: esperando ele aparecer"
 
         /** Why a start fails when the reconnection it joined has not come back in time. */
@@ -169,6 +191,7 @@ internal class WifiDashLinkUp(
 
     override fun start(onReady: (ssid: String, network: Network?) -> Unit, onFailed: (String) -> Unit) {
         watch?.cancel()
+        pauseWatch?.cancel()
         val now = wifiState.value
         if (now.status == WifiConnStatus.CONNECTED) {
             report(now, onReady, onFailed)
@@ -207,7 +230,32 @@ internal class WifiDashLinkUp(
             onFailed(DASH_NOT_SEEN_YET)
         } else {
             waitingForSighting = false
-            ask(known, onReady, onFailed)
+            ask(known, wanted, known == null, approved = !firstApproval, onReady, onFailed)
+        }
+    }
+
+    /**
+     * The pause between the failure of a request for a network already approved and the next one: the scan is looked at every [sightingPollMs]
+     * and, if the dash was **not** in it when the request failed and shows up, the pause is cut ([DashJoin.cutsPauseOnSighting]; [DashSighting]
+     * is how the controller learns of it). Started when [ask]'s request ends in an error; the next [start] or [stop] ends it.
+     */
+    private fun watchPause(wanted: String, isPrefix: Boolean) {
+        pauseWatch?.cancel()
+        val seenWhenFailed = pairing.seenInScan(wanted, isPrefix)
+        if (seenWhenFailed) return // there and refusing: the controller's own pace (10 s) and the stuck-dash notice are for that
+        pauseWatch = scope.launch {
+            var waited = 0L
+            while (waited < PAUSE_WATCH_MAX_MS) {
+                delay(sightingPollMs)
+                waited += sightingPollMs
+                val sinceCut = lastPauseCutNs?.let { (System.nanoTime() - it) / NANOS_PER_MILLI }
+                if (DashJoin.cutsPauseOnSighting(false, seenWhenFailed, pairing.seenInScan(wanted, isPrefix), waited, sinceCut, pauseCutMinGapMs)) {
+                    lastPauseCutNs = System.nanoTime()
+                    joining.log("the dash showed up in the scan ${waited / 1_000} s after the last request failed: the pause is cut, asking now")
+                    com.reau.app.dash.DashSighting.sighted()
+                    return@launch
+                }
+            }
         }
     }
 
@@ -227,13 +275,25 @@ internal class WifiDashLinkUp(
         }
     }
 
-    /** Asks the Wi-Fi manager for the bike's network, by the exact [known] name or, with none, by the prefix. */
-    private fun ask(known: String?, onReady: (String, Network?) -> Unit, onFailed: (String) -> Unit) {
+    /**
+     * Asks the Wi-Fi manager for the bike's network, by the exact [known] name or, with none, by the prefix. A request for a network
+     * already [approved] that ends in an error starts the watch over the pause after it ([watchPause]).
+     */
+    @Suppress("LongParameterList") // the name asked for, how it is matched, and the two callbacks
+    private fun ask(
+        known: String?,
+        wanted: String,
+        isPrefix: Boolean,
+        approved: Boolean,
+        onReady: (String, Network?) -> Unit,
+        onFailed: (String) -> Unit,
+    ) {
         // Listening before asking: whatever the Wi-Fi says from here on is about this attempt.
         // Started on the spot (not dispatched): it takes the state as it stands, which `drop(1)` leaves out, before connect() changes
         // it. Dispatched, a Wi-Fi manager that reached its final state first had it dropped and the link waited for ever.
         watch = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             val outcome = wifiState.drop(1).first { it.status == WifiConnStatus.CONNECTED || it.status == WifiConnStatus.ERROR }
+            if (approved && outcome.status == WifiConnStatus.ERROR) watchPause(wanted, isPrefix)
             report(outcome, onReady, onFailed)
         }
         if (known != null) connect(known, pairing.password, false) else connect(pairing.ssidPrefix, pairing.password, true)
@@ -252,6 +312,8 @@ internal class WifiDashLinkUp(
         watch = null
         sightingWatch?.cancel()
         sightingWatch = null
+        pauseWatch?.cancel()
+        pauseWatch = null
         waitingForSighting = false
         disconnect()
     }

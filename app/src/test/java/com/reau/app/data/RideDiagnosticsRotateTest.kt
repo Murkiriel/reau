@@ -83,4 +83,14 @@ class RideDiagnosticsRotateTest {
         // Exactly KEEP_FILES logs (at the limit) plus the untouched extra file.
         assertEquals(KEEP_FILES + 1, dir.listFiles()?.size)
     }
+
+    @Test
+    fun `a file named in keep is not deleted even when it is among the oldest`() {
+        val files = (0 until KEEP_FILES + 5).map { rideLog(it) }
+        RideDiagnostics.rotate(dir, keep = setOf(files[0].name))
+
+        assertTrue("the kept one is still there", files[0].exists())
+        assertTrue("the oldest of the others went", files.subList(1, 6).none { it.exists() })
+        assertEquals("the kept one counts toward the limit", KEEP_FILES, dir.listFiles()?.size)
+    }
 }

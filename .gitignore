@@ -6,6 +6,7 @@
 .DS_Store
 /build
 /app/build
+/macrobenchmark/build
 /captures
 .externalNativeBuild
 .cxx
@@ -30,6 +31,11 @@ reau_chave/
 
 # Python bytecode.
 __pycache__/
+
+# The frame decoder compiled on this machine (it links the system's libavcodec, so it only runs here): the source, dec5.c, is
+# versioned and the test builds the program when it needs it. Old builds kept beside it are not versioned either.
+/scripts/dev/teste_cego/dec5
+/scripts/dev/teste_cego/arquivo/
 
 # Output of scripts/emu (test runs, screenshots).
 /emu_out/
@@ -60,3 +66,6 @@ __pycache__/
 /app/slow-unit-*
 /app/oom-*
 /app/timeout-*
+
+# The bench panel's log and video (scripts/painel_falso): they may hold what the phone sent.
+painel_falso_saida/

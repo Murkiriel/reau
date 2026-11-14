@@ -1,6 +1,8 @@
 package com.reau.app.dash.video
 
 import android.media.MediaCodec
+import android.media.MediaFormat
+import com.reau.app.util.CodecErrors
 
 /**
  * A thread that takes every output buffer of a running encoder the moment the codec has it and
@@ -11,10 +13,19 @@ import android.media.MediaCodec
  */
 internal class EncoderOutputPump(
     private val dequeue: (MediaCodec.BufferInfo) -> Int,
+    /** The codec's name, for the line that says it failed ([CodecErrors.describe]); null when not known. */
+    private val codecName: String? = null,
     private val emit: (Int, MediaCodec.BufferInfo) -> Unit,
 ) {
-    constructor(codec: MediaCodec, emit: (Int, MediaCodec.BufferInfo) -> Unit) :
-        this({ info -> codec.dequeueOutputBuffer(info, POLL_US) }, emit)
+    /**
+     * [onFormat] is told the codec's output format when it changes (once, before the first buffer; the ride log keeps it), on the
+     * output thread; a failure of it is no failure of the codec.
+     */
+    constructor(codec: MediaCodec, onFormat: (MediaFormat) -> Unit = {}, emit: (Int, MediaCodec.BufferInfo) -> Unit) : this(
+        { info -> dequeueTelling(codec, info, onFormat) },
+        nameOf(codec),
+        emit,
+    )
 
     private var worker: Thread? = null
     // Set when the thread has left its loop; [afterEnd] is what [stopThen] left to run when it does (once, by whoever comes second).
@@ -51,7 +62,7 @@ internal class EncoderOutputPump(
      * the thread is gone and only a rebuild helps.
      */
     fun check() {
-        codecError?.let { throw IllegalStateException("encoder output failed: ${it.message}", it) }
+        codecError?.let { throw IllegalStateException("encoder output failed: ${CodecErrors.describe(it, codecName)}", it) }
         val e = emitError ?: return
         emitError = null
         throw IllegalStateException("sending an encoded frame failed: ${e.message}", e)
@@ -86,6 +97,14 @@ internal class EncoderOutputPump(
 
     companion object {
         const val THREAD_NAME = "DashEncoderOut"
+
+        // Helpers of the secondary constructor (a constructor's delegating call has no `this` to run runCatching on).
+        private fun nameOf(codec: MediaCodec): String? = runCatching { codec.name }.getOrNull()
+
+        private fun dequeueTelling(codec: MediaCodec, info: MediaCodec.BufferInfo, onFormat: (MediaFormat) -> Unit): Int =
+            codec.dequeueOutputBuffer(info, POLL_US).also {
+                if (it == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) runCatching { onFormat(codec.outputFormat) }
+            }
 
         /**
          * What an encoder's release() does with its pump and its codec: [letGo] runs at once when there is no pump, else through

@@ -37,7 +37,13 @@ class MonotonicClockTest {
         val main = File(root(), "app/src/main/java/com/reau/app")
         // LiveSides also reads the wall clock for two times of day (the exit history's age and the time zone offset); the joystick's
         // bounce, combo, double back and call silence are durations: a clock set back must not make a repeated tap look like a bounce.
-        val files = listOf("dash/DashSession.kt", "dash/DashWifiManager.kt", "web/WebGuard.kt", "service/ProjectionController.kt", "service/LiveSides.kt")
+        val files = listOf(
+            "dash/DashSession.kt", "dash/DashWifiManager.kt",
+            // What was taken out of the manager's file: the guard keeps covering the same code.
+            "dash/WifiState.kt", "dash/ReconnectPace.kt", "dash/ScanEvidence.kt", "dash/DashSsid.kt", "dash/JoinRefusal.kt",
+            "dash/DashScan.kt", "dash/JoinedWifi.kt", "dash/NetNotes.kt",
+            "web/WebGuard.kt", "service/ProjectionController.kt", "service/LiveSides.kt",
+        )
         val timesOfDay = listOf("TelemetryEvent(", "ExitHistory.newest(", "getOffset(")
         val offenders = files.flatMap { name ->
             File(main, name).readLines().withIndex()

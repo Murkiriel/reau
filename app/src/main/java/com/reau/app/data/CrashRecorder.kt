@@ -16,6 +16,7 @@ import java.util.Locale
 class CrashRecorder(private val dir: File, private val now: () -> Long = System::currentTimeMillis) {
 
     /** Writes the crash; null if the folder cannot be written (never throws: this runs inside a dying process). */
+    @Suppress("DEPRECATION") // Thread.id: threadId() is Java 19 and later, not in every Android the app runs on (minSdk 29)
     fun record(thread: Thread, error: Throwable, uptimeMs: Long): File? = try {
         dir.mkdirs()
         val at = now()

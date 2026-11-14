@@ -29,7 +29,7 @@ in developer mode. It receives the video, fits the picture to the dash's screen 
 - Also sends the music that is playing (when the joystick page has a music control), calls and the weather, for the dash's cards.
 - Uses the handlebar joystick to control Android Auto (map, menu, music, calls and Gemini, which comes on and works once you allow the microphone): while ringing, left answers and right or
   center decline; during a call, center hangs up and up and down change the volume.
-- An info ring over the picture, on the right of the dash (on by default, with a switch): rain, wind, storms, UV, air quality, the sun, the day's temperatures and the phone's battery, signal and GPS, one at a time. It needs the location and the internet for the weather.
+- An info ring over the picture, on the right of the dash (off by default, with a switch): rain, wind, storms, UV, air quality, the sun, the day's temperatures and the phone's battery, signal and GPS, one at a time (only the rain, the wind and the thunder at first; you switch on the other cards). It needs the location and the internet for the weather.
 - Speaks Portuguese, English and Spanish: it follows the phone's language, and the settings have a switch.
 - Adjusts the video quality by the distance to the next maneuver and by speed.
 - Starts from a long press on REau's icon ("Turn on") or from a Quick Settings tile, so it can be switched on at home before the helmet.
@@ -42,34 +42,22 @@ in developer mode. It receives the video, fits the picture to the dash's screen 
 ## Requirements
 
 - A phone with Android 10 or newer and **Android Auto** installed.
-- Android Auto's developer mode on, with the "head unit server". In the full edition, REau opens that screen and turns the server on by
-  itself when the app's accessibility is active; in the Lite, REau opens that screen too (once for each time you turn it on, with REau on screen) and you turn it on by hand.
-- On Android 13 or newer, to turn on the accessibility service (full edition) you first have to allow it in Settings › Apps › REau ›
-  ⋮ › "Allow restricted settings": Android asks for this of any app installed from outside the Play Store, the published APK
-  included.
+- Android Auto's developer mode on, with the "head unit server". REau opens that screen (once for each time you turn it on, with REau on screen) and you turn the server on by hand: with Android Auto 17.4 or newer it turns off when the session ends, so you turn it on again every time; with 17.3 or older, REau asks Android Auto to connect and there is nothing to turn on.
 - A compatible dash, with its Wi-Fi in range.
 
-## Two editions
+## Installing and updating
 
-- **Full** (`com.reau.app`): the usual one. It uses an Android accessibility service to turn Android Auto's server on by itself
-  and to know from Android Auto which screen is showing (to switch between the navigation fit and the others' fit).
-- **Lite** (`com.reau.app.lite`, "REau Lite", **the recommended one**): **no** accessibility service. With Android Auto 17.4 or newer you turn the head unit server on by hand (it turns off when the session ends, so you turn it on again every time); with 17.3 or older, REau asks Android Auto to connect and there is nothing to turn on.
-  It tells which screen is showing from the picture itself, to switch the fit.
+Install the published APK, `REau-0.3.0.apk` (application id `com.reau.app`, name "REau"). It is a single app: REau tells which Android Auto screen is showing (map, menu, apps) from the picture itself, with a small neural network that runs on the phone.
 
-**Which one to use: the Lite is the recommended edition.** It asks for no Accessibility service, so it never gets broad control of
-the phone and does not clash with apps that refuse to run while Accessibility is on (banking apps, for example). The price is one
-manual step each time: you turn on Android Auto's head unit server yourself. Choose the full edition only if you want REau to do
-that step by itself and to learn the screen from Android Auto instead of from the picture.
-
-Both install side by side on the same phone, but they must not run at the same time (they compete for the dash).
+Coming from the old REau Lite (package `com.reau.app.lite`)? REau 0.3.0 is a new app for you: redo the settings and the pairing with the dash, then uninstall the old Lite (the new app shows a discreet line, and a warning if Android Auto does not answer, while the old Lite is still installed). Coming from the earlier REau (package `com.reau.app`)? Just update over it: settings and pairing stay. Two installations together compete for Android Auto's single server, which takes one session at a time.
 
 ## Build
 
 With JDK 21 and the Android SDK installed:
 
 ```
-./gradlew assembleRelease               # both APKs: app/build/outputs/apk/completa/release/ and .../lite/release/
-./gradlew assembleCompletaRelease       # the full edition only (com.reau.app); assembleLiteRelease: the Lite only
+./gradlew assembleRelease               # the APK: app/build/outputs/apk/release/
+./gradlew assembleDebug                 # the debug APK: app/build/outputs/apk/debug/app-debug.apk
 ./gradlew :app:testDebugUnitTest        # unit tests
 ```
 
@@ -81,7 +69,7 @@ An APK is published on the project's Releases page; to build your own instead, G
 
 REau has no account, no ads and no data collection. The **"REau and your data"** screen, inside the app, says what
 stays on the phone and what leaves it, and why. What leaves the phone goes to the dash and, only with the optional network
-server on, to other devices on your local network; the only trips to the internet are the weather (Open-Meteo, for the dash or the info ring: on by default, but it asks nothing until you allow the location, and it has a switch) and the “Check for updates” button in Settings, which asks GitHub only when you tap it.
+server on, to other devices on your local network; the only trips to the internet are the weather (Open-Meteo, for the dash, on by default, or the info ring, off by default: it asks nothing until you allow the location, and each has a switch) and the “Check for updates” button in Settings, which asks GitHub only when you tap it. The location permission also lets Android give REau the list of Wi-Fi networks, to see the dash's, while the app is behind another one (Android Auto, Waze) or the screen is off; REau reads no position for that, and Android may show the location icon during the projection.
 
 ## Safety
 

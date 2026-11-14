@@ -31,13 +31,13 @@ class InfoTextsTest {
         Regex("""R\.string\.(info_ring_data_\w+_info)""").findAll(uiSource).forEach { add(it.groupValues[1]) }
     }
 
-    private val resourceFiles = listOf("main", "completa", "lite").flatMap { set ->
+    private val resourceFiles = listOf("main").flatMap { set ->
         listOf("values", "values-pt", "values-es").flatMap { folder ->
             File(src, "$set/res/$folder").listFiles { f -> f.name.startsWith("strings") && f.extension == "xml" }.orEmpty().toList()
         }
     }
 
-    /** Every (file, name, text) of an info text with something in it (the Lite edition blanks the ones about the accessibility). */
+    /** Every (file, name, text) of an info text with something in it. */
     private val texts: List<Triple<File, String, String>> = resourceFiles.flatMap { file ->
         Regex("""<string name="([^"]+)"[^>]*>(.*?)</string>""", RegexOption.DOT_MATCHES_ALL).findAll(file.readText())
             .filter { it.groupValues[1] in infoNames && it.groupValues[2].isNotBlank() }
@@ -51,7 +51,7 @@ class InfoTextsTest {
     @Test
     fun `the screens have their info texts and the test finds them`() {
         // A guard: if the way the texts are found stopped working, the rule below would pass for nothing.
-        assertTrue("${infoNames.size} info texts", infoNames.size >= 45)
+        assertTrue("${infoNames.size} info texts", infoNames.size >= 44)
         val inEnglish = texts.filter { it.first.path.contains("/values/") }.map { it.second }.toSet()
         assertEquals("not in the English texts: ${infoNames - inEnglish}", emptySet<String>(), infoNames - inEnglish)
         for (name in listOf("bike_range_info", "info_ring_info", "weather_info", "use_location", "dash_music", "web_view_long", "profiles_info")) {
@@ -61,13 +61,13 @@ class InfoTextsTest {
 
     @Test
     fun `an info text has at most 3 sentences`() {
-        val over = texts.filter { sentences(it.third) > maxSentences }.map { "${it.first.parentFile.name}/${it.second}: ${sentences(it.third)}" }
+        val over = texts.filter { sentences(it.third) > maxSentences }.map { "${it.first.parentFile?.name}/${it.second}: ${sentences(it.third)}" }
         assertEquals("more than $maxSentences sentences: $over", emptyList<String>(), over)
     }
 
     @Test
     fun `an info text has at most 100 words`() {
-        val over = texts.filter { words(it.third) > maxWords }.map { "${it.first.parentFile.name}/${it.second}: ${words(it.third)}" }
+        val over = texts.filter { words(it.third) > maxWords }.map { "${it.first.parentFile?.name}/${it.second}: ${words(it.third)}" }
         assertEquals("more than $maxWords words: $over", emptyList<String>(), over)
     }
 
@@ -92,7 +92,7 @@ class InfoTextsTest {
         for (name in listOf("joystick_intro", "joystick_info_ring_note", "joystick_locked_up_note", "joystick_call_intro", "joystick_music_off")) {
             assertTrue("$name is not read by the screen", name in joystickNames)
             for (folder in listOf("values", "values-pt", "values-es")) {
-                assertTrue("$folder/$name", joystickTexts.any { it.second == name && it.first.parentFile.name == folder })
+                assertTrue("$folder/$name", joystickTexts.any { it.second == name && it.first.parentFile?.name == folder })
             }
         }
     }
@@ -100,20 +100,20 @@ class InfoTextsTest {
     @Test
     fun `a joystick text shows no hexadecimal code`() {
         // The owner's, 28/10/2026: a code such as 0x15 is too technical for the screen (it stays in the debug log and the debug overlay).
-        val coded = joystickTexts.filter { Regex("""\b0x[0-9A-Fa-f]{2}\b""").containsMatchIn(it.third) }.map { "${it.first.parentFile.name}/${it.second}" }
+        val coded = joystickTexts.filter { Regex("""\b0x[0-9A-Fa-f]{2}\b""").containsMatchIn(it.third) }.map { "${it.first.parentFile?.name}/${it.second}" }
         assertEquals("joystick texts with a hexadecimal code: $coded", emptyList<String>(), coded)
     }
 
     @Test
     fun `a joystick text has at most 3 sentences and at most 100 words`() {
         val over = joystickTexts.filter { sentences(it.third) > maxSentences || words(it.third) > maxWords }
-            .map { "${it.first.parentFile.name}/${it.second}: ${sentences(it.third)} sentences, ${words(it.third)} words" }
+            .map { "${it.first.parentFile?.name}/${it.second}: ${sentences(it.third)} sentences, ${words(it.third)} words" }
         assertEquals("joystick texts over the rule: $over", emptyList<String>(), over)
     }
 
     @Test
     fun `the info ring's note keeps what the rider must know, in the three languages`() {
-        val note = joystickTexts.filter { it.second == "joystick_info_ring_note" }.associate { it.first.parentFile.name to it.third }
+        val note = joystickTexts.filter { it.second == "joystick_info_ring_note" }.associate { it.first.parentFile?.name to it.third }
         assertEquals(setOf("values", "values-pt", "values-es"), note.keys)
         for ((folder, text) in note) assertFalse("$folder: no button code in the text (too technical for the screen)", "0x15" in text)
         assertTrue(note.getValue("values").let { "info ring" in it && "maneuver ring" in it && "another action" in it && "stops sending" in it })

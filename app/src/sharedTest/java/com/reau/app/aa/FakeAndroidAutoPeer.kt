@@ -45,6 +45,10 @@ class FakeAndroidAutoPeer(
     data class Script(
         /** Never answer the version request. */
         val silent: Boolean = false,
+        /** Wait this long, after the version request came, before answering it: a slow server (open-headunit measured
+         *  2.2 to 2.7 s on Android Auto 18.0, the ride logs 6 to 9 s on 17.8 and 17.9). A second request that arrives
+         *  meanwhile is not read, and so breaks the conversation where TLS expects its data. */
+        val versionAnswerDelayMs: Long = 0,
         /** Extra version responses, sent once TLS has begun (after the head unit's first TLS message): what a slow
          *  peer does when the version request was retried. */
         val lateVersionResponses: Int = 0,
@@ -215,6 +219,7 @@ class FakeAndroidAutoPeer(
         check(request.channel == 0 && request.type == TYPE_VERSION_REQUEST) { "expected a version request, got type ${request.type}" }
         versionRequest = request.wire
         events += "version request"
+        if (script.versionAnswerDelayMs > 0) Thread.sleep(script.versionAnswerDelayMs)
         writeVersionResponse()
         events += "version answered"
         if (hangUpHere(Stage.VERSION_ANSWERED)) return

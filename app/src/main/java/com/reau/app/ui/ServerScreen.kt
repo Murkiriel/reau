@@ -40,6 +40,7 @@ import com.reau.app.ui.components.MsIcon
 import com.reau.app.ui.components.REauTopBar
 import com.reau.app.ui.components.StatusKind
 import com.reau.app.ui.components.color
+import com.reau.app.ui.components.textColor
 import com.reau.app.ui.components.hairline
 import com.reau.app.ui.theme.LocalREauStatus
 
@@ -106,7 +107,7 @@ private fun NetworkCard(state: MainUiState) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         stringResource(if (on) R.string.server_network_on else R.string.server_network_off), style = MaterialTheme.typography.titleLarge,
-                        color = if (on) StatusKind.OK.color() else colors.onSurface, modifier = Modifier.testTag("server_state"),
+                        color = if (on) StatusKind.OK.textColor() else colors.onSurface, modifier = Modifier.testTag("server_state"),
                     )
                     val sub = when {
                         on -> R.string.server_network_sub_on

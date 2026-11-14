@@ -18,6 +18,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -36,6 +37,7 @@ class VideoDecoderTest {
     private val lastPicture = AtomicReference<H264TestDecoder.Picture?>()
     private val pictures = AtomicInteger()
     private val decoderErrors = AtomicInteger()
+    private val lost = CopyOnWriteArrayList<String>()
 
     @Before
     fun setUp() {
@@ -47,6 +49,7 @@ class VideoDecoderTest {
             }
         }, Handler(readerThread.looper))
         decoder.onDecoderError = { decoderErrors.incrementAndGet() }
+        decoder.onFrameLost = { lost += it }
         decoder.setSurface(reader.surface)
     }
 
@@ -71,13 +74,14 @@ class VideoDecoderTest {
      * the emulator sometimes stops everything for longer than that: the budget leaves room for the three seconds
      * to start over. Returns what happened, for the failure message.
      */
-    private fun feedFillerUntilTheDecoderGivesUp(): String {
-        val filler = byteArrayOf(0, 0, 0, 1, 0x0C, 0xFF.toByte(), 0xFF.toByte(), 0x80.toByte())
+    private val filler = byteArrayOf(0, 0, 0, 1, 0x0C, 0xFF.toByte(), 0xFF.toByte(), 0x80.toByte())
+
+    private fun feedFillerUntilTheDecoderGivesUp(times: Int = 1): String {
         val start = System.currentTimeMillis()
         var last = start
         var count = 0
         var longestGap = 0L
-        while (decoderErrors.get() == 0 && System.currentTimeMillis() - start < FILLER_BUDGET_MS) {
+        while (decoderErrors.get() < times && System.currentTimeMillis() - start < FILLER_BUDGET_MS) {
             decoder.decode(filler, 0, filler.size)
             val now = System.currentTimeMillis()
             longestGap = maxOf(longestGap, now - last)
@@ -174,6 +178,31 @@ class VideoDecoderTest {
         assertShowsThePattern(checkNotNull(lastPicture.get()))
     }
 
+    /**
+     * The decoder draws into the compositor: while that is stuck inside one frame, bytes in and nothing out are not the decoder's fault
+     * and it is left alone. The wait is a real stall all along: the moment the compositor is free, the decoder is restarted at once.
+     */
+    @Test
+    fun aStallWhileTheCompositorIsStuckInsideAFrameLeavesTheDecoderAloneUntilItIsFree() {
+        val busy = AtomicLong(5_000)
+        decoder.downstreamBusyMs = { busy.get() }
+        feed(TestH264Source.encode(frames = 6), gapMs = 30)
+        await("pictures before the stall") { pictures.get() >= 3 }
+
+        val until = System.currentTimeMillis() + 5_000 // the stall is called after 3 s
+        while (System.currentTimeMillis() < until) {
+            decoder.decode(filler, 0, filler.size)
+            Thread.sleep(100)
+        }
+        assertEquals("the decoder was restarted while the compositor was stuck (log: $log)", 0, decoderErrors.get())
+        assertTrue("got $log", log.none { "Decoder stall detected" in it })
+
+        busy.set(0)
+        val fed = feedFillerUntilTheDecoderGivesUp()
+        assertEquals("the stall that was excused must be restarted once the compositor is free ($fed, log: $log)", 1, decoderErrors.get())
+        assertTrue("got $log", log.any { "Decoder stall detected" in it })
+    }
+
     /** A-15: a unit larger than the decoder's input buffer is dropped whole and a keyframe asked for at once, not cut and fed. */
     @Test
     fun aUnitLargerThanTheInputBufferIsDroppedAndAKeyframeAskedFor() {
@@ -242,6 +271,68 @@ class VideoDecoderTest {
             decoder.stop("test over")
             second.close()
         }
+    }
+
+    /**
+     * A decoder that starts well and stalls, restarts and stalls again is given up: the second stall says the software decoder is
+     * next. (Here the decoder is the software one already, so the test sees the line and the count, not a different codec.)
+     */
+    @Test
+    fun aSecondStallInTheSessionSaysTheSoftwareDecoderIsNext() {
+        feed(TestH264Source.encode(frames = 6), gapMs = 30)
+        await("pictures before the stalls") { pictures.get() >= 3 }
+
+        val fed = feedFillerUntilTheDecoderGivesUp(times = 1)
+        assertEquals("the first stall ($fed, log: $log)", 1, decoderErrors.get())
+        assertTrue("one stall is no reason to give up the hardware decoder, got $log", log.none { "Decoder stalled twice" in it })
+
+        val fedAgain = feedFillerUntilTheDecoderGivesUp(times = 2)
+        assertEquals("the second stall ($fedAgain, log: $log)", 2, decoderErrors.get())
+        assertEquals("said once, got $log", 1, log.count { "Decoder stalled twice: the software decoder for the rest of the session" in it })
+    }
+
+    /** Pictures that came while there was no codec (here, no surface): the codec starts in the middle of a chain, and a keyframe is asked for, once. */
+    @Test
+    fun aCodecThatStartsOnAPictureAfterDroppedOnesAsksForAKeyframeOnce() {
+        decoder.setSurface(null)
+        val units = TestH264Source.encode(frames = 6)
+        feed(units.take(3)) // the configuration, the keyframe and one more, with nowhere to draw
+        assertTrue("nothing was lost yet: the pictures are only dropped", lost.isEmpty())
+
+        decoder.setSurface(reader.surface)
+        feed(listOf(units.first { !it.isConfig && !it.isKey }), gapMs = 30)
+
+        assertEquals("asked once, when the codec started ($log)", 1, lost.size)
+        assertTrue("got $lost", "dropped before the decoder started" in lost.single())
+        feed(units.drop(4), gapMs = 30)
+        assertEquals("not again for the pictures that follow", 1, lost.size)
+    }
+
+    @Test
+    fun aCodecThatStartsOnAKeyframeAfterDroppedPicturesAsksForNothing() {
+        decoder.setSurface(null)
+        val units = TestH264Source.encode(frames = 6)
+        feed(units.take(1)) // the configuration, dropped
+        decoder.setSurface(reader.surface)
+        feed(units.drop(1), gapMs = 30) // the keyframe starts the codec
+
+        await("pictures from the keyframe") { pictures.get() >= 1 }
+        assertTrue("the chain is whole: nothing asked ($lost)", lost.isEmpty())
+    }
+
+    @Test
+    fun aDecoderThatThrowsOnAPictureSaysItWasLost() {
+        feed(TestH264Source.encode(frames = 6), gapMs = 30)
+        await("pictures before the failure") { pictures.get() >= 3 }
+        assertTrue(lost.isEmpty())
+
+        // The codec is taken away under the decoder: its next dequeue throws IllegalStateException.
+        val codec = VideoDecoder::class.java.getDeclaredField("codec").apply { isAccessible = true }.get(decoder) as android.media.MediaCodec
+        codec.release()
+        val next = TestH264Source.encode(frames = 3).first { !it.isConfig && !it.isKey }
+        decoder.decode(next.data, 0, next.data.size)
+
+        assertEquals("said once, for the one picture ($log)", 1, lost.count { "failed on a picture" in it })
     }
 
     private companion object {

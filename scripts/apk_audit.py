@@ -6,20 +6,22 @@ Olha o que o APK traz de fato, não o código-fonte:
   - bibliotecas empacotadas (META-INF/*.version e *.properties da raiz, que cada biblioteca do Google/AndroidX deixa);
   - bibliotecas nativas (lib/<abi>/*.so);
   - hosts de URLs escritas nos .dex (o app e todas as bibliotecas).
+Confere também (28 a 30/10/2026, plano 20) que as bibliotecas nativas de arm64-v8a e x86_64 carregam num aparelho com páginas de 16 KB
+(scripts/elf_16kb_check.py): vale para o APK de debug também, e uma biblioteca que não passa conta como problema como a forma de release.
 Marca em destaque o que lembra rastreio, anúncio, cobrança ou atualizador (Firebase, Crashlytics, ads, billing...).
 
 Confere também a "forma de release" do APK (28/10/2026), que não vem da linha de base e sim do código deste script: o APK
-não é depurável; não traz nenhuma classe de com/reau/app/debug/, nem de androidx/compose/ui/tooling/ (nem as
+não é depurável; não traz nenhuma classe de com/reau/app/debug/, nem de com/reau/app/devtools/ fora dos três stubs vazios (ArrowTrial, DebugTriggers, FaultInjection), nem de androidx/compose/ui/tooling/ (nem as
 anotações @Preview: a biblioteca ui-tooling-preview é compileOnly) nem de androidx/compose/ui/test; só declara os componentes da lista
 (EXPORTED_COMPONENTS e UNEXPORTED_COMPONENTS), e só os de EXPORTED_COMPONENTS são exportados; e traz o perfil de base
 (assets/dexopt/baseline.prof). Num APK de debug essa conferência não vale: use --apk-debug.
 
 Sai com 1 se aparecer permissão, biblioteca, .so ou host que a linha de base não tem (algo novo entrou no APK: olhar
-antes de instalar) ou se a forma de release falhar; 0 se nada mudou; 2 se faltou ferramenta ou arquivo. Uma mudança
+antes de instalar), se a forma de release falhar ou se a assinatura for inválida; 0 se nada mudou; 2 se faltou ferramenta ou arquivo. Uma mudança
 conferida e aceita entra na linha de base com --gravar (que se recusa a gravar um APK de forma errada).
 
 Uso (da raiz do repo):
-    python scripts/apk_audit.py app/build/outputs/apk/completa/debug/app-completa-debug.apk
+    python scripts/apk_audit.py app/build/outputs/apk/debug/app-debug.apk
     python scripts/apk_audit.py <apk> --gravar        # aceita o APK atual como nova linha de base
     python scripts/apk_audit.py <apk de debug> --apk-debug   # sem a conferência da forma de release
 O SDK vem de $ANDROID_HOME ou do sdk.dir do local.properties; o Java do apksigner, de $JAVA_HOME ou do PATH.
@@ -36,6 +38,8 @@ import struct
 import subprocess
 import sys
 import zipfile
+
+import elf_16kb_check
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASELINE = os.path.join(ROOT, "scripts", "apk_audit_baseline.json")
@@ -68,8 +72,14 @@ def find_sdk() -> str | None:
 
 
 def build_tool(sdk: str, name: str) -> str | None:
-    hits = sorted(glob.glob(os.path.join(sdk, "build-tools", "*", name)))
+    # By version number, not by text: as text "9.0.0" comes after "35.0.0".
+    hits = sorted(glob.glob(os.path.join(sdk, "build-tools", "*", name)), key=version_key)
     return hits[-1] if hits else None
+
+
+def version_key(path: str) -> list[int]:
+    """The numbers of the build-tools folder a tool is in ("…/build-tools/35.0.1/aapt2" -> [35, 0, 1])."""
+    return [int(n) for n in re.findall(r"\d+", os.path.basename(os.path.dirname(path)))]
 
 
 def java_env() -> dict:
@@ -85,15 +95,18 @@ def permissions(aapt2: str, apk: str) -> list[str]:
     for line in out.splitlines():
         m = re.search(r"name='([^']+)'", line)
         if line.strip().startswith("uses-permission") and m:
-            # The Lite edition (id com.reau.app.lite) names its own permission after that id: the same one.
+            # The old Lite edition (id com.reau.app.lite, until 0.2.0) named its own permission after that id: the same one. Kept so an old APK can still be audited.
             found.add(m.group(1).replace("com.reau.app.lite.", "com.reau.app."))
     return sorted(found)
 
 
-def certificate(apksigner: str, apk: str) -> str:
+def certificate(apksigner: str, apk: str) -> tuple[str, bool]:
+    """The certificate lines to print and whether the signature is valid (apksigner exits 0): an invalid one is a problem, not a pass."""
     r = subprocess.run([apksigner, "verify", "--print-certs", apk], capture_output=True, text=True, env=java_env())
     lines = [l for l in r.stdout.splitlines() if "certificate DN" in l or "SHA-256 digest" in l]
-    return "\n".join(lines) if r.returncode == 0 else f"FALHOU apksigner: {r.stderr.strip()[:300]}"
+    if r.returncode == 0:
+        return "\n".join(lines), True
+    return f"FALHOU apksigner: {r.stderr.strip()[:300]}", False
 
 
 def scan_zip(apk: str) -> tuple[list[str], list[str], list[str]]:
@@ -115,8 +128,9 @@ def scan_zip(apk: str) -> tuple[list[str], list[str], list[str]]:
 
 
 # --- A forma de release (28/10/2026) -----------------------------------------------------------------------------------
-# Os componentes que o manifesto do APK de produção declara, lidos dos manifestos reais das duas edições. Os mesmos nomes de
-# classe nas duas (só o applicationId muda). Exportados: a tela inicial (ícone), o bloco das Configurações rápidas e o
+# Os componentes que o manifesto do APK de produção declara, lidos do manifesto real do app único (0.3.0; até 0.2.0 eram duas
+# edições com os mesmos nomes de classe). Desde 03/11/2026 o app não tem serviço de acessibilidade: um APK que ainda o declare falha aqui
+# ("componente fora da lista"). Exportados: a tela inicial (ícone), o bloco das Configurações rápidas e o
 # receptor do perfil de base (protegido pela permissão DUMP, só o shell chega nele). Os outros nunca são exportados.
 EXPORTED_COMPONENTS = frozenset({
     "com.reau.app.MainActivity",
@@ -124,7 +138,6 @@ EXPORTED_COMPONENTS = frozenset({
     "androidx.profileinstaller.ProfileInstallReceiver",
 })
 UNEXPORTED_COMPONENTS = frozenset({
-    "com.reau.app.service.AaServerAccessibilityService",  # só na edição Completa
     "com.reau.app.service.ProjectionService",
     "androidx.core.content.FileProvider",
     "androidx.startup.InitializationProvider",
@@ -132,6 +145,15 @@ UNEXPORTED_COMPONENTS = frozenset({
 # Classes (nomes internos, com "/") que um APK de produção não pode ter: as telas de teste do debug e as ferramentas do Compose.
 # Nada de androidx/compose/ui/tooling/, nem as anotações @Preview de .../tooling/preview/ (a ui-tooling-preview só entra no debug).
 FORBIDDEN_CLASS_PREFIXES = ("com/reau/app/debug/", "androidx/compose/ui/tooling/", "androidx/compose/ui/test")
+# O pacote das três classes que o código principal chama nos dois builds (ArrowTrial, DebugTriggers, FaultInjection): no debug são as de
+# verdade; na release, versões vazias (src/release). Esse pacote NÃO está em FORBIDDEN_CLASS_PREFIXES (a primeira corrida do CI, 11/11/2026,
+# falhou porque os stubs estavam em com/reau/app/debug/), mas só passam aqui as três classes pelo nome: qualquer outra do pacote, e qualquer
+# classe aninhada (o FaultInjection$Fault do debug, por exemplo), é código de debug de verdade e reprova.
+DEVTOOLS_PREFIX = "com/reau/app/devtools/"
+DEVTOOLS_STUBS = frozenset({DEVTOOLS_PREFIX + "ArrowTrial", DEVTOOLS_PREFIX + "DebugTriggers", DEVTOOLS_PREFIX + "FaultInjection"})
+# Textos que só as versões de verdade têm (os nomes das falhas injetadas e a linha do registro dos gatilhos): se estiverem no .dex, o
+# pacote devtools da release não é o de stubs vazios, mesmo que os nomes das classes batam.
+DEVTOOLS_REAL_ONLY_STRINGS = (b"DECODER_STALL", b"ENCODER_MUTE", b"FOCUS_CYCLE", b"debug trigger fired", b"fault injection armed")
 BASELINE_PROFILE = "assets/dexopt/baseline.prof"
 COMPONENT_TAGS = ("activity", "activity-alias", "service", "receiver", "provider")
 
@@ -229,9 +251,9 @@ def parse_manifest(text: str) -> dict:
             "components": components}
 
 
-def release_shape(manifest: str, classes: list[str], entries: list[str]) -> list[str]:
-    """O que o APK tem de errado para ser o de produção; vazio quando está certo. Puro: recebe o manifesto, as classes e
-    os nomes do zip."""
+def release_shape(manifest: str, classes: list[str], entries: list[str], dex_texts: list[bytes] | None = None) -> list[str]:
+    """O que o APK tem de errado para ser o de produção; vazio quando está certo. Puro: recebe o manifesto, as classes, os
+    nomes do zip e, se houver, o conteúdo dos .dex (para achar texto que só o código de debug de verdade traz)."""
     problems = []
     try:
         parsed = parse_manifest(manifest)
@@ -249,12 +271,33 @@ def release_shape(manifest: str, classes: list[str], entries: list[str]) -> list
     for name in sorted(set(classes)):
         if name.startswith(FORBIDDEN_CLASS_PREFIXES):
             problems.append(f"classe que só o debug tem: {name}")
+        elif name.startswith(DEVTOOLS_PREFIX) and name not in DEVTOOLS_STUBS:
+            problems.append(f"classe que só o debug tem: {name}")
+    for text in DEVTOOLS_REAL_ONLY_STRINGS:
+        if any(text in dex for dex in dex_texts or []):
+            problems.append(f"texto que só o código de debug de verdade tem: {text.decode()}")
     for entry in entries:
         if entry.startswith(FORBIDDEN_CLASS_PREFIXES):
             problems.append(f"arquivo que só o debug tem: {entry}")
     if BASELINE_PROFILE not in entries:
         problems.append(f"falta o perfil de base ({BASELINE_PROFILE})")
     return problems
+
+
+def native_16kb(apk: str) -> list[str]:
+    """As bibliotecas nativas do APK que não carregam com páginas de 16 KB (vazio quando todas carregam ou não há nenhuma)."""
+    found = []
+    try:
+        libs = elf_16kb_check.libraries(apk)
+    except (zipfile.BadZipFile, OSError) as e:
+        return [f"não deu para ler as bibliotecas nativas: {e}"]
+    for name, data in libs:
+        try:
+            issues = elf_16kb_check.problems(elf_16kb_check.program_headers(data))
+        except (ValueError, struct.error) as e:
+            issues = [f"cabeçalho ilegível ({e})"]
+        found += [f"{name.split('!', 1)[-1]}: {issue}" for issue in issues]
+    return found
 
 
 def main() -> int:
@@ -276,7 +319,10 @@ def main() -> int:
     with open(args.apk, "rb") as fh:
         data = fh.read()
     print(f"APK: {args.apk}\nTamanho: {len(data):,} bytes\nSHA-256: {hashlib.sha256(data).hexdigest()}")
-    print(certificate(apksigner, args.apk))
+    cert_text, signed = certificate(apksigner, args.apk)
+    print(cert_text)
+    if not signed:
+        print("\nASSINATURA INVÁLIDA: o APK não passa no apksigner.")
     libraries, natives, hosts = scan_zip(args.apk)
     current = {"permissions": permissions(aapt2, args.apk), "libraries": libraries, "native_libs": natives,
                "hosts": hosts}
@@ -287,7 +333,8 @@ def main() -> int:
         try:
             with zipfile.ZipFile(args.apk) as z:
                 entries = z.namelist()
-            shape = release_shape(manifest_text(aapt2, args.apk), apk_classes(args.apk), entries)
+                dex_texts = [z.read(n) for n in entries if re.fullmatch(r"classes\d*\.dex", n)]
+            shape = release_shape(manifest_text(aapt2, args.apk), apk_classes(args.apk), entries, dex_texts)
         except (ValueError, subprocess.CalledProcessError, zipfile.BadZipFile) as e:
             shape = [f"não deu para ler o APK: {e}"]
         if shape:
@@ -297,6 +344,14 @@ def main() -> int:
         else:
             print("Forma de release certa: não depurável, sem classe de debug, componentes só os da lista, perfil de base presente.")
 
+    pages = native_16kb(args.apk)
+    if pages:
+        print("\nBIBLIOTECA NATIVA QUE NÃO CARREGA COM PÁGINAS DE 16 KB:")
+        for problem in pages:
+            print(f"  x {problem}")
+    else:
+        print("Bibliotecas nativas (arm64-v8a, x86_64) carregam com páginas de 16 KB.")
+
     flagged = [f"{k}: {v}" for k, vs in current.items() for v in vs if SUSPICIOUS.search(v)]
     if flagged:
         print("\nPara olhar (rastreio, anúncio, cobrança, atualizador):")
@@ -304,8 +359,8 @@ def main() -> int:
             print(f"  ! {f}")
 
     if args.gravar:
-        if shape:
-            print("\nNada gravado: o APK não tem a forma de release.")
+        if shape or pages or not signed:
+            print("\nNada gravado: o APK não tem a forma de release, tem biblioteca nativa que não carrega com 16 KB ou tem assinatura inválida.")
             return 1
         with open(BASELINE, "w", encoding="utf-8", newline="\n") as fh:
             json.dump(current, fh, indent=2, ensure_ascii=False)
@@ -329,7 +384,7 @@ def main() -> int:
                 print(f"  + {k}: {v}")
         return 1
     print("\nNada novo em relação à linha de base.")
-    return 1 if shape else 0
+    return 1 if shape or pages or not signed else 0
 
 
 if __name__ == "__main__":

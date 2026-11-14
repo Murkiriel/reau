@@ -1,27 +1,18 @@
 package com.reau.app.service
 
+import android.content.pm.ServiceInfo
 import com.reau.app.aa.AaLinkState
+import com.reau.app.service.ProjectionService.Companion.ForegroundNeeds
 import com.reau.app.service.ProjectionService.Companion.TapNote
 import com.reau.app.settings.REauSettings
 import com.reau.app.weather.RingData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** What the projection service decides on each command, with no Android service (the service itself is ProjectionEndToEndTest's, on a device). */
 class ProjectionServiceRulesTest {
-    @Test
-    fun `Ligar and Desligar tell the server's starter at once, and no other command does`() {
-        assertEquals(true, ProjectionService.riderSwitch(ProjectionService.ACTION_START))
-        assertEquals(false, ProjectionService.riderSwitch(ProjectionService.ACTION_STOP))
-        assertNull(ProjectionService.riderSwitch(ProjectionService.ACTION_START_CARD))
-        assertNull(ProjectionService.riderSwitch(ProjectionService.ACTION_MARK))
-        assertNull(ProjectionService.riderSwitch(ProjectionService.ACTION_REFIT))
-        assertNull(ProjectionService.riderSwitch(null))
-    }
-
     @Test
     fun `a Desligar on a projection that is on begins a stop, and a Ligar after it, before it ends, waits behind it`() {
         assertEquals(TapNote.STOP_TAPPED, ProjectionService.tapNote(ProjectionService.ACTION_STOP, Phase.RUNNING, 0L))
@@ -43,13 +34,31 @@ class ProjectionServiceRulesTest {
     }
 
     @Test
-    fun `the info ring's GPS asks for the location type only with the ring, the location switch, the GPS card and the permission`() {
+    fun `the location type is asked for with the precise permission, whatever the ring, the GPS card or the location switch`() {
+        val ringOff = REauSettings(infoRing = false) // the default of the single app
+        assertTrue("ring off (the default)", ProjectionService.foregroundNeeds(ringOff, recordAudioGranted = false, fineLocationGranted = true).location)
+        assertTrue(
+            "'Usar a localização' off",
+            ProjectionService.foregroundNeeds(ringOff.copy(useLocation = false), true, fineLocationGranted = true).location,
+        )
         val all = REauSettings(infoRing = true, useLocation = true, infoRingData = RingData.ALL)
-        assertTrue(ProjectionService.foregroundNeeds(all, recordAudioGranted = false, fineLocationGranted = true).location)
+        assertTrue(ProjectionService.foregroundNeeds(all, true, true).location)
+        assertTrue(
+            "GPS card unticked",
+            ProjectionService.foregroundNeeds(all.copy(infoRingData = RingData.ALL and RingData.GPS.bit.inv()), true, true).location,
+        )
         assertFalse("no permission", ProjectionService.foregroundNeeds(all, true, fineLocationGranted = false).location)
-        assertFalse("ring off", ProjectionService.foregroundNeeds(all.copy(infoRing = false), true, true).location)
-        assertFalse("'Usar a localização' off", ProjectionService.foregroundNeeds(all.copy(useLocation = false), true, true).location)
-        assertFalse("GPS card unticked", ProjectionService.foregroundNeeds(all.copy(infoRingData = RingData.ALL and RingData.GPS.bit.inv()), true, true).location)
+        assertFalse("no permission, ring off", ProjectionService.foregroundNeeds(ringOff, true, fineLocationGranted = false).location)
+    }
+
+    @Test
+    fun `the location type does not make the GPS card read, that still needs the ring, the switch, the card and the permission`() {
+        val all = REauSettings(infoRing = true, useLocation = true, infoRingData = RingData.ALL)
+        assertTrue(ProjectionService.foregroundNeeds(all, true, true).gps)
+        assertFalse("ring off", ProjectionService.foregroundNeeds(all.copy(infoRing = false), true, true).gps)
+        assertFalse("'Usar a localização' off", ProjectionService.foregroundNeeds(all.copy(useLocation = false), true, true).gps)
+        assertFalse("GPS card unticked", ProjectionService.foregroundNeeds(all.copy(infoRingData = RingData.ALL and RingData.GPS.bit.inv()), true, true).gps)
+        assertFalse("no permission", ProjectionService.foregroundNeeds(all, true, fineLocationGranted = false).gps)
     }
 
     @Test
@@ -57,8 +66,52 @@ class ProjectionServiceRulesTest {
         val both = REauSettings(gemini = true, infoRing = true, useLocation = true, infoRingData = RingData.ALL)
         val needs = ProjectionService.foregroundNeeds(both, recordAudioGranted = true, fineLocationGranted = true)
         assertTrue(needs.microphone && needs.location)
-        val none = ProjectionService.foregroundNeeds(REauSettings(gemini = false, infoRing = false), true, true)
-        assertFalse(none.microphone || none.location)
+        val noMic = ProjectionService.foregroundNeeds(REauSettings(gemini = false, infoRing = false), true, true)
+        assertFalse(noMic.microphone)
+        assertTrue("the Wi-Fi list still needs the location type", noMic.location)
+        val none = ProjectionService.foregroundNeeds(REauSettings(gemini = false, infoRing = false), false, false)
+        assertFalse(none.microphone || none.location || none.gps)
+    }
+
+    @Test
+    fun `the log says the types Android accepted and why the location one is there`() {
+        val device = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+        val mic = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        val loc = ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        val wifiOnly = ForegroundNeeds(microphone = false, location = true)
+        assertEquals(
+            listOf(
+                "projection: foreground types accepted: connectedDevice|location (0x${Integer.toHexString(device or loc)})",
+                "projection: foreground with the location, for the dash's Wi-Fi list",
+            ),
+            ProjectionService.foregroundNotes(device or loc, wifiOnly, fineLocationGranted = true),
+        )
+        val all = ForegroundNeeds(microphone = true, location = true, gps = true)
+        assertEquals(
+            listOf(
+                "projection: foreground types accepted: connectedDevice|microphone|location (0x${Integer.toHexString(device or mic or loc)})",
+                "projection: foreground with the microphone, for Gemini",
+                "projection: foreground with the location, for the dash's Wi-Fi list and the info ring's GPS",
+            ),
+            ProjectionService.foregroundNotes(device or mic or loc, all, fineLocationGranted = true),
+        )
+    }
+
+    @Test
+    fun `the log warns that the Wi-Fi list will be empty behind another app when the location type is not there`() {
+        val device = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+        val refused = ProjectionService.foregroundNotes(device, ForegroundNeeds(microphone = false, location = true), true)
+        assertEquals("projection: foreground types accepted: connectedDevice (0x${Integer.toHexString(device)})", refused[0])
+        assertEquals(
+            "W: projection: the location type was not accepted: the Wi-Fi list will be empty while REau is behind another app",
+            refused[1],
+        )
+        val noPermission = ProjectionService.foregroundNotes(device, ForegroundNeeds(microphone = false, location = false), false)
+        assertEquals(
+            "W: projection: no precise location permission: the Wi-Fi list will be empty while REau is behind another app",
+            noPermission[1],
+        )
+        assertEquals("nothing else", 2, refused.size)
     }
 
     @Test

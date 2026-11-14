@@ -18,20 +18,20 @@ class DashJoinTest {
 
     @Test
     fun `a network never joined gets two minutes for the rider's tap`() {
-        assertEquals(120_000, DashWifiManager.timeoutForAttempt(everConnected = false, firstApproval = true))
+        assertEquals(120_000, JoinRules.timeoutForAttempt(everConnected = false, firstApproval = true))
         assertEquals(120_000, DashJoin.FIRST_APPROVAL_TIMEOUT_MS)
     }
 
     @Test
     fun `a network already approved keeps the 30 s of a first request and the 10 s of a reconnection`() {
-        assertEquals(30_000, DashWifiManager.timeoutForAttempt(everConnected = false, firstApproval = false))
-        assertEquals(30_000, DashWifiManager.timeoutForAttempt(everConnected = false))
-        assertEquals(10_000, DashWifiManager.timeoutForAttempt(everConnected = true, firstApproval = false))
+        assertEquals(30_000, JoinRules.timeoutForAttempt(everConnected = false, firstApproval = false))
+        assertEquals(30_000, JoinRules.timeoutForAttempt(everConnected = false))
+        assertEquals(10_000, JoinRules.timeoutForAttempt(everConnected = true, firstApproval = false))
     }
 
     @Test
     fun `a reconnection is never stretched, even if the memory says the network was not approved`() {
-        assertEquals(10_000, DashWifiManager.timeoutForAttempt(everConnected = true, firstApproval = true))
+        assertEquals(10_000, JoinRules.timeoutForAttempt(everConnected = true, firstApproval = true))
     }
 
     @Test

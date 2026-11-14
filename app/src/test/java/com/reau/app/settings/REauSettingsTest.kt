@@ -23,7 +23,7 @@ class REauSettingsTest {
     private val plan = REauSettings(
         density = 160, fit = Fit.WHOLE_VISIBLE, cropPercent = 60, cropX = null, cropY = null, moveX = 0, fpsCeiling = 16, menuFit = null,
         maneuverData = false, autoJoinWifi = false, answerCalls = false, dashMusic = false, dashCaller = false,
-        gemini = false, joystick = "", aaServerAuto = false, dashMask = false,
+        gemini = false, joystick = "", dashMask = false,
     )
 
     @Test
@@ -212,27 +212,27 @@ class REauSettingsTest {
         assertEquals(0b1010, loaded(0b1010))
         assertEquals(com.reau.app.weather.RingData.ALL, loaded(com.reau.app.weather.RingData.ALL))
         assertEquals("a choice of the old kinds, as the rider left it", 0b1111_1110, loaded(0b1111_1110))
-        assertEquals(com.reau.app.weather.RingData.ALL, REauSettings().infoRingData)
+        assertEquals("a new setting starts with the rain, the wind and the thunder only (12/11/2026)", com.reau.app.weather.RingData.DEFAULT, REauSettings().infoRingData)
     }
 
-    /** The info ring is on by default (28/10/2026, the owner's phone): it has nothing to show until the location is known; its choice is kept. */
+    /** The info ring is off by default (30/10/2026; on from 28/10/2026): on Waze it covers the speed limit; the rider switches it on, and the choice is kept. */
     @Test
-    fun `the info ring is on by default and its choice is saved`() {
-        assertEquals(true, REauSettings().infoRing)
+    fun `the info ring is off by default and its choice is saved`() {
+        assertEquals(false, REauSettings().infoRing)
         val prefs = KeystoreBackedPrefsTest.FakePrefs()
-        SettingsStore(prefs).save(REauSettings(infoRing = false))
-        assertEquals(false, SettingsStore(prefs).load().infoRing)
-        assertEquals(true, SettingsStore(KeystoreBackedPrefsTest.FakePrefs()).load().infoRing)
+        SettingsStore(prefs).save(REauSettings(infoRing = true))
+        assertEquals(true, SettingsStore(prefs).load().infoRing)
+        assertEquals(false, SettingsStore(KeystoreBackedPrefsTest.FakePrefs()).load().infoRing)
     }
 
-    /** The info ring says every kind of data at first, as a carousel of 6 seconds; the rider's choices are kept and held in range. */
+    /** The info ring says the rain, the wind and the thunder at first (12/11/2026; every kind before), as a carousel of 7 seconds; the rider's choices are kept and held in range. */
     @Test
-    fun `the info ring's choices are all, a carousel of seven seconds, and are saved`() {
+    fun `the info ring's choices are rain, wind and thunder, a carousel of seven seconds, and are saved`() {
         val d = REauSettings()
-        assertEquals(com.reau.app.weather.RingData.ALL, d.infoRingData)
+        assertEquals(com.reau.app.weather.RingData.DEFAULT, d.infoRingData)
         assertEquals(true, d.infoRingCarousel)
         assertEquals(7, d.infoRingSeconds)
-        assertEquals(com.reau.app.weather.RingOptions(), d.infoRingOptions)
+        assertEquals(com.reau.app.weather.RingOptions(data = com.reau.app.weather.RingData.DEFAULT), d.infoRingOptions)
         val prefs = KeystoreBackedPrefsTest.FakePrefs()
         SettingsStore(prefs).save(REauSettings(infoRingData = 0b1010, infoRingCarousel = false, infoRingSeconds = 12, infoRingInPlace = true))
         val back = SettingsStore(prefs).load()
@@ -744,7 +744,8 @@ class REauSettingsTest {
         val s = REauSettings()
         assertEquals(REauSettings.DEFAULT_NAV_FIT, s.navFit)
         assertEquals(s.navMapping, s.mappingFor(com.reau.app.aa.AaScreen.NAV))
-        assertEquals("the owner's phone's crop", FrameFit.cropAt(s.content, 74, 0, 62), s.navMapping)
+        assertEquals("the owner's phone's crop", FrameFit.cropAt(s.content, 74, 90, 62), s.navMapping)
+        assertEquals("the window the owner's phone logged on 30/10/2026", RectPx(90, 62, 711, 405), s.navMapping.source)
         assertTrue("not the apps' fit", s.mapping != s.navMapping)
     }
 
@@ -845,5 +846,16 @@ class REauSettingsTest {
         assertTrue(plan.refitNeeded(plan.copy(cover = covered)))
         assertEquals(listOf("zoom: 100 -> 120"), plan.changesTo(plan.copy(zoom = 120)))
         assertEquals(listOf("cover.top: 0 -> 10"), plan.changesTo(plan.copy(cover = FrameFit.Cover(top = 10))))
+    }
+
+    @Test
+    fun `a change of the picture is told as none, default or picked, never with the address of the rider's file`() {
+        val picked = "content://com.android.externalstorage.documents/document/primary%3ADCIM%2FFace.jpg"
+        val none = REauSettings(cardImage = null)
+        assertEquals(listOf("cardImage: none -> picked"), none.changesTo(none.copy(cardImage = picked)))
+        assertEquals(listOf("cardImage: picked -> default"), none.copy(cardImage = picked).changesTo(REauSettings()))
+        assertEquals("another picture is still a change", listOf("cardImage: picked -> picked"), none.copy(cardImage = picked).changesTo(none.copy(cardImage = "content://x/y")))
+        assertEquals(false, none.changesTo(none.copy(cardImage = picked)).any { "Face" in it || "DCIM" in it || "content:" in it })
+        assertEquals("the other settings are told as before", listOf("density: 160 -> 200"), REauSettings(density = 160).changesTo(REauSettings(density = 200)))
     }
 }

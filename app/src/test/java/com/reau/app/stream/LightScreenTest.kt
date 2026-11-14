@@ -58,8 +58,8 @@ class LightScreenTest {
     private var nowMs = 0L
     private var acks = 0L
 
-    private fun governor(lightFps: Int, ceiling: Int = 4) =
-        StreamGovernor(AutoFpsController.Plan(4, ceiling), lightScreenFps = lightFps).also { it.start(nowMs) }
+    private fun governor(lightFps: Int) =
+        StreamGovernor(4, lightScreenFps = lightFps).also { it.start(nowMs) }
 
     private fun StreamGovernor.poll(light: Boolean, hot: Boolean = false, confirmed: Boolean = true, navSample: StreamGovernor.NavSample? = null, frames: Int = 1): List<Action> {
         nowMs += 250
@@ -155,13 +155,14 @@ class LightScreenTest {
     }
 
     @Test
-    fun `a window measured at the boosted pace never moves the automatic rate`() {
-        // Healthy windows at 8 fps would, if judged, take the automatic rate (ceiling 16) up from 4: they are held.
-        val g = governor(lightFps = 8, ceiling = 16)
+    fun `a window at the boosted pace is read against the boosted pace, and the stream's full pace stays 4`() {
+        val g = governor(lightFps = 8)
         g.poll(light = true)
-        // Two frames in each 250 ms poll: 8 fps sent and drawn, all of them acknowledged: every window is a healthy one at the boosted rate.
-        val lines = (1..120).flatMap { g.poll(light = true, frames = 2) }.filterIsInstance<Action.Log>().map { it.line }.filter { it.startsWith("video fps") }
-        assertTrue("windows at the boosted pace: $lines", lines.isNotEmpty() && lines.all { "target=8" in it })
-        assertTrue("the automatic rate stays at 4: $lines", lines.all { "auto=4fps" in it })
+        // Two frames in each 250 ms poll: 8 fps sent and drawn: every window is a whole one at the boosted pace.
+        val all = (1..120).flatMap { g.poll(light = true, frames = 2) }
+        val lines = all.filterIsInstance<Action.Log>().map { it.line }.filter { it.startsWith("video fps") }
+        assertTrue("windows at the boosted pace: $lines", lines.isNotEmpty() && lines.all { "target=8" in it && "full=true" in it })
+        assertTrue("the full pace stays 4, and the window is judged at 8: $lines", lines.all { "auto=4fps [ok]" in it })
+        assertTrue("and the encoder stays as built", all.none { it is Action.Rebuild } && g.encoderFps == 4 && g.profileFps == 4)
     }
 }

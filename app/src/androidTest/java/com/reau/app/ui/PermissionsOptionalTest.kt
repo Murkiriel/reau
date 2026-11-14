@@ -30,7 +30,6 @@ class PermissionsOptionalTest {
             "android.permission.POST_NOTIFICATIONS",
         ),
         granted = { false },
-        accessibilityOn = true,
         batteryExempt = true,
     )
 
@@ -54,7 +53,7 @@ class PermissionsOptionalTest {
     @Test
     fun withNothingMissingTheBulkButtonIsGone() {
         val onlyOptional = AppPermissions.rows(
-            requested = listOf("android.permission.RECORD_AUDIO"), granted = { false }, accessibilityOn = true, batteryExempt = true,
+            requested = listOf("android.permission.RECORD_AUDIO"), granted = { false }, batteryExempt = true,
         )
         compose.setContent {
             PermissionsScreen(

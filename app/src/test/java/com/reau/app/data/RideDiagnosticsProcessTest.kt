@@ -89,6 +89,8 @@ class RideDiagnosticsProcessTest {
         val keep = File(dir, "crash-reported").apply { writeText("x") }
         RideDiagnostics.spaceCapBytes = 2 * 1024L
         RideDiagnostics.startProcess("app")
+        // The tidying runs on its own thread; its notes come when it is done.
+        RideDiagnostics.testOnlyAwaitTidy()
         RideDiagnostics.logAndWait("ui", "after")
         assertFalse("the old logcat went", old.exists())
         assertTrue("the mark stays", keep.exists())
@@ -129,6 +131,7 @@ class RideDiagnosticsProcessTest {
         RideDiagnostics.maxFileBytes = 300
         RideDiagnostics.spaceCapBytes = 2 * 1024L
         RideDiagnostics.startProcess("app")
+        RideDiagnostics.testOnlyAwaitTidy() // the opening's own tidying is done before the old file is made
         RideDiagnostics.logAndWait("ui", "first")
         val old = File(dir, "logcat-20261001-080000.txt").apply { writeBytes(ByteArray(4 * 1024)); setLastModified(1_000) }
         val release = RideDiagnostics.testOnlyHoldTidy()
@@ -140,6 +143,36 @@ class RideDiagnosticsProcessTest {
         RideDiagnostics.logAndWait("ui", "last")
         assertFalse("the old logcat went once the tidying ran", old.exists())
         assertTrue("and the file says so", files().any { f -> f.readText().contains("diag space:") })
+    }
+
+    /**
+     * The Application's onCreate opens the process file; the rotation and the trim of the folder used to run there, sorting by
+     * lastModified() every file of diag/. Now they run on the tidy thread, after the new file exists, and never take it.
+     */
+    @Test
+    fun `opening the process file leaves the tidying to its own thread, and the new file is never the one it removes`() {
+        RideDiagnostics.spaceCapBytes = 5 * 1024L
+        val old = File(dir, "logcat-20261001-080000.txt").apply { writeBytes(ByteArray(4 * 1024)); setLastModified(1_000) }
+        // More ride logs than are kept, all older than the file about to open, plus one far in the future (a clock that went back).
+        val oldRides = (0 until RideDiagnostics.KEEP_FILES + 3).map { i ->
+            File(dir, "ride-2026100$i.log").apply { writeBytes(ByteArray(64)); setLastModified(2_000L + i) }
+        }
+        val release = RideDiagnostics.testOnlyHoldTidy()
+        RideDiagnostics.startProcess("app")
+        val current = RideDiagnostics.currentFileName()!!
+        assertTrue("the new file exists the moment startProcess returns", File(dir, current).exists())
+        assertTrue("and the caller did not wait to tidy the folder", old.exists() && oldRides.all { it.exists() })
+        // Even a new file that looks the oldest to lastModified() (a clock set back) is kept: the tidying is told which one is open.
+        RideDiagnostics.logAndWait("ui", "first") // the header is written (it moves the file's time) before the time is set back
+        File(dir, current).setLastModified(0)
+        release()
+        RideDiagnostics.testOnlyAwaitTidy()
+        RideDiagnostics.logAndWait("ui", "last")
+        assertTrue("the file just opened is still there", File(dir, current).exists())
+        assertFalse("the old logcat went once the tidying ran", old.exists())
+        assertEquals("the rides beyond the kept ones went", RideDiagnostics.KEEP_FILES, files().size)
+        assertTrue(File(dir, current).readText().contains("[ui] last"))
+        assertTrue("the new file says so", File(dir, current).readText().contains("diag space:"))
     }
 
     @Test

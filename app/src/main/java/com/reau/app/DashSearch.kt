@@ -18,11 +18,40 @@ import com.reau.app.dash.DashFinder
  * the list only to an app in use).
  */
 internal class DashSearch(
-    private val activity: ComponentActivity,
+    private val scans: Scans,
     private val step: () -> DashFinder.Step,
     private val ask: () -> Unit,
     private val learn: () -> Unit,
 ) : DefaultLifecycleObserver {
+    /** What the search needs of Android's Wi-Fi: the broadcast of a new list of networks, and a scan asked for. A test puts its own here. */
+    interface Scans {
+        fun listen(receiver: BroadcastReceiver)
+        fun unlisten(receiver: BroadcastReceiver)
+        fun scan()
+    }
+
+    /** [Scans] of an activity: the receiver lives as long as the activity's screen does. */
+    private class OfActivity(private val activity: ComponentActivity) : Scans {
+        override fun listen(receiver: BroadcastReceiver) {
+            ContextCompat.registerReceiver(
+                activity, receiver, IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION), ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+        }
+
+        override fun unlisten(receiver: BroadcastReceiver) {
+            runCatching { activity.unregisterReceiver(receiver) }
+        }
+
+        override fun scan() {
+            // A fresh list, as Android allows (a few a minute); the system's own scans arrive here too.
+            @Suppress("DEPRECATION") // the only way to ask for a scan; throttled by Android, which is fine here
+            runCatching { activity.getSystemService(WifiManager::class.java)?.startScan() }
+        }
+    }
+
+    constructor(activity: ComponentActivity, step: () -> DashFinder.Step, ask: () -> Unit, learn: () -> Unit) :
+        this(OfActivity(activity), step, ask, learn)
+
     private var listening = false
 
     private val results = object : BroadcastReceiver() {
@@ -43,19 +72,15 @@ internal class DashSearch(
 
     private fun search() {
         if (!listening) {
-            ContextCompat.registerReceiver(
-                activity, results, IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION), ContextCompat.RECEIVER_NOT_EXPORTED,
-            )
+            scans.listen(results)
             listening = true
         }
-        // A fresh list, as Android allows (a few a minute); the system's own scans arrive here too.
-        @Suppress("DEPRECATION") // the only way to ask for a scan; throttled by Android, which is fine here
-        runCatching { activity.getSystemService(WifiManager::class.java)?.startScan() }
+        scans.scan()
     }
 
     private fun stop() {
         if (!listening) return
-        runCatching { activity.unregisterReceiver(results) }
+        scans.unlisten(results)
         listening = false
     }
 }

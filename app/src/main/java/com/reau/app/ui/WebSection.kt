@@ -1,5 +1,6 @@
 package com.reau.app.ui
 
+import kotlinx.coroutines.delay
 import android.content.ClipData
 import android.content.ClipboardManager
 import androidx.compose.foundation.background
@@ -14,7 +15,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,9 +27,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.reau.app.R
 import com.reau.app.settings.REauSettings
 import com.reau.app.settings.WebAudioMode
@@ -36,7 +39,10 @@ import com.reau.app.ui.components.GhostButton
 import com.reau.app.ui.components.GroupLabel
 import com.reau.app.ui.components.Info
 import com.reau.app.ui.components.LockedRow
+import com.reau.app.ui.components.MsIcon
 import com.reau.app.ui.components.SegmentedRow
+import com.reau.app.ui.components.StatusKind
+import com.reau.app.ui.components.color
 import com.reau.app.ui.components.hairline
 import com.reau.app.ui.theme.REauMono
 import com.reau.app.web.WebAccess
@@ -69,6 +75,8 @@ internal fun WebSection(s: REauSettings, projectionOn: Boolean = true, change: (
                     Info(stringResource(R.string.web_view_title), stringResource(R.string.web_view_long)),
                 )
             }
+            // Under the switch, on or off and while it waits for Ligar: it is to be read before the server is switched on.
+            WebNetworkNotice()
             if (s.webView) {
                 HorizontalDivider(thickness = 1.dp, color = hairline(0.14f, 0.6f))
                 SettingSwitch(R.string.web_touch_title, R.string.web_touch_sub, R.string.web_touch_long, s.webTouch, "web_touch") {
@@ -78,6 +86,22 @@ internal fun WebSection(s: REauSettings, projectionOn: Boolean = true, change: (
                 WebAccessBlock()
             }
         }
+    }
+}
+
+/**
+ * The rule for the network server, said next to the switch that starts it: the server is plain HTTP, so the PIN, the picture and the touches
+ * go in the clear, and anyone on the network can read the PIN. Only on a network of the rider's own (home, the phone's own hotspot), never
+ * on a public or someone else's Wi-Fi. Text only: what the server does does not change.
+ */
+@Composable
+private fun WebNetworkNotice() {
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 14.dp).semantics(mergeDescendants = true) {}.testTag("web_network_notice"),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        MsIcon(R.drawable.ic_ms_error, 18.dp, StatusKind.CONNECTING.color())
+        Text(stringResource(R.string.web_network_notice), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -116,7 +140,7 @@ private fun WebAudioChoice(s: REauSettings, change: (REauSettings) -> Unit) {
 /** The warning, then the PIN and the address (or why there is none yet), the count and the way to drop the browsers. */
 @Composable
 private fun WebAccessBlock() {
-    val access by WebAccess.state.collectAsState()
+    val access by WebAccess.state.collectAsStateWithLifecycle()
     val addresses = LocalWebAddresses.current
     val networkTick = rememberNetworkTick()
     Column(Modifier.fillMaxWidth().padding(CARD_PADDING).testTag("web_access"), verticalArrangement = Arrangement.spacedBy(CARD_GAP)) {
@@ -158,11 +182,21 @@ private fun PinRow(pin: String) {
     }
 }
 
+/** How long the copy button says "Copied". */
+private const val COPIED_SHOWN_MS = 2_000L
+
 /** One address in mono, selectable, with the button that copies it (the button says so for a moment). */
 @Composable
 private fun AddressRow(url: String, tag: String) {
     val context = LocalContext.current
     var copied by remember(url) { mutableStateOf(false) }
+    // "Copied" for a moment, as the words above say: it stayed for good.
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(COPIED_SHOWN_MS)
+            copied = false
+        }
+    }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         SelectionContainer(Modifier.weight(1f)) {
             Text(url, style = REauMono.copy(fontSize = 12.sp), color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.testTag(tag))

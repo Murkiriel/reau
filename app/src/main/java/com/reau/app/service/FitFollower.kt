@@ -6,7 +6,7 @@ import com.reau.app.video.FrameFit
 
 /**
  * The navigation apps (Waze, Google Maps) can have a crop of their own, and everything else, the app menu too, shares the apps' ([REauSettings.mappingFor]): the projection follows the screen Android Auto
- * shows (com.reau.app.aa.AaScreens, from the accessibility service) with the fit made for it
+ * shows (com.reau.app.aa.AaScreens, from the picture) with the fit made for it
  * ([REauSettings.mappingFor]); each switch goes to the ride log. No settings (a test's sides), nothing.
  */
 class FitFollower(

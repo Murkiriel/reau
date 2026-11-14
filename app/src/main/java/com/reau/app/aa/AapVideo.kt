@@ -120,9 +120,15 @@ internal class AapVideo(
      * The decoder's queue was full and the frame went nowhere. Counted lost, and a keyframe asked for (at
      * most one a second, as for a broken frame): the frames after it predict from the one that went missing.
      */
-    fun decoderBehind() {
+    fun decoderBehind() = frameLost("the decoder is behind, a frame dropped (its queue of ${FrameQueue.CAPACITY} was full)")
+
+    /**
+     * A frame was lost on its way to the picture ([why]): counted, and a keyframe asked for (at most one a second). Every loss
+     * does this, whoever saw it; a lost reference frame spoils the picture until the next keyframe.
+     */
+    fun frameLost(why: String) {
         stats?.lost()
-        requestKeyframe("the decoder is behind, a frame dropped (its queue of ${FrameQueue.CAPACITY} was full)")
+        requestKeyframe(why)
     }
 
     private fun requestKeyframe(why: String) {

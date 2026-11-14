@@ -19,11 +19,13 @@ object QuickStart {
 
     /**
      * Whether an intent with [action] switches the projection on: only a quick start, only a projection that is stopped and not still
-     * being stopped, and only once the terms of use are accepted (nothing of the app is reachable before that, and a shortcut must not be
-     * the way round them).
+     * being stopped, only once the terms of use are accepted (nothing of the app is reachable before that, and a shortcut must not be
+     * the way round them) and only with the phone unlocked ([unlocked], from `KeyguardManager`: a shortcut that reaches the app over a
+     * lock screen, or another app's intent with this action, must not start the projection, its microphone and its location). The icon's
+     * shortcut and the tile still open the app when the phone is locked; they only do not switch it on.
      */
-    fun switchesOn(action: String?, projection: Projection, termsAccepted: Boolean): Boolean =
-        action == ACTION && projection.phase == Phase.STOPPED && !projection.stopping && termsAccepted
+    fun switchesOn(action: String?, projection: Projection, termsAccepted: Boolean, unlocked: Boolean): Boolean =
+        action == ACTION && projection.phase == Phase.STOPPED && !projection.stopping && termsAccepted && unlocked
 
     fun intent(context: Context): Intent =
         Intent(context, MainActivity::class.java).setAction(ACTION).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)

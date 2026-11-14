@@ -34,7 +34,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.reau.app.R
-import com.reau.app.service.AaServerStarter
 import com.reau.app.settings.AppLanguage
 import com.reau.app.settings.AppLanguages
 import com.reau.app.settings.MapTheme
@@ -66,7 +65,6 @@ fun SettingsScreen(
     settings: REauSettings,
     actions: SettingsActions,
     onOpenJoystick: () -> Unit = {},
-    accessibility: AaServerStarter.Accessibility = AaServerStarter.Accessibility.OFF,
 ) {
     val change: (REauSettings) -> Unit = { actions.onSettings(it.sanitized()) }
     val snackbar = remember { SnackbarHostState() }
@@ -86,10 +84,11 @@ fun SettingsScreen(
                     MapGroup(settings, change)
                     OnDashGroup(settings, change)
                     JoystickGroup(settings, change, onOpenJoystick)
-                    // Its only row switches the server on by accessibility, which the Lite edition does not have.
-                    if (com.reau.app.Edition.hasAccessibility) AndroidAutoGroup(settings, change, accessibility, actions.onOpenAccessibility)
                     VideoProfilesGroup(settings)
                     CardGroup(settings, change, actions.onPickCardImage)
+                    ConnectionExperimentsGroup(settings, change)
+                    VideoExperimentsGroup(settings, change)
+                    DashExperimentsGroup(settings, change)
                     DebugGroup(settings, change, actions, say)
                     UpdateGroup()
                 }
@@ -238,7 +237,7 @@ private fun JoystickGroup(s: REauSettings, change: (REauSettings) -> Unit, onOpe
     SettingsGroup(R.drawable.ic_ms_gamepad, stringResource(R.string.group_joystick), listOf(
         { NavRow(stringResource(R.string.joystick_nav_title), onOpenJoystick, "open_joystick", sub = stringResource(R.string.joystick_nav_sub)) },
         {
-            // Read at each press of the joystick and at each call notice (LiveSides.phoneCalls, AaServerAccessibilityService).
+            // Read at each press of the joystick (LiveSides.phoneCalls).
             SettingSwitch(R.string.answer_title, R.string.by_joystick_sub, R.string.answer_calls, s.answerCalls, "answer_calls", now = true) {
                 change(s.copy(answerCalls = it))
             }
@@ -248,54 +247,17 @@ private fun JoystickGroup(s: REauSettings, change: (REauSettings) -> Unit, onOpe
 }
 
 /**
- * Android Auto: the server switched on and off by REau's accessibility service (on by default in the full edition; on, it says whether
- * the service is on and leads to Android's page for it). The margins are on the "Tela do Android Auto"; the stream's
- * values are in [VideoProfilesGroup].
- */
-@Composable
-private fun AndroidAutoGroup(s: REauSettings, change: (REauSettings) -> Unit, accessibility: AaServerStarter.Accessibility, onOpen: () -> Unit) {
-    val connected = accessibility == AaServerStarter.Accessibility.CONNECTED
-    SettingsGroup(R.drawable.ic_ms_directions_car, stringResource(R.string.group_android_auto), listOf(
-        {
-            SwitchRow(
-                stringResource(R.string.server_title), s.aaServerAuto, { change(s.copy(aaServerAuto = it)) }, "aa_server_auto",
-                sub = stringResource(if (s.aaServerAuto) R.string.server_sub_on else R.string.server_sub_off),
-                info = Info(stringResource(R.string.server_title), stringResource(R.string.aa_server_auto)),
-                below = if (s.aaServerAuto) ({ ServerAccessibility(connected, accessibility, onOpen) }) else null,
-            )
-        },
-    ), tag = "group_android_auto")
-}
-
-/**
- * The video's two fixed profiles: the stream's frame ceiling, bitrate, mode and keyframe, and the navigation profiles
- * that choose between them. Everything in it is shown and locked.
+ * The video's two fixed profiles: each by its name and one short line, the navigation profiles that choose between them, and, behind
+ * "Detalhes" (closed at first), the stream's frame ceiling, bitrate, mode and keyframe. Everything in it is shown and locked.
  */
 @Composable
 private fun VideoProfilesGroup(s: REauSettings) {
     SettingsGroup(R.drawable.ic_ms_tune, stringResource(R.string.group_video_profiles), listOf(
-        { StreamProfileRows(s) },
+        { ProfileNameRow(R.string.profile_a_title, R.string.profile_a_sub, "profile_a") },
+        { ProfileNameRow(R.string.profile_b_title, R.string.profile_b_sub, "profile_b") },
         { NavProfileRows() },
+        { ProfileDetailsRow(s) },
     ), tag = "group_video_profiles")
-}
-
-/** Where REau's accessibility service stands, in green once connected, and the way to it while it is not. */
-@Composable
-private fun ServerAccessibility(connected: Boolean, accessibility: AaServerStarter.Accessibility, onOpen: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(
-            stringResource(ScreenText.accessibility(accessibility)), style = MaterialTheme.typography.bodySmall,
-            color = if (connected) StatusKind.OK.color() else MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.testTag("aa_server_accessibility"),
-        )
-        if (!connected) {
-            AccessibilityAsk(onOpen) { ask ->
-                com.reau.app.ui.components.SupportButton(
-                    com.reau.app.ui.components.CardAction(stringResource(R.string.action_open_accessibility), "open_accessibility", ask),
-                )
-            }
-        }
-    }
 }
 
 /** The card mode's picture: which one, picking another, back to the legibility card. */

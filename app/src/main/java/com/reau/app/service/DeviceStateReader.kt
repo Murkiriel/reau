@@ -10,7 +10,6 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiInfo
 import android.os.BatteryManager
-import android.os.Build
 import android.os.PowerManager
 import android.view.Display
 import androidx.core.content.ContextCompat
@@ -28,7 +27,7 @@ class DeviceStateReader(private val context: Context, private val bikeNetwork: (
     private val display = context.getSystemService(DisplayManager::class.java)
 
     /** The state now; what it says of the charger, the screen and doze is also kept for the line on a link's end. */
-    fun read(): DeviceState = readNow().also { com.reau.app.data.PhoneNow.update(it.charging, it.screenOn, it.dozing) }
+    fun read(): DeviceState = readNow().also { com.reau.app.data.PhoneNow.update(it.charging, it.screenOn, it.dozing, it.batteryTempC) }
 
     private fun readNow(): DeviceState {
         val battery = runCatching {
@@ -44,11 +43,9 @@ class DeviceStateReader(private val context: Context, private val bikeNetwork: (
                 ?.takeIf { it != Int.MIN_VALUE }?.let { it / TENTHS },
             batteryMv = battery?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1)?.takeIf { it > 0 },
             thermal = runCatching { power.currentThermalStatus }.getOrNull(),
-            headroom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                runCatching { power.getThermalHeadroom(HEADROOM_FORECAST_S) }.getOrNull()
-            } else {
-                null
-            },
+            // Not asked in this build (a test of the owner's, 08/11/2026): the headroom query every 5 s seems to be what keeps this phone's dead
+            // thermal HAL flooding the system log. The field stays unknown and the line leaves it out; the thermal status above is still read.
+            headroom = null,
             appUsedMb = ((runtime.totalMemory() - runtime.freeMemory()) / MB).toInt(),
             appMaxMb = (runtime.maxMemory() / MB).toInt(),
             phoneAvailMb = memory?.let { (it.availMem / MB).toInt() },
@@ -88,6 +85,5 @@ class DeviceStateReader(private val context: Context, private val bikeNetwork: (
         private const val TENTHS = 10f
         private const val PERCENT = 100
         private const val MB = 1024L * 1024
-        private const val HEADROOM_FORECAST_S = 10
     }
 }

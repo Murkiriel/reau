@@ -17,8 +17,19 @@ class AaManeuversTest {
     private fun glyph(type: Int, exit: Int = 0) = AaManeuvers.glyphFor(type, exit)
 
     @Test
-    fun `straight ahead, departing and a new road name are the straight arrow`() {
-        for (type in listOf(1, 2, 36)) assertEquals("type $type", DashManeuverGlyphs.STRAIGHT, glyph(type))
+    fun `straight ahead and a new road name are the straight arrow`() {
+        for (type in listOf(2, 29, 36)) assertEquals("type $type", 0x09, glyph(type))
+    }
+
+    @Test
+    fun `the start of the route is the pin 0x3C, as the official app sends it, and no longer the straight arrow`() {
+        assertEquals(0x3C, glyph(1))
+        assertEquals(0x3C, glyph(1, exit = 7))
+        assertTrue(DashManeuverGlyphs.isVisible(glyph(1)))
+        assertEquals("depart is the only type that draws the pin", listOf(1), (-1..60).filter { glyph(it) == 0x3C })
+        assertEquals(0x3C, AaManeuvers.toDash(guiding(type = 1))!!.maneuver)
+        // The rerouting compass and the next-maneuver slot keep working with it.
+        assertEquals(DashManeuverGlyphs.RECALCULATING, AaManeuvers.glyphFor(1, 0, rerouting = true))
     }
 
     @Test
@@ -40,9 +51,34 @@ class AaManeuversTest {
     }
 
     @Test
-    fun `ramps on and off are drawn as the turn they are`() {
-        assertEquals(listOf(0x18, 0x19, 0x14, 0x15, 0x16, 0x17), (13..18).map { glyph(it) })
-        assertEquals(listOf(0x18, 0x19, 0x14, 0x15), (21..24).map { glyph(it) })
+    fun `ramps on are the official app's own bytes, slight then normal then sharp, left then right`() {
+        // Typed out by hand from the official app's table (ON_RAMP_*: left is the higher byte of each pair). Not yet seen on the bike.
+        assertEquals(listOf(0x20, 0x1F, 0x1E, 0x1D, 0x22, 0x21), (13..18).map { glyph(it) })
+        assertEquals("slight left", 0x20, glyph(13))
+        assertEquals("slight right", 0x1F, glyph(14))
+        assertEquals("normal left", 0x1E, glyph(15))
+        assertEquals("normal right", 0x1D, glyph(16))
+        assertEquals("sharp left", 0x22, glyph(17))
+        assertEquals("sharp right", 0x21, glyph(18))
+        assertEquals("a plain turn is still a turn", listOf(0x18, 0x19, 0x14, 0x15, 0x16, 0x17), (5..10).map { glyph(it) })
+    }
+
+    @Test
+    fun `the slight ramps off are the bear off, 0x2E left and 0x2D right`() {
+        assertEquals("slight off ramp, left", 0x2E, glyph(21))
+        assertEquals("slight off ramp, right", 0x2D, glyph(22))
+        assertEquals("Bear off to the left", DashManeuverGlyphs.describe(glyph(21)))
+        assertEquals("Bear off to the right", DashManeuverGlyphs.describe(glyph(22)))
+    }
+
+    @Test
+    fun `the exit ramp is the side road that leaves, left 0x08 and right 0x07, and no longer a plain turn`() {
+        // Bytes typed out by hand (not the constants of the code under test). Not yet seen on the bike: the debug card has both.
+        assertEquals("off ramp, left", 0x08, glyph(23))
+        assertEquals("off ramp, right", 0x07, glyph(24))
+        assertEquals("a plain turn stays a turn", listOf(0x14, 0x15), (7..8).map { glyph(it) })
+        assertEquals("A side road leaves to the left", DashManeuverGlyphs.describe(glyph(23)))
+        assertEquals("A side road leaves to the right", DashManeuverGlyphs.describe(glyph(24)))
     }
 
     @Test
@@ -123,10 +159,37 @@ class AaManeuversTest {
     }
 
     @Test
-    fun `a time of arrival not in hours and minutes is left out`() {
-        val g = NavGuidance(active = true, maneuverType = 36, estimatedTimeAtArrival = "2:35 PM")
+    fun `a time of arrival not in hours and minutes is left out, and one in 24 hours goes as it was said`() {
+        val g = NavGuidance(active = true, maneuverType = 36, estimatedTimeAtArrival = "soon")
         assertNull(AaManeuvers.toDash(g)?.eta)
-        assertEquals("9:05", AaManeuvers.toDash(g.copy(estimatedTimeAtArrival = "9:05"))?.eta)
+        for (bad in listOf("", "25:99 PM", "14:35 PM", "0:61 AM", "2:35 XM", "2.35 PM", "PM")) {
+            assertNull(bad, AaManeuvers.toDash(g.copy(estimatedTimeAtArrival = bad))?.eta)
+        }
+        for (said in listOf("9:05", "08:01", "14:35", "0:30", "23:59")) assertEquals(said, AaManeuvers.toDash(g.copy(estimatedTimeAtArrival = said))?.eta)
+    }
+
+    @Test
+    fun `a 12-hour arrival time reaches the dash as the 24-hour clock`() {
+        val g = NavGuidance(active = true, maneuverType = 36)
+        val cases = mapOf(
+            "2:35 PM" to "14:35", "2:35 pm" to "14:35", "2:35PM" to "14:35", "2:35 P.M." to "14:35", "2:35 p.m." to "14:35", "2:35 p. m." to "14:35",
+            "9:05 AM" to "09:05", "9:05 a.m." to "09:05", "09:05 am" to "09:05", "11:59 PM" to "23:59", "11:59 AM" to "11:59",
+            "12:05 AM" to "00:05", "12:30 PM" to "12:30", "12:00 am" to "00:00", "12:00 pm" to "12:00", "1:00 AM" to "01:00",
+            "2:35\u00A0PM" to "14:35", "2:35\u202FPM" to "14:35", "2:35\u202Fp.\u00A0m." to "14:35", " 2:35 PM " to "14:35",
+        )
+        for ((said, shown) in cases) assertEquals(said, shown, AaManeuvers.toDash(g.copy(estimatedTimeAtArrival = said))?.eta)
+    }
+
+    @Test
+    fun `the time left is also counted from a 12-hour arrival time`() {
+        val g = guiding().copy(timeToArrivalSeconds = -1)
+        // 2:35 PM is 14:35:30 as the middle of its minute; 14:20:30 to it is 15 minutes.
+        assertEquals(900L, AaManeuvers.toDash(g.copy(estimatedTimeAtArrival = "2:35 PM"), now = now(14, 20, 30))!!.remainingSeconds)
+        assertEquals("the same as in 24 hours", AaManeuvers.toDash(g.copy(estimatedTimeAtArrival = "14:35"), now = now(14, 20, 30))!!.remainingSeconds,
+            AaManeuvers.toDash(g.copy(estimatedTimeAtArrival = "2:35 PM"), now = now(14, 20, 30))!!.remainingSeconds)
+        assertEquals("12:05 AM is just after midnight", 600L, AaManeuvers.toDash(g.copy(estimatedTimeAtArrival = "12:05 AM"), now = now(23, 55, 30))!!.remainingSeconds)
+        assertEquals("a text that is no time stays unknown", DashCommands.REMAINING_OMIT,
+            AaManeuvers.toDash(g.copy(estimatedTimeAtArrival = "2:35 XM"), now = now(14, 20))!!.remainingSeconds)
     }
 
     @Test
@@ -138,8 +201,8 @@ class AaManeuversTest {
 
     // -- the time left and the lost-signal icon -----------------------------------------------------------------------
 
-    private fun guiding(rerouting: Boolean = false) = NavGuidance(
-        active = true, rerouting = rerouting, maneuverType = 7, distanceToManeuverMeters = 300, distanceRemainingMeters = 5_000,
+    private fun guiding(rerouting: Boolean = false, type: Int = 7) = NavGuidance(
+        active = true, rerouting = rerouting, maneuverType = type, distanceToManeuverMeters = 300, distanceRemainingMeters = 5_000,
         timeToArrivalSeconds = 1_500, nextManeuverType = 8,
     )
 
@@ -205,5 +268,25 @@ class AaManeuversTest {
         assertEquals(DashManeuverGlyphs.SIGNAL_LOST, AaManeuvers.toDash(guiding(rerouting = true), noNetwork = true)!!.maneuver)
         assertEquals(DashManeuverGlyphs.RECALCULATING, AaManeuvers.toDash(guiding(rerouting = true), noNetwork = false)!!.maneuver)
         assertEquals("a real turn is never hidden by the lack of network", DashManeuverGlyphs.TURN_LEFT, AaManeuvers.toDash(guiding(), noNetwork = true)!!.maneuver)
+    }
+
+    // ── which numbers REau draws (for the resumo's `maneuvers unknown=`) ──
+
+    @Test
+    fun `knowsType says yes to every number that has a glyph of its own and no to the rest, 45 and 0 among them`() {
+        for (type in listOf(1, 2, 3, 4, 5, 8, 10, 11, 12, 13, 18, 19, 20, 21, 24, 25, 26, 27, 28, 29, 36, 37, 38, 39, 40, 41, 42)) {
+            assertTrue("type $type", AaManeuvers.knowsType(type))
+        }
+        for (type in 30..35) assertTrue("roundabout $type", AaManeuvers.knowsType(type))
+        for (type in listOf(-1, 0, 43, 44, 45, 46, 99)) assertEquals("type $type", false, AaManeuvers.knowsType(type))
+    }
+
+    /** knowsType and glyphFor must not drift apart: a number is known exactly when it is not the hidden bubble. */
+    @Test
+    fun `a number is known exactly when it does not end in the hidden bubble`() {
+        for (type in -1..60) {
+            val hidden = AaManeuvers.glyphFor(type, roundaboutExit = 1) == DashManeuverGlyphs.HIDDEN_BUBBLE
+            assertEquals("type $type", !hidden, AaManeuvers.knowsType(type))
+        }
     }
 }

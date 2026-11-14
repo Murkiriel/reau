@@ -14,18 +14,18 @@ class FocusClearerTest {
     @Test
     fun `no tap before any joystick input`() {
         val focus = FocusClearer(idleMs = 60_000)
-        assertFalse(focus.tapDue(nowMs = 1_000_000))
+        assertFalse(focus.tapDue(nowMs = 1_000_000, onNavigation = true))
     }
 
     @Test
     fun `one tap a minute after the last input, and not again until the next`() {
         val focus = FocusClearer(idleMs = 60_000)
         focus.inputSent(nowMs = 10_000)
-        assertFalse("59.9 s later", focus.tapDue(nowMs = 69_999))
-        assertTrue("60 s later", focus.tapDue(nowMs = 70_000))
-        assertFalse("once", focus.tapDue(nowMs = 200_000))
+        assertFalse("59.9 s later", focus.tapDue(nowMs = 69_999, onNavigation = true))
+        assertTrue("60 s later", focus.tapDue(nowMs = 70_000, onNavigation = true))
+        assertFalse("once", focus.tapDue(nowMs = 200_000, onNavigation = true))
         focus.inputSent(nowMs = 300_000)
-        assertTrue(focus.tapDue(nowMs = 360_500))
+        assertTrue(focus.tapDue(nowMs = 360_500, onNavigation = true))
     }
 
     @Test
@@ -33,8 +33,25 @@ class FocusClearerTest {
         val focus = FocusClearer(idleMs = 60_000)
         focus.inputSent(nowMs = 0)
         focus.inputSent(nowMs = 50_000)
-        assertFalse(focus.tapDue(nowMs = 100_000))
-        assertTrue(focus.tapDue(nowMs = 110_000))
+        assertFalse(focus.tapDue(nowMs = 100_000, onNavigation = true))
+        assertTrue(focus.tapDue(nowMs = 110_000, onNavigation = true))
+    }
+
+    @Test
+    fun `on another screen no tap, and the quiet spell is kept for the navigation`() {
+        val focus = FocusClearer(idleMs = 60_000)
+        focus.inputSent(nowMs = 10_000)
+        assertFalse("the app menu, 60 s later", focus.tapDue(nowMs = 70_000, onNavigation = false))
+        assertFalse("the app menu, much later", focus.tapDue(nowMs = 500_000, onNavigation = false))
+        assertTrue("back on the navigation: the minute has long passed", focus.tapDue(nowMs = 600_000, onNavigation = true))
+        assertFalse("once", focus.tapDue(nowMs = 700_000, onNavigation = true))
+    }
+
+    @Test
+    fun `on the navigation before the minute no tap either`() {
+        val focus = FocusClearer(idleMs = 60_000)
+        focus.inputSent(nowMs = 10_000)
+        assertFalse(focus.tapDue(nowMs = 69_999, onNavigation = true))
     }
 
     @Test

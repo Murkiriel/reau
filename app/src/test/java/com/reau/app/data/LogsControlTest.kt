@@ -88,8 +88,30 @@ class LogsControlTest {
     @Test
     fun `the days chosen apply at once and the log says what went`() {
         RideDiagnostics.startProcess("app")
+        // The opening's own tidying is done before the old file is made and the days are chosen: still on its way, it read the 30 days,
+        // removed the old file itself and wrote the line a moment after this test had read the log (CI, 11/11/2026).
+        RideDiagnostics.testOnlyAwaitTidy()
         val old = File(diag, "ride-20260101-080000.log").apply { writeText("an old ride"); setLastModified(System.currentTimeMillis() - 40L * 24 * 60 * 60 * 1000) }
         RideDiagnostics.applyKeepDays(30)
+        assertFalse("older than 30 days went", old.exists())
+        RideDiagnostics.logAndWait("ui", "after")
+        val text = rides().single().readText()
+        assertTrue(text, text.contains("diag age: 1 file older than 30 days removed"))
+    }
+
+    /**
+     * The other order, made on purpose: the tidying of the opening is held until the days are chosen, so it is the tidy thread that
+     * removes the old file. The log says what went all the same, once that tidying is done.
+     */
+    @Test
+    fun `when the opening's own tidying is what removes the old file, the log says so once it is done`() {
+        val release = RideDiagnostics.testOnlyHoldTidy()
+        RideDiagnostics.startProcess("app")
+        val old = File(diag, "ride-20260101-080000.log").apply { writeText("an old ride"); setLastModified(System.currentTimeMillis() - 40L * 24 * 60 * 60 * 1000) }
+        RideDiagnostics.keepDays = 30
+        assertTrue("the tidying is held: nothing went yet", old.exists())
+        release()
+        RideDiagnostics.testOnlyAwaitTidy()
         assertFalse("older than 30 days went", old.exists())
         RideDiagnostics.logAndWait("ui", "after")
         val text = rides().single().readText()

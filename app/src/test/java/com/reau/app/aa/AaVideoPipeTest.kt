@@ -17,6 +17,7 @@ import org.junit.Test
 class AaVideoPipeTest {
     private val decoded = Collections.synchronizedList(mutableListOf<Pair<String, List<Byte>>>())
     private var dropped = 0
+    private var failed = 0
     private var pipe: AaVideoPipe? = null
 
     @After
@@ -24,8 +25,11 @@ class AaVideoPipeTest {
         pipe?.stop()
     }
 
-    private fun open(decode: (ByteArray, Int, Int) -> Unit = { b, o, s -> decoded += Thread.currentThread().name to b.copyOfRange(o, o + s).toList() }) =
-        AaVideoPipe(decode = decode, onDropped = { dropped++ }).also {
+    private fun open(
+        ready: () -> Boolean = { true },
+        decode: (ByteArray, Int, Int) -> Unit = { b, o, s -> decoded += Thread.currentThread().name to b.copyOfRange(o, o + s).toList() },
+    ) =
+        AaVideoPipe(decode = decode, onDropped = { dropped++ }, onFailed = { failed++ }, decoderReady = ready).also {
             pipe = it
             it.start()
         }
@@ -120,5 +124,84 @@ class AaVideoPipeTest {
         p.put(byteArrayOf(2), 0, 1)
         waitFor("the second frame") { decoded.size == 1 }
         assertEquals(listOf<Byte>(2), decoded[0].second)
+    }
+
+    @Test
+    fun `a decoder that throws on a frame says the frame is lost, once, and the feed goes on`() {
+        var calls = 0
+        val p = open { b, o, s ->
+            calls++
+            if (calls == 1) error("codec gone")
+            decoded += Thread.currentThread().name to b.copyOfRange(o, o + s).toList()
+        }
+        p.put(byteArrayOf(1), 0, 1)
+        waitFor("the failure said") { failed == 1 }
+        p.put(byteArrayOf(2), 0, 1)
+        waitFor("the second frame") { decoded.size == 1 }
+        assertEquals("said once, for the one frame", 1, failed)
+        assertEquals("it is a failure, not a full queue", 0, dropped)
+    }
+
+    @Test
+    fun `with the decoder still starting, the queue takes forty frames and drops none`() {
+        val gate = CountDownLatch(1)
+        val inDecoder = CountDownLatch(1)
+        val p = open(ready = { false }) { b, o, s ->
+            inDecoder.countDown()
+            gate.await(5, TimeUnit.SECONDS)
+            decoded += Thread.currentThread().name to b.copyOfRange(o, o + s).toList()
+        }
+        p.put(byteArrayOf(0), 0, 1)
+        assertTrue(inDecoder.await(5, TimeUnit.SECONDS)) // the decoder is inside its start
+        for (i in 1..40) p.put(byteArrayOf(i.toByte()), 0, 1)
+        assertEquals("nothing dropped while the decoder starts", 0, dropped)
+        gate.countDown()
+        waitFor("forty-one frames") { decoded.size == 41 }
+        assertEquals((0..40).map { listOf(it.toByte()) }, decoded.map { it.second })
+    }
+
+    @Test
+    fun `with the decoder up and a backlog from its start, frames that arrive are not dropped either`() {
+        val gate = CountDownLatch(1)
+        val inDecoder = CountDownLatch(1)
+        var ready = false
+        val p = open(ready = { ready }) { b, o, s ->
+            inDecoder.countDown()
+            gate.await(5, TimeUnit.SECONDS)
+            decoded += Thread.currentThread().name to b.copyOfRange(o, o + s).toList()
+        }
+        p.put(byteArrayOf(0), 0, 1)
+        assertTrue(inDecoder.await(5, TimeUnit.SECONDS))
+        for (i in 1..10) p.put(byteArrayOf(i.toByte()), 0, 1)
+        ready = true // the decoder is up; ten frames still wait, more than its four places
+        p.put(byteArrayOf(11), 0, 1)
+        assertEquals("the backlog does not make the next frame a drop", 0, dropped)
+        gate.countDown()
+        waitFor("twelve frames") { decoded.size == 12 }
+    }
+
+    @Test
+    fun `with the decoder up and the queue full, the fifth waiting frame is dropped as before`() {
+        val gate = CountDownLatch(1)
+        val inDecoder = CountDownLatch(1)
+        val p = open(ready = { true }) { _, _, _ ->
+            inDecoder.countDown()
+            gate.await(5, TimeUnit.SECONDS)
+        }
+        p.put(byteArrayOf(0), 0, 1)
+        assertTrue(inDecoder.await(5, TimeUnit.SECONDS))
+        for (i in 1..4) p.put(byteArrayOf(i.toByte()), 0, 1)
+        p.put(byteArrayOf(5), 0, 1)
+        assertEquals(1, dropped)
+        gate.countDown()
+    }
+
+    @Test
+    fun `the limit is the capacity only with the decoder up and the backlog worked off`() {
+        val c = FrameQueue.CAPACITY
+        assertEquals(c, AaVideoPipe.limitFor(decoderReady = true, waiting = 0, capacity = c))
+        assertEquals(c, AaVideoPipe.limitFor(decoderReady = true, waiting = c, capacity = c))
+        assertEquals(FrameQueue.WARMING_LIMIT, AaVideoPipe.limitFor(decoderReady = true, waiting = c + 1, capacity = c))
+        assertEquals(FrameQueue.WARMING_LIMIT, AaVideoPipe.limitFor(decoderReady = false, waiting = 0, capacity = c))
     }
 }

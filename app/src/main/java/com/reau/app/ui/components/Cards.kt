@@ -32,7 +32,9 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -40,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.reau.app.R
 import com.reau.app.ui.theme.LocalREauDark
+import com.reau.app.ui.theme.REauSpace
 
 /**
  * A warning of the main screen (only while something is wrong, above everything): [icon] and [title] in the [kind]'s
@@ -65,12 +68,12 @@ fun WarningCard(
     Column(
         modifier.fillMaxWidth().clip(shape).background(colors.surfaceContainer)
             .border(if (dark) 1.dp else 1.5.dp, if (dark) tone.copy(alpha = 0.53f) else tone, shape)
-            .padding(horizontal = 16.dp, vertical = 14.dp).semantics(mergeDescendants = true) {}.testTag(tag),
+            .padding(horizontal = 16.dp, vertical = 14.dp).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }.testTag(tag),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MsIcon(icon, 22.dp, tone)
-            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp), color = if (dark) tone else colors.onSurface)
+            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp), color = kind.textColor())
         }
         for ((line, lineTag) in listOf(text to "${tag}_text") + more) {
             Text(
@@ -146,7 +149,7 @@ fun ShortcutTile(
 fun GoldButton(action: CardAction, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val colors = MaterialTheme.colorScheme
     Button(
-        action.onClick, modifier.heightIn(min = 44.dp).testTag(action.tag), enabled = enabled, shape = MaterialTheme.shapes.small,
+        action.onClick, modifier.heightIn(min = REauSpace.touch).testTag(action.tag), enabled = enabled, shape = MaterialTheme.shapes.small,
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
         colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
     ) { Text(action.label, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center) }
@@ -158,7 +161,7 @@ fun SupportButton(action: CardAction, modifier: Modifier = Modifier) {
     val dark = LocalREauDark.current
     val colors = MaterialTheme.colorScheme
     OutlinedButton(
-        action.onClick, modifier.heightIn(min = 44.dp).testTag(action.tag), shape = MaterialTheme.shapes.small,
+        action.onClick, modifier.heightIn(min = REauSpace.touch).testTag(action.tag), shape = MaterialTheme.shapes.small,
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
         border = BorderStroke(1.dp, if (dark) colors.primary else colors.secondary),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = if (dark) colors.primary else colors.onSurface),
@@ -175,7 +178,7 @@ fun GhostButton(@DrawableRes icon: Int, label: String, tag: String, onClick: () 
     val colors = MaterialTheme.colorScheme
     val ink = if (dark) colors.secondary else colors.onSurface
     Row(
-        modifier.heightIn(min = 44.dp).clip(MaterialTheme.shapes.small).clickable(role = Role.Button, onClick = onClick)
+        modifier.heightIn(min = REauSpace.touch).clip(MaterialTheme.shapes.small).clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 6.dp).testTag(tag),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),

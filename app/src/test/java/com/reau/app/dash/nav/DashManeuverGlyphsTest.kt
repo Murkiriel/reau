@@ -9,7 +9,7 @@ import org.junit.Test
 
 /**
  * The byte the dash's nav bubble is told to draw for each maneuver. The expected values below are typed out by hand
- * from the glyph table observed on the dash (every byte 0x00..0xFF sent to a real K1G dash and checked by eye), NOT
+ * from the glyph scan the NOTICE credits (every byte 0x00..0xFF sent to a real K1G dash by that scan's author), NOT
  * computed with the same formulas as the code under test.
  */
 class DashManeuverGlyphsTest {
@@ -20,7 +20,7 @@ class DashManeuverGlyphsTest {
     fun `every maneuver type maps to its catalog byte`() {
         val expected = mapOf(
             ManeuverType.CONTINUE to 0x09,       // straight arrow (NOT 0x0B: that one draws roundabout exit 1)
-            ManeuverType.DEPART to 0x09,
+            ManeuverType.DEPART to 0x3C,       // the pin alone, as the official app sends it for the start of the route
             ManeuverType.TURN_LEFT to 0x14,
             ManeuverType.TURN_RIGHT to 0x15,
             ManeuverType.SLIGHT_LEFT to 0x18,
@@ -246,6 +246,18 @@ class DashManeuverGlyphsTest {
             assertTrue("0x%02X missing".format(must), must in seq)
         }
         for (b in seq) assertTrue("0x%02X".format(b), DashManeuverGlyphs.isVisible(b) || b == DashManeuverGlyphs.HIDDEN_BUBBLE)
+    }
+
+    @Test
+    fun `the test sequence has every drawing a ramp or an exit could be sent as, each with its description`() {
+        val seq = DashManeuverGlyphs.testSequence
+        val ramps = listOf(0x07, 0x08, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22, 0x27, 0x28, 0x29, 0x2A, 0x2D, 0x2E, 0x2F, 0x30, 0x3C)
+        for (must in ramps) {
+            assertTrue("0x%02X missing".format(must), must in seq)
+            assertTrue("0x%02X has no words".format(must), !DashManeuverGlyphs.describe(must).isNullOrBlank())
+        }
+        assertEquals("the two empty bubbles between them stay out", emptyList<Int>(), seq.filter { it == 0x2B || it == 0x2C })
+        assertEquals(46, seq.size)
     }
 
     @Test

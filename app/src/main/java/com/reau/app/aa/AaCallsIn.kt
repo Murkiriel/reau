@@ -11,7 +11,7 @@ import android.os.Looper
 
 /**
  * The way into Android Auto 17.3 and older, where Android Auto dials the head unit instead of the head unit dialling the
- * server (which 17.4 introduced, behind a developer switch). Android Auto is asked, with no accessibility and no
+ * server (which 17.4 introduced, behind a developer switch). Android Auto is asked, with no special service and no
  * developer option, to project to a port on 127.0.0.1 where [AaReceiver] listens.
  *
  * Android Auto answers the ask by opening its own start-up screen, and Android refuses that from the background; so its

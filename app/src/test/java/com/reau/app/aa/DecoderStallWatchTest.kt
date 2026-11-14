@@ -165,6 +165,45 @@ class DecoderStallWatchTest {
         assertTrue("it gets its own three seconds, and no more", watch.isStalled(7_035))
     }
 
+    // ── the compositor stuck: the decoder is not restarted for what is not its fault ────────────────────
+
+    @Test
+    fun `a stalled decoder is restarted when the compositor is free`() {
+        feed(1_000, 4_000)
+        watch.onInput(4_001)
+        assertTrue(watch.restartDue(4_001, downstreamBusyMs = 0))
+        assertTrue("a frame in the middle of its work is normal", watch.restartDue(4_001, downstreamBusyMs = DecoderStallWatch.DOWNSTREAM_BUSY_MS - 1))
+    }
+
+    @Test
+    fun `a stalled decoder is not restarted while the compositor is stuck inside a frame`() {
+        feed(1_000, 4_000)
+        watch.onInput(4_001)
+        assertTrue("it is a stall all the same", watch.isStalled(4_001))
+        assertFalse(watch.restartDue(4_001, downstreamBusyMs = DecoderStallWatch.DOWNSTREAM_BUSY_MS))
+        assertFalse(watch.restartDue(4_001, downstreamBusyMs = 5_000))
+    }
+
+    @Test
+    fun `the compositor excuses a wait only until it reaches fifteen seconds`() {
+        feed(1_000, 16_000)
+        assertFalse("14.999 s of waiting, the compositor stuck: still excused", watch.restartDue(15_999, downstreamBusyMs = 5_000))
+        assertTrue("15 s: restarted whatever the compositor is doing", watch.restartDue(16_000, downstreamBusyMs = 5_000))
+    }
+
+    @Test
+    fun `a decoder that is not stalled is never restarted, stuck compositor or not`() {
+        assertFalse(feed(1_000, 20_000, answered = true))
+        assertFalse(watch.restartDue(20_000, downstreamBusyMs = 0))
+        assertFalse(watch.restartDue(20_000, downstreamBusyMs = 60_000))
+    }
+
+    @Test
+    fun `silence from the phone is not a stall even with the compositor free`() {
+        feed(1_000, 2_000)
+        assertFalse(watch.restartDue(30_000, downstreamBusyMs = 0))
+    }
+
     @Test
     fun `the thresholds can be set`() {
         val quick = DecoderStallWatch(stallMs = 100, pauseMs = 50)

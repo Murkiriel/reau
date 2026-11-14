@@ -46,7 +46,33 @@ class H264RecorderTest {
         r.close()
 
         assertEquals(File(tmp.root, "video/reau_20261002_150000.csv"), r.indexFile)
-        assertEquals(listOf("frame,pts_ms,bytes,key", "1,0,16,1", "2,62,3,0", "3,1000,16,1"), r.indexFile.readLines())
+        assertEquals(listOf("frame,pts_ms,bytes_in_file,key", "1,0,20,1", "2,62,7,0", "3,1000,20,1"), r.indexFile.readLines())
+    }
+
+    /** 03/11/2026: the old column left the 4 bytes of each start code out (1 720 units, a file 6 880 bytes bigger than the sum). */
+    @Test
+    fun `the size column counts the start code, so its sum is the size of the file and each unit's offset is the sum before it`() {
+        val r = recorder(maxFrames = 10)
+        val units = listOf(keyframe to true, pFrame(1) to false, pFrame(2) to false, keyframe to true)
+        units.forEachIndexed { i, (nal, key) -> r.write(nal, key, ptsMs = i * 62L) }
+        r.close()
+
+        val sizes = r.indexFile.readLines().drop(1).map { it.split(',')[2].toInt() }
+        assertEquals(units.map { it.first.size + 4 }, sizes)
+        assertEquals(r.videoFile.length(), sizes.sum().toLong())
+        // the unit read back at its offset is the one written
+        val file = r.videoFile.readBytes()
+        val third = sizes.take(2).sum()
+        assertArrayEquals(startCode + pFrame(2), file.copyOfRange(third, third + sizes[2]))
+    }
+
+    @Test
+    fun `the header names the column bytes_in_file, which tells the new index from the old one`() {
+        assertEquals("frame,pts_ms,bytes_in_file,key", H264Recorder.INDEX_HEADER)
+        val r = recorder(maxFrames = 10)
+        r.write(keyframe, isKey = true, ptsMs = 0)
+        r.close()
+        assertEquals(H264Recorder.INDEX_HEADER, r.indexFile.readLines().first())
     }
 
     @Test
@@ -87,7 +113,7 @@ class H264RecorderTest {
         assertEquals(File(tmp.root, "video/reau_20261002_150000_p02.h264"), r.videoFile)
         assertArrayEquals(startCode + keyframe + startCode + pFrame(1) + startCode + pFrame(2), first.readBytes())
         assertArrayEquals(startCode + keyframe + startCode + pFrame(4), r.videoFile.readBytes())
-        assertEquals("each part has its own index, from its own first unit", listOf("frame,pts_ms,bytes,key", "1,0,16,1", "2,62,3,0"), r.indexFile.readLines())
+        assertEquals("each part has its own index, from its own first unit", listOf("frame,pts_ms,bytes_in_file,key", "1,0,20,1", "2,62,7,0"), r.indexFile.readLines())
         assertEquals(2, r.frames)
         assertTrue("the first part says the next follows: $log", log.first().startsWith("video recording part 1 complete, the next follows: 3 frames"))
     }
@@ -116,7 +142,7 @@ class H264RecorderTest {
         r.close()
 
         assertArrayEquals(startCode + keyframe + startCode + pFrame(3), r.videoFile.readBytes())
-        assertEquals(listOf("frame,pts_ms,bytes,key", "1,0,16,1", "2,62,3,0"), r.indexFile.readLines())
+        assertEquals(listOf("frame,pts_ms,bytes_in_file,key", "1,0,20,1", "2,62,7,0"), r.indexFile.readLines())
     }
 
     /** 19/10/2026: the second recording of a projection (the dash had dropped and come back) began at 400000 ms, the first at 0. */
@@ -128,7 +154,7 @@ class H264RecorderTest {
         r.write(keyframe, isKey = true, ptsMs = 401_000)
         r.close()
 
-        assertEquals(listOf("frame,pts_ms,bytes,key", "1,0,16,1", "2,250,3,0", "3,1000,16,1"), r.indexFile.readLines())
+        assertEquals(listOf("frame,pts_ms,bytes_in_file,key", "1,0,20,1", "2,250,7,0", "3,1000,20,1"), r.indexFile.readLines())
     }
 
     @Test
@@ -190,7 +216,7 @@ class H264RecorderTest {
         val old = (1..51).map { "reau_20261002_14%04d".format(it) }
         old.forEach {
             File(dir, "$it.h264").writeBytes(startCode)
-            File(dir, "$it.csv").writeText("frame,pts_ms,bytes,key\n")
+            File(dir, "$it.csv").writeText("frame,pts_ms,bytes_in_file,key\n")
         }
         File(dir, "notes.txt").writeText("not a recording")
 

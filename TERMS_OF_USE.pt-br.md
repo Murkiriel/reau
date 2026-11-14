@@ -38,7 +38,7 @@ O REau usa recursos que não foram feitos para este fim e que não têm suporte 
 
 - Ele se apresenta ao Android Auto como a central de um carro, com o servidor da unidade principal do modo de desenvolvedor do Android Auto e com credenciais de referência de terceiros. Isso pode deixar de funcionar a qualquer momento, depois de uma atualização do Android Auto, do Google Play Services ou do celular, e pode contrariar termos de uso de terceiros.
 - Ele fala com o painel por um protocolo que o fabricante não documenta nem apoia, reconstruído por projetos abertos da comunidade e por testes de compatibilidade. A compatibilidade foi verificada com o painel Tripper Dash, firmware 13.10. Em outro painel ou firmware, nada é garantido.
-- Ele usa a rede Wi-Fi do painel, o microfone (para o Gemini, que vem ligado), os dados de chamadas e a localização (que também vem ligada), cada um só depois que você libera a permissão; a edição completa também usa um serviço de acessibilidade, para ligar o servidor do Android Auto e, com o "Atender ligação" ligado, ver as notificações de chamada do WhatsApp, do Telegram e do Signal (a Lite não usa).
+- Ele usa a rede Wi-Fi do painel, o microfone (para o Gemini, que vem ligado), os dados de chamadas e a localização (que também vem ligada), cada um só depois que você libera a permissão.
 
 Por isso, usar o REau pode, entre outras coisas: gastar bateria e esquentar o celular; mudar a rede Wi-Fi à qual o celular está ligado; interferir em outros aplicativos; fazer o painel se comportar de modo inesperado, travar, mostrar informação errada ou não mostrar nada; afetar garantias ou suporte do celular, do painel ou da moto; e levar empresas terceiras a limitar ou suspender contas, aplicativos ou serviços. Você assume esses riscos.
 
@@ -48,7 +48,7 @@ O REau não tem conta, anúncio nem coleta de dados, e não envia nada ao autor.
 
 - Por padrão o REau manda ao painel, pelo Wi-Fi dele, a imagem, a música que está tocando (com a capa do álbum), quem está ligando e a bateria, o GPS e o sinal do celular; cada um desses pode ser desligado nos Ajustes.
 - O registro de diagnóstico vem ligado, fica só no celular e apaga-se sozinho depois do número de dias que você escolhe (30 por padrão; "nunca" é uma das opções); você pode desligá-lo. As gravações do vídeo e das sessões são opcionais: vêm desligadas no app que você instala para andar e ligadas na build de teste, ficam só no celular e são apagadas pelas mesmas regras do registro (os dias que você escolhe e um limite de tamanho). Elas guardam o que o painel mostra (o mapa, a rota e as posições) e as mensagens do Android Auto, então só as compartilhe sabendo disso.
-- A previsão do tempo no painel e o anel de informações vêm ligados e podem ser desligados; com a localização liberada, consultam a internet com a sua posição arredondada.
+- A previsão do tempo no painel vem ligada e o anel de informações vem desligado; cada um tem uma chave e, com a localização liberada, o que estiver ligado consulta a internet com a sua posição arredondada.
 - "Ligar o servidor de rede" é opcional e vem desligado. Ligado, mostra o seu Android Auto a outros aparelhos da mesma rede, protegido por um PIN, mas sem criptografia. Não ligue em rede de estranhos.
 - O que o Android Auto, o Waze, o Google Maps, o Gemini e os outros aplicativos fazem com os seus dados segue os termos e as políticas de cada um, fora do alcance do REau.
 

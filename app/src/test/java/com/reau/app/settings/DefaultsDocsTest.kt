@@ -7,7 +7,7 @@ import org.junit.Test
 
 /**
  * The comments on the settings said "off by default" for options that come on (music and caller on the dash, the dash's
- * Wi-Fi by itself, the accessibility switch, the profiles and more), and the FAQ and the screen "REau and your data" said
+ * Wi-Fi by itself, the profiles and more), and the FAQ and the screen "REau and your data" said
  * "if you turn it on" for what comes on: whoever audits by reading was told the opposite of what the app does (audit of
  * 20/10/2026). The comment of a Boolean setting says its default the way the code gives it, and the privacy texts do not
  * call an option that comes on "optional if you turn it on".
@@ -58,8 +58,6 @@ class DefaultsDocsTest {
      * agree with [REauSettings].
      */
     private val claims = listOf(
-        Triple("service/AaServerStarter.kt", "Ligar e desligar o servidor do Android Auto sozinho", "aaServerAuto"),
-        Triple("ui/SettingsScreen.kt", "the server switched on and off by REau's accessibility service", "aaServerAuto"),
         Triple("ui/WifiScreen.kt", "the switch makes Android suggest the bike's Wi-Fi", "autoJoinWifi"),
         Triple("settings/LocationUse.kt", "REauSettings.useLocation", "useLocation"),
         Triple("data/DetailedLog.kt", "Registro detalhado", "detailedLog"),
@@ -164,7 +162,6 @@ class DefaultsDocsTest {
      * with its default at least once in each language, so the check cannot go quiet.
      */
     private val faqSwitches = listOf(
-        Triple("aaServerAuto", "Turn on the server automatically", "Ligar o servidor sozinho"),
         Triple("answerCalls", "Answer calls", "Atender ligação"),
         Triple("gemini", "Gemini", "Gemini"),
         Triple("dashPhoneStatus", "Phone status", "Estado do celular"),
@@ -225,20 +222,6 @@ class DefaultsDocsTest {
         assertTrue("start the Android Auto server first" !in faqEn)
     }
 
-    /** The FAQ tells what the app does now when the server does not show as on, and does not give the cause inside Android Auto as a fact. */
-    @Test
-    fun `the FAQ says the app waits for the server and tries again, without claiming why it needs the visit`() {
-        val faqPt = text("../docs/pt/faq.html")
-        val faqEn = text("../docs/en/faq.html")
-        assertTrue("Esperando o servidor responder" in faqPt && "até 8 s" in faqPt && "segunda vez sozinho" in faqPt)
-        assertTrue("visita à tela do Android Auto" in faqPt && "visit to Android Auto’s screen" in faqEn)
-        assertTrue("Waiting for the server to answer" in faqEn && "up to 8 s" in faqEn && "second time by itself" in faqEn)
-        assertTrue("ainda não foi provado" in faqPt)
-        assertTrue("has not been proven yet" in faqEn)
-        val strings = text("src/main/res/values/strings.xml") + text("src/main/res/values-pt/strings.xml")
-        assertTrue("Waiting for the server to answer" in strings && "Esperando o servidor responder" in strings)
-    }
-
     @Test
     fun `the terms say which things go to the dash by default and that the log comes on`() {
         for (file in listOf("../TERMS_OF_USE.md", "../TERMS_OF_USE.pt-br.md", "../TERMS_OF_USE.es.md")) {
@@ -258,18 +241,18 @@ class DefaultsDocsTest {
         }
     }
 
-    /** The terms (version 3) say what the new defaults are, in the three texts of the root and of both editions (28/10/2026). */
+    /** The terms (version 3) say what the new defaults are, in the three texts of the root and of the app (28/10/2026; the info ring off since 30/10/2026). */
     @Test
-    fun `the terms say that Gemini, the location, the weather and the info ring come on, and that the recordings are optional, off in the app you ride with and on in the test build`() {
+    fun `the terms say that Gemini, the location and the weather come on, that the info ring is off, and that the recordings are optional, off in the app you ride with and on in the test build`() {
         val files = mapOf(
-            "en" to listOf("../TERMS_OF_USE.md", "src/main/assets/terms/terms.en.md", "src/lite/assets/terms/terms.en.md"),
-            "pt" to listOf("../TERMS_OF_USE.pt-br.md", "src/main/assets/terms/termos.pt.md", "src/lite/assets/terms/termos.pt.md"),
-            "es" to listOf("../TERMS_OF_USE.es.md", "src/main/assets/terms/terminos.es.md", "src/lite/assets/terms/terminos.es.md"),
+            "en" to listOf("../TERMS_OF_USE.md", "src/main/assets/terms/terms.en.md"),
+            "pt" to listOf("../TERMS_OF_USE.pt-br.md", "src/main/assets/terms/termos.pt.md"),
+            "es" to listOf("../TERMS_OF_USE.es.md", "src/main/assets/terms/terminos.es.md"),
         )
         val says = mapOf(
-            "en" to listOf("for Gemini, which is on by default", "the location (also on by default)", "(with its album art)", "on by default and can be switched off", "are optional: off by default in the app you install to ride and on in the test build", "stay on the phone only", "the map, the route and your positions"),
-            "pt" to listOf("para o Gemini, que vem ligado", "a localização (que também vem ligada)", "(com a capa do álbum)", "vêm ligados e podem ser desligados", "são opcionais: vêm desligadas no app que você instala para andar e ligadas na build de teste", "ficam só no celular", "o mapa, a rota e as posições"),
-            "es" to listOf("para Gemini, que viene activado", "la ubicación (que también viene activada)", "(con su carátula)", "vienen activados y se pueden apagar", "son opcionales: vienen desactivadas en la app que instalas para rodar y activadas en la compilación de prueba", "se quedan solo en el teléfono", "el mapa, la ruta y las posiciones"),
+            "en" to listOf("for Gemini, which is on by default", "the location (also on by default)", "(with its album art)", "is on by default and the info ring is off", "are optional: off by default in the app you install to ride and on in the test build", "stay on the phone only", "the map, the route and your positions"),
+            "pt" to listOf("para o Gemini, que vem ligado", "a localização (que também vem ligada)", "(com a capa do álbum)", "vem ligada e o anel de informações vem desligado", "são opcionais: vêm desligadas no app que você instala para andar e ligadas na build de teste", "ficam só no celular", "o mapa, a rota e as posições"),
+            "es" to listOf("para Gemini, que viene activado", "la ubicación (que también viene activada)", "(con su carátula)", "viene activado y el anillo de información viene apagado", "son opcionales: vienen desactivadas en la app que instalas para rodar y activadas en la compilación de prueba", "se quedan solo en el teléfono", "el mapa, la ruta y las posiciones"),
         )
         val old = mapOf(
             "en" to listOf("if you turn Gemini on", "info ring are optional and off by default", "optional and exist only if you turn them on", "exist only in the debug build"),

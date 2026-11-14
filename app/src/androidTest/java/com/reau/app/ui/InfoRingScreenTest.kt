@@ -29,7 +29,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The switch of the dash's info ring is on the "Tela do Android Auto" (on by default; this test starts it off), over the one of the FPS and bitrate text;
+ * The switch of the dash's info ring is on the "Tela do Android Auto" (off by default; this test starts it off), over the one of the FPS and bitrate text;
  * on, with "Usar a localização" off, a line says what it needs.
  */
 @RunWith(AndroidJUnit4::class)
@@ -95,8 +95,27 @@ class InfoRingScreenTest {
         settings = settings.copy(infoRing = true)
         compose.waitForIdle()
         compose.onNodeWithTag("info_ring_choices").performScrollTo().assertIsDisplayed()
-        for (data in RingData.entries) compose.onNodeWithTag("info_ring_data_${data.name.lowercase()}").performScrollTo().assertIsOn()
+        // At first only the rain, the wind and the thunder are ticked (12/11/2026); the other cards are there, off, one tick away.
+        for (data in RingData.entries) {
+            val box = compose.onNodeWithTag("info_ring_data_${data.name.lowercase()}").performScrollTo()
+            if (RingData.shown(RingData.DEFAULT, data)) box.assertIsOn() else box.assertIsOff()
+        }
         compose.onNodeWithTag("info_ring_data_none").assertDoesNotExist()
+    }
+
+    @Test
+    fun theRingStartsWithRainWindAndThunderOnlyAndAnotherCardIsOneTickAway() {
+        settings = settings.copy(infoRing = true)
+        compose.waitForIdle()
+        compose.onNodeWithTag("info_ring_data_rain").performScrollTo().assertIsOn()
+        compose.onNodeWithTag("info_ring_data_wind").performScrollTo().assertIsOn()
+        compose.onNodeWithTag("info_ring_data_storm").performScrollTo().assertIsOn()
+        for (tag in listOf("uv", "air", "sun", "sky", "temps", "battery", "link", "gps")) {
+            compose.onNodeWithTag("info_ring_data_$tag").performScrollTo().assertIsOff()
+        }
+        compose.onNodeWithTag("info_ring_data_uv").performClick()
+        assertEquals(RingData.DEFAULT or RingData.UV.bit, settings.infoRingData)
+        compose.onNodeWithTag("info_ring_data_uv").assertIsOn()
     }
 
     @Test
@@ -104,11 +123,11 @@ class InfoRingScreenTest {
         settings = settings.copy(infoRing = true)
         compose.waitForIdle()
         compose.onNodeWithTag("info_ring_data_rain").performScrollTo().performClick()
-        assertEquals(RingData.ALL and RingData.RAIN.bit.inv(), settings.infoRingData)
+        assertEquals(RingData.DEFAULT and RingData.RAIN.bit.inv(), settings.infoRingData)
         compose.onNodeWithTag("info_ring_data_rain").assertIsOff()
         compose.onNodeWithTag("info_ring_data_wind").assertIsOn()
         compose.onNodeWithTag("info_ring_data_rain").performClick()
-        assertEquals(RingData.ALL, settings.infoRingData)
+        assertEquals(RingData.DEFAULT, settings.infoRingData)
     }
 
     @Test
@@ -133,7 +152,8 @@ class InfoRingScreenTest {
 
     @Test
     fun everyKindOfDataHasItsOwnInfoThatOpensWithoutTickingTheBox() {
-        settings = settings.copy(infoRing = true)
+        // Every card ticked to begin with (the default is two now), so each box is seen to stay as it was.
+        settings = settings.copy(infoRing = true, infoRingData = RingData.ALL)
         compose.waitForIdle()
         val texts = HashSet<String>()
         for (data in RingData.entries) {

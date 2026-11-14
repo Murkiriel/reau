@@ -31,25 +31,19 @@ OUT = ROOT / "emu_out"
 SERIAL = os.environ.get("REAU_EMU_SERIAL", "emulator-5554")
 if not SERIAL.startswith("emulator-"):
     sys.exit(f"REAU_EMU_SERIAL={SERIAL}: only emulators, never a phone")
-# Which edition: completa unless REAU_EDITION=lite. The lite one is another application id (com.reau.app.lite), has no
-# accessibility service, and leaves out the tests in src/androidTestCompleta.
-EDITION = os.environ.get("REAU_EDITION", "completa")
-if EDITION not in ("completa", "lite"):
-    sys.exit(f"REAU_EDITION={EDITION}: completa or lite")
+# One app since 0.3.0 (id com.reau.app); its instrumented tests are all in src/androidTest.
 PACKAGE = "com.reau.app"
-APP_ID = PACKAGE if EDITION == "completa" else f"{PACKAGE}.lite"
+APP_ID = PACKAGE
 RUNNER = f"{APP_ID}.test/{PACKAGE}.KeepAppStateRunner"
 APKS = (
-    f"app/build/outputs/apk/{EDITION}/debug/app-{EDITION}-debug.apk",
-    f"app/build/outputs/apk/androidTest/{EDITION}/debug/app-{EDITION}-debug-androidTest.apk",
+    "app/build/outputs/apk/debug/app-debug.apk",
+    "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
 )
 
 
 def test_roots():
-    """Where this edition's instrumented tests are: the shared folder, and the full edition's own."""
+    """Where the instrumented tests are: the androidTest folder, and the shared one."""
     roots = [ROOT / "app/src/androidTest/java", ROOT / "app/src/sharedTest/java"]  # sharedTest: also runs on the JVM (FakeDashPeer, DashSessionFakeDashTest)
-    if EDITION == "completa":
-        roots.append(ROOT / "app/src/androidTestCompleta/java")
     return [r for r in roots if r.is_dir()]
 
 
@@ -78,8 +72,7 @@ def adb(*args, timeout=300):
 
 
 def build():
-    name = EDITION.capitalize()
-    done = subprocess.run([str(GRADLEW), f":app:assemble{name}Debug", f":app:assemble{name}DebugAndroidTest",
+    done = subprocess.run([str(GRADLEW), ":app:assembleDebug", ":app:assembleDebugAndroidTest",
                            "--console=plain", "-q"], cwd=ROOT, env=ENV, capture_output=True, text=True,
                           encoding="utf-8", errors="replace")
     if done.returncode:

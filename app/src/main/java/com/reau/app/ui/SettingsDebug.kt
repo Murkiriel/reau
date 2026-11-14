@@ -46,6 +46,7 @@ import com.reau.app.ui.components.StatusKind
 import com.reau.app.ui.components.SwitchRow
 import com.reau.app.ui.components.color
 import com.reau.app.ui.components.hairline
+import com.reau.app.ui.theme.REauSpace
 
 /**
  * "Depuração": folded for the session until tapped; the ride log and the recordings, the detailed log, seeing,
@@ -103,9 +104,27 @@ private fun debugRows(s: REauSettings, change: (REauSettings) -> Unit, actions: 
     ) + recordingRows(s, change) + listOf<@Composable () -> Unit>(
         { NavRow(stringResource(R.string.action_view_logs), actions.onViewLogs, "view_logs") },
         { ShareRow(actions) },
+        { RecordingsNotice(R.string.share_recordings_notice, "share_recordings_notice") },
         { DeleteRow { asking = it } },
         { LogKeepDays(s, change) },
-    )
+    ) + com.reau.app.devtools.DebugTriggers.rows()
+}
+
+/**
+ * A notice in plain sight, not behind an (i): what the recordings hold (the map, which is where the rider went, and the names of who calls).
+ * Shown above the two switches that turn them on and under the buttons that share them (the owner, 11/11/2026).
+ */
+@Composable
+private fun RecordingsNotice(@androidx.annotation.StringRes text: Int, tag: String) {
+    val tone = StatusKind.CONNECTING.color()
+    val shape = MaterialTheme.shapes.large
+    Row(
+        Modifier.fillMaxWidth().clip(shape).border(1.dp, tone, shape).padding(horizontal = 14.dp, vertical = 12.dp).testTag(tag),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        MsIcon(R.drawable.ic_ms_error, 22.dp, tone)
+        Text(stringResource(text), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+    }
 }
 
 /** Sharing the logs, with or without the recordings: nothing leaves the phone otherwise. */
@@ -167,12 +186,12 @@ private fun DeleteDialog(withRecordings: Boolean, onCancel: () -> Unit, onDelete
         text = { Text(stringResource(if (withRecordings) R.string.delete_logs_recordings_text else R.string.delete_logs_text)) },
         confirmButton = {
             OutlinedButton(
-                onDelete, Modifier.heightIn(min = 44.dp).testTag("delete_confirm"), shape = MaterialTheme.shapes.small,
+                onDelete, Modifier.heightIn(min = REauSpace.touch).testTag("delete_confirm"), shape = MaterialTheme.shapes.small,
                 border = BorderStroke(1.dp, colors.error), colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
             ) { Text(stringResource(R.string.action_delete)) }
         },
         dismissButton = {
-            TextButton(onCancel, Modifier.heightIn(min = 44.dp).testTag("delete_cancel")) {
+            TextButton(onCancel, Modifier.heightIn(min = REauSpace.touch).testTag("delete_cancel")) {
                 Text(stringResource(R.string.action_cancel), color = colors.onSurfaceVariant)
             }
         },
@@ -225,6 +244,7 @@ private const val BYTES_PER_MB = 1024L * 1024
  */
 private fun recordingRows(s: REauSettings, change: (REauSettings) -> Unit): List<@Composable () -> Unit> {
     return listOf<@Composable () -> Unit>(
+        { RecordingsNotice(R.string.recordings_notice, "recordings_notice") },
         {
             SwitchRow(
                 stringResource(R.string.record_video), s.recordVideo, { change(s.copy(recordVideo = it)) }, "record_video",

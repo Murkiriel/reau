@@ -1,5 +1,6 @@
 # Integração contínua do REau: roda a cada pull request e a cada push na main.
-# Só verifica: não assina nada, não publica nada e não usa segredo nenhum. Sem emulador e sem testes instrumentados
+# Só verifica: não assina nada, não publica nada e não usa segredo nenhum (a única exceção é a atestação de proveniência do APK, no job
+# auditoria-apk, que só roda num push na main: ela não publica nada, só registra no GitHub de qual commit saiu aquele arquivo). Sem emulador e sem testes instrumentados
 # (esses precisam de aparelho e ficam para a máquina do mantenedor).
 #
 # Actions de terceiros: todas FIXADAS PELO COMMIT (SHA completo, com a versão exata no comentário). Uma tag de versão
@@ -52,10 +53,10 @@ jobs:
           echo "ANDROID_HOME=${ANDROID_HOME:?o runner deveria trazer o Android SDK}"
           ls "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools"
 
-      - name: Testes unitários (as duas edições)
+      - name: Testes unitários
         run: ./gradlew --console=plain --max-workers=2 :app:testDebugUnitTest
 
-      - name: Lint (as duas edições; qualquer aviso falha)
+      - name: Lint (qualquer aviso falha)
         run: ./gradlew --console=plain --max-workers=2 :app:lintDebug
 
       # detekt é a CLI do detekt 1.23.8 (versão em gradle/libs.versions.toml), chamada pela tarefa :app:detekt de
@@ -84,6 +85,12 @@ jobs:
     name: Auditoria dos APKs
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    # Só este job pede mais do que ler o código: id-token e attestations são o que a atestação de proveniência exige (a ação pede um
+    # token OIDC ao GitHub e grava a atestação no repositório). Um job que declara permissões não herda as do topo, daí o contents: read.
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - name: Baixar o código
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -105,16 +112,23 @@ jobs:
       # assinado com a chave de debug que o próprio Android Gradle Plugin cria no runner (não há keystore nem segredo
       # no repositório; sem a chave do projeto o build só assina assim com -PreauDebugSigned=true); o APK não é
       # publicado nem guardado, só inspecionado.
-      - name: Montar os APKs release (as duas edições)
-        run: ./gradlew --console=plain --max-workers=2 -PreauDebugSigned=true :app:assembleCompletaRelease :app:assembleLiteRelease
+      - name: Montar o APK release
+        run: ./gradlew --console=plain --max-workers=2 -PreauDebugSigned=true :app:assembleRelease
 
       # Sai com 1 se aparecer permissão, biblioteca, .so ou host que a linha de base não tem, ou se o APK não tiver a forma de
       # release (depurável, classe de debug ou do Compose tooling/test, componente fora da lista de apk_audit.py, sem perfil de base).
-      - name: Auditar o APK da edição completa
-        run: python3 -B scripts/apk_audit.py app/build/outputs/apk/completa/release/app-completa-release.apk
+      - name: Auditar o APK
+        run: python3 -B scripts/apk_audit.py app/build/outputs/apk/release/app-release.apk
 
-      - name: Auditar o APK da edição lite
-        run: python3 -B scripts/apk_audit.py app/build/outputs/apk/lite/release/app-lite-release.apk
+      # Atestação de proveniência (SLSA) do APK que acabou de ser montado e auditado: o GitHub assina que aquele arquivo, com aquele SHA-256, saiu
+      # deste commit e deste workflow. Só no push na main: num pull request o código ainda não foi aceito (e o de um fork nem recebe o token).
+      # A atestação cobre o arquivo que o CI monta (assinado com a chave de debug, não guardado nem publicado) e não diz nada sobre as Releases,
+      # que são assinadas fora do GitHub, com a chave do projeto.
+      - name: Atestar a proveniência do APK
+        if: github.event_name == 'push'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: app/build/outputs/apk/release/app-release.apk
 
   python:
     name: Testes do Python
@@ -126,17 +140,17 @@ jobs:
         with:
           persist-credentials: false
 
-      # O Pillow vem primeiro: o gerador de ícone e o `bench` (bench/reduce.py) o usam. Versão e hashes fixados em
+      # O Pillow vem primeiro: o `bench` (bench/reduce.py) o usa. O teste do amostrar_cego.py roda o script com `python3 -I`, que não vê o PYTHONPATH, e é pulado aqui. Versão e hashes fixados em
       # scripts/requirements.txt, instalado numa pasta à parte (o Python do sistema não aceita pip direto) e sem dependências.
       - name: Pillow (versão e hashes fixados)
         run: python3 -m pip install --target "$RUNNER_TEMP/pylibs" --require-hashes --no-deps -r scripts/requirements.txt
 
-      # O Python do runner (3.12 no ubuntu-24.04). Os testes de scripts/ só usam a biblioteca padrão; os de bench/ e scripts/icon, o Pillow.
-      - name: Testes dos scripts (leitor de registros, auditoria de APK, redução, ícone, emulador)
+      # O Python do runner (3.12 no ubuntu-24.04). Os testes de scripts/ só usam a biblioteca padrão; os de bench/, o Pillow.
+      - name: Testes dos scripts (leitor de registros, auditoria de APK, redução, emulador, painel falso)
         env:
           PYTHONPATH: ${{ runner.temp }}/pylibs
         run: |
-          for dir in scripts scripts/registro scripts/dev bench scripts/emu scripts/icon; do
+          for dir in scripts scripts/registro scripts/dev bench scripts/emu scripts/painel_falso; do
             echo "== $dir"
             (cd "$dir" && python3 -B -m unittest discover -p "test_*.py" -v)
           done
@@ -151,10 +165,13 @@ jobs:
       GITLEAKS_VERSION: "8.30.1"
       GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
     steps:
-      - name: Baixar o código
+      # Só neste job o checkout traz o histórico inteiro (fetch-depth: 0): um segredo que já foi apagado do código continua
+      # nos commits antigos. Os outros jobs seguem com o clone raso, que é mais rápido.
+      - name: Baixar o código (com o histórico inteiro)
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Baixar o gitleaks (conferindo o SHA-256)
         run: |
@@ -164,7 +181,11 @@ jobs:
           mkdir "$RUNNER_TEMP/gitleaks"
           tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP/gitleaks"
 
-      # Os arquivos do checkout (sem o histórico: um clone raso não o tem inteiro). Sai com 1 se achar algo fora da lista de
-      # exceções de .gitleaks.toml; --redact não escreve o valor no log.
-      - name: Procurar segredos
+      # Os commits, todos (o histórico inteiro que o checkout trouxe: `detect` sem --no-git lê o `git log`). Sai com 1 se achar algo fora da lista de exceções de
+      # .gitleaks.toml; --redact não escreve o valor no log.
+      - name: Procurar segredos no histórico
+        run: '"$RUNNER_TEMP/gitleaks/gitleaks" detect --source . --config .gitleaks.toml --redact --no-banner'
+
+      # E os arquivos do checkout como estão agora, com ou sem commit por trás.
+      - name: Procurar segredos nos arquivos
         run: '"$RUNNER_TEMP/gitleaks/gitleaks" detect --source . --config .gitleaks.toml --no-git --redact --no-banner'

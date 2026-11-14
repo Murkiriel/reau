@@ -4,6 +4,7 @@
 
 package com.reau.app.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -14,13 +15,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +65,7 @@ import com.reau.app.ui.components.color
 import com.reau.app.ui.components.hairline
 import com.reau.app.ui.theme.LocalREauDark
 import com.reau.app.ui.theme.REauMono
+import com.reau.app.ui.theme.REauSpace
 import com.reau.app.video.ButtonOverlay
 import com.reau.app.video.FrameFit
 import com.reau.app.video.RectPx
@@ -67,16 +75,35 @@ import com.reau.app.video.StatsOverlay
  * The fit on the dome ("Encaixe na cúpula"): on the "Tela do Android Auto", under the picture and the mask, so each
  * step is seen as it is taken. The density and the margins asked of Android Auto (on the same screen where Android Auto
  * is touched) are one for the menu and the apps; then the two tabs (the navigation apps and the rest, the menu with them), the mode, the fine and coarse counters, what is
- * wrong with the fit, the rectangles it gives and the way back to the default.
+ * wrong with the fit and the rectangles it gives. The way back to the default ("Voltar ao padrão", asked first) is at the top, under the section's label, in sight
+ * at once (it was at the foot of the steps, where a wrong fit was hard to undo). Under it, the fit assistant ([FitAssistantCard]): open by itself only on a phone that
+ * never saved a fit ([assistant]), and otherwise behind its quiet button.
  */
 @Composable
-internal fun FitPanel(s: REauSettings, change: (REauSettings) -> Unit, screen: AaScreen = AaScreen.APPS) {
-    // Which screen Android Auto shows is read by the accessibility service where there is one, and by the picture alone (the little
-    // neural net, PictureLook) in the Lite edition: both editions have the two tabs.
+internal fun FitPanel(s: REauSettings, change: (REauSettings) -> Unit, screen: AaScreen = AaScreen.APPS, assistant: FitAssistantAsk = FitAssistantAsk()) {
+    // Which screen Android Auto shows is read from the picture (the little neural net, PictureLook).
     var tab by remember(screen) { mutableStateOf(FitTab.opening(screen)) }
+    var asking by rememberSaveable { mutableStateOf(false) }
+    // Read once, when the screen opens: saving a counter of the assistant ends the wait, and must not close it in the rider's hands.
+    var assisting by rememberSaveable { mutableStateOf(assistant.pending) }
+    if (asking) {
+        FitResetDialog(tab, onCancel = { asking = false }) {
+            asking = false
+            change(tab.restored(s))
+        }
+    }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SECTION_GAP)) {
         Column(verticalArrangement = Arrangement.spacedBy(LABEL_GAP)) {
             GroupLabel(null, stringResource(R.string.section_fit))
+            GhostButton(R.drawable.ic_ms_restart_alt, stringResource(R.string.fit_reset), "fit_reset", { asking = true })
+            if (assisting) {
+                FitAssistantCard(s, change, screen) {
+                    assisting = false
+                    assistant.seen()
+                }
+            } else {
+                GhostButton(R.drawable.ic_ms_tune, stringResource(R.string.fit_assistant_open), "fit_assistant_open", { assisting = true })
+            }
             Column(verticalArrangement = Arrangement.spacedBy(BLOCK_GAP)) { FitBlocks(tab, { tab = it }, s, change) }
         }
         // The info ring's switch, over the stats text's: in a release build, where there is no stats text, it ends the panel.
@@ -89,7 +116,7 @@ internal fun FitPanel(s: REauSettings, change: (REauSettings) -> Unit, screen: A
     }
 }
 
-/** The tabs of the fit, one per kind of screen Android Auto shows (the navigation apps, and all the rest); they need the accessibility service to be followed. */
+/** The tabs of the fit, one per kind of screen Android Auto shows (the navigation apps, and all the rest); the one shown now opens first. */
 internal enum class FitTab(val tag: String) {
     NAV("fit_tab_nav"),
     APPS("fit_tab_apps"),
@@ -102,9 +129,43 @@ internal enum class FitTab(val tag: String) {
             else -> APPS
         }
     }
+
+    /**
+     * [s] with this tab's fit (the mode, the crop and its place, the move, the zoom and the margins) back to the factory values; the other tab's fit
+     * and every other setting (the density, the mask, the rest) stay as they are.
+     */
+    fun restored(s: REauSettings): REauSettings = when (this) {
+        NAV -> s.copy(navFit = REauSettings.DEFAULT_NAV_FIT)
+        APPS -> s.withAppsFit(REauSettings().appsFit)
+    }
 }
 
-/** The fit's blocks (the density, the tabs, the mode and its counters, the way back), [BLOCK_GAP] apart. */
+/** Resetting the fit asks first (it erases the rider's own): Cancelar and "Voltar ao padrão" outlined in red, both 48 dp tall. */
+@Composable
+private fun FitResetDialog(tab: FitTab, onCancel: () -> Unit, onReset: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val name = stringResource(if (tab == FitTab.NAV) R.string.tab_nav else R.string.tab_apps)
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(stringResource(R.string.fit_reset_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.testTag("fit_reset_title")) },
+        text = { Text(stringResource(R.string.fit_reset_text, name), modifier = Modifier.testTag("fit_reset_text")) },
+        confirmButton = {
+            OutlinedButton(
+                onReset, Modifier.heightIn(min = REauSpace.touch).testTag("fit_reset_confirm"), shape = MaterialTheme.shapes.small,
+                border = BorderStroke(1.dp, colors.error), colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
+            ) { Text(stringResource(R.string.fit_reset)) }
+        },
+        dismissButton = {
+            TextButton(onCancel, Modifier.heightIn(min = REauSpace.touch).testTag("fit_reset_cancel")) {
+                Text(stringResource(R.string.action_cancel), color = colors.onSurfaceVariant)
+            }
+        },
+        containerColor = colors.surfaceContainer,
+        shape = RoundedCornerShape(24.dp),
+    )
+}
+
+/** The fit's blocks (the density, the tabs, the mode and its counters), [BLOCK_GAP] apart. */
 @Composable
 private fun FitBlocks(tab: FitTab, onTab: (FitTab) -> Unit, s: REauSettings, change: (REauSettings) -> Unit) {
     Card {
@@ -124,15 +185,6 @@ private fun FitBlocks(tab: FitTab, onTab: (FitTab) -> Unit, s: REauSettings, cha
         )
     }
     TabFit(tab, s, change)
-    GhostButton(R.drawable.ic_ms_restart_alt, stringResource(R.string.fit_reset), "fit_reset", {
-        val defaults = REauSettings()
-        change(
-            when (tab) {
-                FitTab.NAV -> s.copy(navFit = REauSettings.DEFAULT_NAV_FIT)
-                FitTab.APPS -> s.withAppsFit(defaults.appsFit)
-            },
-        )
-    })
 }
 
 /** The chosen tab's fit steps: the apps', or the navigation's own. */
@@ -353,33 +405,20 @@ private fun FitSteps(p: FitParams, mapping: FrameFit.Mapping, s: REauSettings, s
             }
         }
     }
-    Card {
-        if (p.fit == Fit.CROP) {
-            CropSteps(p, s.content, set)
-        } else {
-            // Hidden on the crop, which already fills the dash's frame (FrameFit.moved has nowhere to take it)
-            FineStepper(
-                stringResource(R.string.move_x_title), stringResource(R.string.move_x_hint), p.moveX, REauSettings.MOVE,
-                { set(p.copy(moveX = it)) }, "move_x", format = { "$it px" },
-            )
-            HorizontalDivider(thickness = 1.dp, color = hairline(0.14f, 0.6f))
-            FineStepper(
-                stringResource(R.string.move_y_title), stringResource(R.string.move_y_hint), p.moveY, REauSettings.MOVE,
-                { set(p.copy(moveY = it)) }, "move_y", format = { "$it px" },
-            )
-        }
-    }
+    Card { FitCounters(p, s.content, FitControl.of(p.fit), set) }
     val problems = FrameFit.problems(mapping, AaVideo.WIDTH, AaVideo.HEIGHT)
     if (problems.isNotEmpty()) BadFit(problems.map { stringResource(ScreenText.problem(it)) }.joinToString("; "))
     Technical(mapping)
 }
 
 /**
- * The crop's size and place, in pixels: the place is the window's top left pixel in Android Auto's picture, past the
- * edges up to FrameFit.cropRange; a new size keeps the window's centre where it was.
+ * The counters of one fit ([p]), those of [controls] in that order with a hairline between them: the crop's size and place, in pixels (the
+ * place is the window's top left pixel in Android Auto's picture, past the edges up to FrameFit.cropRange; a new size keeps the window's
+ * centre where it was), and the picture's move. The fit's tab shows all of its mode ([FitControl.of]); the fit assistant, the ones of its step,
+ * with [tags] before each tag.
  */
 @Composable
-private fun CropSteps(p: FitParams, content: RectPx, set: (FitParams) -> Unit) {
+internal fun FitCounters(p: FitParams, content: RectPx, controls: List<FitControl>, set: (FitParams) -> Unit, tags: String = "") {
     val (w, h) = FrameFit.cropSize(content, p.cropPercent)
     val x = p.cropX ?: ((content.w - w) / 2)
     val y = p.cropY ?: ((content.h - h) / 2)
@@ -388,21 +427,32 @@ private fun CropSteps(p: FitParams, content: RectPx, set: (FitParams) -> Unit) {
         val (newW, newH) = FrameFit.cropSize(content, percent)
         return p.copy(cropPercent = percent, cropX = p.cropX?.let { it + (w - newW) / 2 }, cropY = p.cropY?.let { it + (h - newH) / 2 })
     }
-    FineStepper(
-        stringResource(R.string.label_crop), stringResource(R.string.crop_hint), p.cropPercent, REauSettings.CROP,
-        { set(sized(it)) }, "crop", format = { "$it%" },
-    )
-    HorizontalDivider(thickness = 1.dp, color = hairline(0.14f, 0.6f))
-    // Which part of Android Auto's frame the crop takes; with the projection on it applies at once.
-    FineStepper(
-        stringResource(R.string.crop_x_title), stringResource(R.string.crop_x_hint), x, rangeX, { set(p.copy(cropX = it)) }, "crop_center_x",
-        format = { "$it px" },
-    )
-    HorizontalDivider(thickness = 1.dp, color = hairline(0.14f, 0.6f))
-    FineStepper(
-        stringResource(R.string.crop_y_title), stringResource(R.string.crop_y_hint), y, rangeY, { set(p.copy(cropY = it)) }, "crop_center_y",
-        format = { "$it px" },
-    )
+    controls.forEachIndexed { index, control ->
+        if (index > 0) HorizontalDivider(thickness = 1.dp, color = hairline(0.14f, 0.6f))
+        when (control) {
+            FitControl.CROP_SIZE -> FineStepper(
+                stringResource(R.string.label_crop), stringResource(R.string.crop_hint), p.cropPercent, REauSettings.CROP,
+                { set(sized(it)) }, "${tags}crop", format = { "$it%" },
+            )
+            // Which part of Android Auto's frame the crop takes; with the projection on it applies at once.
+            FitControl.CROP_X -> FineStepper(
+                stringResource(R.string.crop_x_title), stringResource(R.string.crop_x_hint), x, rangeX, { set(p.copy(cropX = it)) }, "${tags}crop_center_x",
+                format = { "$it px" },
+            )
+            FitControl.CROP_Y -> FineStepper(
+                stringResource(R.string.crop_y_title), stringResource(R.string.crop_y_hint), y, rangeY, { set(p.copy(cropY = it)) }, "${tags}crop_center_y",
+                format = { "$it px" },
+            )
+            FitControl.MOVE_X -> FineStepper(
+                stringResource(R.string.move_x_title), stringResource(R.string.move_x_hint), p.moveX, REauSettings.MOVE,
+                { set(p.copy(moveX = it)) }, "${tags}move_x", format = { "$it px" },
+            )
+            FitControl.MOVE_Y -> FineStepper(
+                stringResource(R.string.move_y_title), stringResource(R.string.move_y_hint), p.moveY, REauSettings.MOVE,
+                { set(p.copy(moveY = it)) }, "${tags}move_y", format = { "$it px" },
+            )
+        }
+    }
 }
 
 /** One of the three modes: a card of 64 dp with its icon; chosen, Ouro border on primaryContainer. */

@@ -22,6 +22,37 @@ object InfoRingFeed {
      */
     fun shown(switchOn: Boolean, dashRingVisible: Boolean): Boolean = switchOn && dashRingVisible
 
+    /**
+     * The ride log's line when making the ring's picture failed with [error], [failuresBefore] failures into this projection: the first one
+     * is told (the ring just vanished, with not a word, before), the others are not (the loop tries again every second).
+     */
+    fun failureLine(error: Throwable, failuresBefore: Int): String? =
+        if (failuresBefore == 0) "the info ring could not be made (${error.javaClass.simpleName}): it is off the video until it can; told once" else null
+
+    /**
+     * One look of the ring's loop, many times a second: with the ring off the video the frame is dropped, the count of looks starts over and
+     * the GPS is given back ([stopGps]: the ring's listener is a process-wide one at 1 Hz, and it must not go on for a ring nobody sees);
+     * with it on, a new picture is made every [ticksPerLook] looks, and a picture that failed is told once ([failureLine], to [warn]) and
+     * leaves no ring until the next try. Between the looks the frame is the last one made.
+     */
+    class Loop(private val ticksPerLook: Int, private val stopGps: () -> Unit, private val warn: (String) -> Unit) {
+        private var frame: RingFrame? = null
+        private var tick = 0
+        private var failures = 0
+
+        /** The frame to show now, or null for none. [on]: the ring is on the video; [make] makes the picture. */
+        fun step(on: Boolean, make: () -> RingFrame?): RingFrame? {
+            if (!on) {
+                frame = null
+                tick = 0
+                stopGps()
+            } else if (tick++ % ticksPerLook == 0) {
+                frame = runCatching(make).onFailure { e -> failureLine(e, failures++)?.let(warn) }.getOrNull()
+            }
+            return frame
+        }
+    }
+
     /** The ring's switch and the dash's ring are looked at this often: a press of the dash's down button moves the turns. */
     const val POLL_MS = 50L
 

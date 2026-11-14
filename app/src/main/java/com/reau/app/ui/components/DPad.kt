@@ -71,7 +71,8 @@ private fun PadButton(control: Control, label: String, locked: Boolean, chosen: 
         }
         Text(
             label, color = ink.label, textAlign = TextAlign.Center, maxLines = 2,
-            style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.5.sp, lineHeight = 12.5.sp, fontWeight = FontWeight.Medium),
+            // 12 sp, the app's floor (it was 10.5): the buttons are a fixed size, so "Aproximar" at a large font must still fit its 76 dp.
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 14.sp, fontWeight = FontWeight.Medium),
         )
     }
 }

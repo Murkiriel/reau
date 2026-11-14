@@ -51,8 +51,12 @@ internal class AapControlNavigation(private val onGuidance: (NavGuidance) -> Uni
                                 NavigationStatus.NavigationClusterStatus.NavigationStatusEnum.REROUTING
                         )
                     } else {
-                        // Guidance ended: drop the last turn with it rather than freezing it.
-                        NavGuidance.INACTIVE
+                        // Guidance ended: drop the last turn with it rather than freezing it. The "inactive" status is told apart from the rest (an equal value, another object).
+                        if (statusEnum == NavigationStatus.NavigationClusterStatus.NavigationStatusEnum.INACTIVE) {
+                            NavGuidance.INACTIVE_BY_STATUS
+                        } else {
+                            NavGuidance.INACTIVE
+                        }
                     }
                 )
             }

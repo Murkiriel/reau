@@ -9,6 +9,7 @@ import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -196,6 +197,48 @@ class AapTransportTest {
         assertArrayEquals("projected mode, unsolicited", byteArrayOf(0x08, 1, 0x10, 1), back.body)
     }
 
+    @Test
+    fun aSecondKeyframeRequestInsideASecondWaitsAndGoesOutFromTheTickOnce() {
+        val (fake, conn, t) = connect()
+        assertTrue(t.startHandshake(conn))
+        assertTrue(fake.awaitHandshake())
+        t.triggerFocusCycleRecovery()
+        checkNotNull(fake.receive()) // away
+        checkNotNull(fake.receive()) // back
+
+        t.triggerFocusCycleRecovery()
+        assertEquals("too soon: kept, not sent", null, fake.receive(400))
+        t.keyframeTick()
+        assertEquals("the tick before the second is over lets nothing out", null, fake.receive(100))
+
+        Thread.sleep(1_000)
+        t.keyframeTick()
+        val away = checkNotNull(fake.receive()) { "the request that waited never went out" }
+        assertArrayEquals("native mode", byteArrayOf(0x08, 2, 0x10, 0), away.body)
+        val back = checkNotNull(fake.receive())
+        assertArrayEquals("projected mode, unsolicited", byteArrayOf(0x08, 1, 0x10, 1), back.body)
+        t.keyframeTick()
+        assertEquals("it goes out once", null, fake.receive(300))
+    }
+
+    @Test
+    fun withTheCompositorStuckNoKeyframeCycleGoesOutUntilItIsFree() {
+        val (fake, conn, t) = connect()
+        assertTrue(t.startHandshake(conn))
+        assertTrue(fake.awaitHandshake())
+        t.keyframeBlocked = { true }
+
+        t.triggerFocusCycleRecovery()
+        assertEquals("a keyframe is no use to a consumer that cannot show it", null, fake.receive(400))
+        t.keyframeTick()
+        assertEquals("still stuck", null, fake.receive(200))
+
+        t.keyframeBlocked = { false }
+        t.keyframeTick()
+        assertArrayEquals("native mode", byteArrayOf(0x08, 2, 0x10, 0), checkNotNull(fake.receive()).body)
+        assertArrayEquals("projected mode, unsolicited", byteArrayOf(0x08, 1, 0x10, 1), checkNotNull(fake.receive()).body)
+    }
+
     // ── endings ────────────────────────────────────────────────────────────────────────────────────────────
 
     @Test
@@ -336,25 +379,10 @@ class AapTransportTest {
         assertFalse(t.isAlive)
     }
 
+    /** The version request is sent once (open-headunit 68c2bbb5): the one request waits out the whole budget, and is not sent again. */
     @Test
-    fun aPeerThatNeverAnswersIsGivenUpOnAfterTheHandshakeBudget() {
+    fun aPeerThatNeverAnswersIsAskedOnceAndGivenTheWholeHandshakeBudget() {
         val (_, conn, t) = connect(FakeAndroidAutoPeer.Script(silent = true))
-        val startedAt = System.currentTimeMillis()
-
-        assertFalse(t.startHandshake(conn))
-
-        val tookMs = System.currentTimeMillis() - startedAt
-        // Two attempts of 2 s, then the last one waits out what is left of the 10 s budget (the open-headunit fix).
-        assertTrue("gave up after $tookMs ms", tookMs in 9_000..13_000)
-        assertEquals(3, log.count { "No VERSION_RESPONSE within" in it })
-        assertTrue("got $log", log.any { "No VERSION_RESPONSE within the handshake budget (attempt 3)" in it })
-        assertEquals(listOf(false), quits.toList())
-    }
-
-    /** A single protocol request (a test knob, no setting any more): the one request waits out the whole budget, and is not sent again. */
-    @Test
-    fun withOneVersionRequestAPeerThatNeverAnswersIsAskedOnceAndGivenTheWholeBudget() {
-        val (_, conn, t) = connect(FakeAndroidAutoPeer.Script(silent = true), versionRequests = 1)
         val startedAt = System.currentTimeMillis()
 
         assertFalse(t.startHandshake(conn))
@@ -363,5 +391,38 @@ class AapTransportTest {
         assertTrue("gave up after $tookMs ms", tookMs in 9_000..13_000)
         assertEquals("asked once", 1, log.count { "No VERSION_RESPONSE within" in it })
         assertTrue("got $log", log.any { "No VERSION_RESPONSE within the handshake budget (attempt 1)" in it })
+        assertEquals(listOf(false), quits.toList())
+    }
+
+    /**
+     * A server that answers after 2.5 s (open-headunit measured 2.2 to 2.7 s on Android Auto 18.0) is not sent a second
+     * request at 2 s: that one reaches it as a duplicate, and the fake, like the server there, is then left talking to
+     * nobody (it expects TLS and gets a version request).
+     */
+    @Test
+    fun aSlowServerIsAskedOnceAndItsAnswerIsWaitedFor() {
+        val (fake, conn, t) = connect(FakeAndroidAutoPeer.Script(versionAnswerDelayMs = 2_500))
+
+        assertTrue("handshake failed: $log", t.startHandshake(conn))
+        assertTrue("the peer never saw it finish: ${fake.events} ${fake.failure}", fake.awaitHandshake())
+
+        assertEquals("no resend, so nothing to wait twice for: $log", 0, log.count { "No VERSION_RESPONSE within" in it })
+        assertTrue("got $log", log.any { "Version response received: 1.7, status 0 (ret=12, attempt=1)" in it })
+        assertEquals("no late answer to discard", 0, log.count { "discarded a late VERSION_RESPONSE" in it })
+        assertNull(fake.failure)
+    }
+
+    /** The loop is kept for a head unit that is asked more than once (a test knob): two attempts of 2 s, then the last waits out the rest of the 10 s. */
+    @Test
+    fun withThreeVersionRequestsAPeerThatNeverAnswersIsAskedAgainTwiceAndThenGivenTheRestOfTheBudget() {
+        val (_, conn, t) = connect(FakeAndroidAutoPeer.Script(silent = true), versionRequests = 3)
+        val startedAt = System.currentTimeMillis()
+
+        assertFalse(t.startHandshake(conn))
+
+        val tookMs = System.currentTimeMillis() - startedAt
+        assertTrue("gave up after $tookMs ms", tookMs in 9_000..13_000)
+        assertEquals(3, log.count { "No VERSION_RESPONSE within" in it })
+        assertTrue("got $log", log.any { "No VERSION_RESPONSE within the handshake budget (attempt 3)" in it })
     }
 }

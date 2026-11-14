@@ -1,11 +1,7 @@
 package com.reau.app.ui
 
-import com.reau.app.Edition
 import com.reau.app.R
 import com.reau.app.aa.AaLinkState
-import com.reau.app.aa.MuteServerFix
-import com.reau.app.aa.ServerResult
-import com.reau.app.service.AaServerStarter
 import com.reau.app.service.DashLink
 import com.reau.app.service.Headline
 import com.reau.app.service.Phase
@@ -20,11 +16,8 @@ object MainLook {
     /** The warnings, in display order; each is shown only while its trouble lasts. */
     enum class Warning {
         SERVER_OFF, UNRESPONSIVE, CLOSING_PREVIOUS, OTHER_EDITION, NOT_CALLING, NO_VIDEO,
-        BATTERY_EXEMPTION, BATTERY_SAVER, DASH_TAKEN, NAME_NEEDED, VPN, LOCATION_OFF,
+        BATTERY_EXEMPTION, BATTERY_SAVER, DASH_TAKEN, NAME_NEEDED, VPN, LOCATION_OFF, ALERTS_MUTED, ALERTS_BLOCKED,
     }
-
-    /** The server warning's golden action, besides the way to Android Auto's settings. */
-    enum class ServerAction { RETRY, OPEN_ACCESSIBILITY, OPEN_AA_SETTINGS }
 
     fun androidAutoKind(p: Projection): StatusKind = when {
         p.phase == Phase.PREPARING -> StatusKind.CONNECTING
@@ -48,16 +41,8 @@ object MainLook {
         }
     }
 
-    /**
-     * Whether the rider has to restart a mute Android Auto server by hand ([MuteServerFix]): the Lite edition, or the full
-     * one with the automatic switch off or the accessibility service not connected. Where REau restarts it itself the
-     * old "force stop" text stays.
-     */
-    fun muteByRider(server: ServerUi, hasAccessibility: Boolean = Edition.hasAccessibility): Boolean =
-        MuteServerFix.byRider(hasAccessibility, server.auto, server.accessibility == AaServerStarter.Accessibility.CONNECTED)
-
     /** The line under the headline; null for a start that failed, whose line is its reason. */
-    fun sub(p: Projection, muteByRider: Boolean = false): Int? = when (p.headline) {
+    fun sub(p: Projection): Int? = when (p.headline) {
         Headline.STOPPED -> R.string.sub_stopped
         Headline.STOPPING -> R.string.sub_stopping
         Headline.PROBLEM -> null
@@ -68,7 +53,7 @@ object MainLook {
         Headline.NETWORK_SERVER -> R.string.sub_network_server
         Headline.CARD -> R.string.sub_card
         Headline.ANDROID_AUTO_SERVER_OFF -> R.string.sub_server_off
-        Headline.ANDROID_AUTO_UNRESPONSIVE -> if (muteByRider) R.string.sub_unresponsive_by_hand else R.string.sub_unresponsive
+        Headline.ANDROID_AUTO_UNRESPONSIVE -> R.string.sub_unresponsive
         Headline.ANDROID_AUTO_CLOSING_PREVIOUS -> R.string.sub_closing_previous
         Headline.ANDROID_AUTO_NOT_CALLING -> R.string.sub_not_calling
         Headline.ANDROID_AUTO_NO_VIDEO -> R.string.sub_no_video
@@ -81,7 +66,7 @@ object MainLook {
     }
 
     /**
-     * Whether to name the other edition of REau as a suspect: it is installed ([otherEdition]) and Android Auto accepts the
+     * Whether to name the old "lite" app as a suspect: it is installed ([otherEdition]) and Android Auto accepts the
      * connection and does not answer the handshake, again and again (the link says so with [AaLinkState.UNRESPONSIVE] or
      * [AaLinkState.CLOSING_PREVIOUS], three in a row). Whether it is running cannot be known, so this only says "may".
      */
@@ -89,8 +74,7 @@ object MainLook {
         otherEdition && (androidAuto == AaLinkState.UNRESPONSIVE || androidAuto == AaLinkState.CLOSING_PREVIOUS)
 
     /**
-     * [vpn]: REau's own traffic goes into a VPN, which keeps it off the bike's Wi-Fi. [otherEdition]: the other edition of
-     * REau is installed. [locationOff]: Android's Location switch is off although REau has the permission ([LocationSwitch]).
+     * [vpn]: REau's own traffic goes into a VPN, which keeps it off the bike's Wi-Fi. [otherEdition]: the old "lite" app is installed. [locationOff]: Android's Location switch is off although REau has the permission ([LocationSwitch]).
      */
     fun warnings(
         p: Projection,
@@ -113,41 +97,11 @@ object MainLook {
         Warning.LOCATION_OFF.takeIf { locationOff },
     )
 
-    /**
-     * Whether the server warning talks of the automatic switch (its status line, the accessibility line and the way to the
-     * accessibility settings): only where the accessibility service exists. The Lite edition has none, so its warning only
-     * says how to turn the server on by hand, whatever the saved switch says.
-     */
-    fun autoShown(server: ServerUi, hasAccessibility: Boolean = Edition.hasAccessibility): Boolean = server.auto && hasAccessibility
-
-    /** The two lines the server warning may add under its text, as string resources (null: not shown). */
-    data class ServerLines(val status: Int?, val accessibility: Int?)
-
-    /**
-     * The extra lines of the server warning, never two phrases for the same thing: the "enable REau in Accessibility" ask
-     * is the accessibility line alone (the fuller text), so the status line "service off" is left out; and with the
-     * service connected neither of them is shown (a "service off" status left over from before it connected is stale).
-     */
-    fun serverLines(server: ServerUi, hasAccessibility: Boolean = Edition.hasAccessibility): ServerLines {
-        if (!autoShown(server, hasAccessibility)) return ServerLines(null, null)
-        val status = if (server.result == ServerResult.SERVICE_OFF) null else ScreenText.server(server.result)
-        val accessibility = ScreenText.accessibility(server.accessibility).takeIf { server.accessibility != AaServerStarter.Accessibility.CONNECTED }
-        return ServerLines(status, accessibility)
-    }
-
-    /**
-     * With the automatic switch on, the way to the accessibility settings while REau's service is not connected, else
-     * "Tentar de novo", except while a walk is already going on. With Android Auto's developer mode off, the way to
-     * Android Auto's settings comes first (some Android versions show no Android Auto icon, its settings live inside
-     * Android's), and "Tentar de novo" second.
-     */
-    fun serverAction(server: ServerUi, hasAccessibility: Boolean = Edition.hasAccessibility): ServerAction? = when {
-        !autoShown(server, hasAccessibility) -> null
-        server.accessibility != AaServerStarter.Accessibility.CONNECTED -> ServerAction.OPEN_ACCESSIBILITY
-        server.result == ServerResult.DEVELOPER_MODE_OFF -> ServerAction.OPEN_AA_SETTINGS
-        server.result == ServerResult.WORKING || server.result == ServerResult.STOPPING -> null
-        else -> ServerAction.RETRY
-    }
+    /** The card for the alert channel when it would not be heard ([AlertChannelState]: muted, or blocked in Android); after the others, nothing when loud. */
+    fun alertWarnings(level: com.reau.app.service.AlertChannelState.Level): List<Warning> = listOfNotNull(
+        Warning.ALERTS_MUTED.takeIf { level == com.reau.app.service.AlertChannelState.Level.MUTED },
+        Warning.ALERTS_BLOCKED.takeIf { level == com.reau.app.service.AlertChannelState.Level.BLOCKED },
+    )
 
     /**
      * Why the "Tela do Android Auto" cannot open now; null when it can: with the projection on, outside the card mode,

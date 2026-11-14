@@ -38,6 +38,7 @@ import com.reau.app.ui.components.REauTopBar
 import com.reau.app.ui.components.RowAction
 import com.reau.app.ui.components.SettingsGroup
 import com.reau.app.ui.components.SwitchRow
+import com.reau.app.ui.theme.REauSpace
 
 /**
  * The bike's Wi-Fi on a screen of its own ("Dados da moto", with everything the dash says: [BikeDataGroups]), from the
@@ -160,12 +161,12 @@ private fun ForgetDashDialog(onCancel: () -> Unit, onForget: () -> Unit) {
         text = { Text(stringResource(R.string.forget_dash_running_text)) },
         confirmButton = {
             OutlinedButton(
-                onForget, Modifier.heightIn(min = 44.dp).testTag("forget_confirm"), shape = MaterialTheme.shapes.small,
+                onForget, Modifier.heightIn(min = REauSpace.touch).testTag("forget_confirm"), shape = MaterialTheme.shapes.small,
                 border = BorderStroke(1.dp, colors.error), colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
             ) { Text(stringResource(R.string.action_forget)) }
         },
         dismissButton = {
-            TextButton(onCancel, Modifier.heightIn(min = 44.dp).testTag("forget_cancel")) {
+            TextButton(onCancel, Modifier.heightIn(min = REauSpace.touch).testTag("forget_cancel")) {
                 Text(stringResource(R.string.action_cancel), color = colors.onSurfaceVariant)
             }
         },

@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.SystemClock
 import com.reau.app.MainActivity
 import com.reau.app.R
@@ -15,21 +16,27 @@ import com.reau.app.R
  * itself, which opens the app and has a button that switches the projection off and one that marks the log;
  * [subText] says the last mark was taken.
  */
+@Suppress("TooManyFunctions") // one small function per notice; splitting them would only scatter the same thing
 object ProjectionNotification {
     const val ID = 5301
     private const val ID_NO_DASH = 5302
+    private const val ID_DASH_STUCK = 5303
+    private const val ID_PHONE_HOT = 5304
+    private const val ID_BIND_REFUSED = 5305
     private const val CHANNEL_ID = "reau_projection"
 
+    /** The channel of the notices that must be heard with the phone's screen off in a pocket: high importance, sound and vibration. */
+    internal const val ALERT_CHANNEL_ID = "reau_alert"
+    private val ALERT_VIBRATION = longArrayOf(0, 400, 200, 400, 200, 400)
+
     /**
-     * [muteByRider]: the rider, not REau, has to restart a mute Android Auto server ([AaServerStarter.muteServerByRider]). [card]: the wallpaper
-     * mode, which waits for the dash alone (there is no Android Auto in it).
+     * [card]: the wallpaper mode, which waits for the dash alone (there is no Android Auto in it).
      */
-    fun contentFor(headline: Headline, muteByRider: Boolean = false, card: Boolean = false): Pair<Int, Int> = when (headline) {
+    fun contentFor(headline: Headline, card: Boolean = false): Pair<Int, Int> = when (headline) {
         Headline.PREPARING -> R.string.notif_title_preparing to R.string.notif_text_preparing
         Headline.CONNECTING -> R.string.notif_title_connecting to (if (card) R.string.notif_text_connecting_wallpaper else R.string.notif_text_connecting)
         Headline.ANDROID_AUTO_SERVER_OFF -> R.string.notif_title_server_off to R.string.notif_text_server_off
-        Headline.ANDROID_AUTO_UNRESPONSIVE ->
-            R.string.notif_title_unresponsive to if (muteByRider) R.string.notif_text_unresponsive_by_hand else R.string.notif_text_unresponsive
+        Headline.ANDROID_AUTO_UNRESPONSIVE -> R.string.notif_title_unresponsive to R.string.notif_text_unresponsive
         Headline.ANDROID_AUTO_CLOSING_PREVIOUS -> R.string.notif_title_closing_previous to R.string.notif_text_closing_previous
         Headline.ANDROID_AUTO_NOT_CALLING -> R.string.notif_title_not_calling to R.string.notif_text_not_calling
         Headline.ANDROID_AUTO_NO_VIDEO -> R.string.notif_title_no_video to R.string.notif_text_no_video
@@ -69,20 +76,29 @@ object ProjectionNotification {
     /** The wall-clock time the projection started, from its [startedElapsed] start and the clocks of now. */
     fun startedWall(startedElapsed: Long, nowElapsed: Long, nowWall: Long): Long = nowWall - (nowElapsed - startedElapsed)
 
-    /** One channel, low importance (no sound, no pop-up). */
+    /**
+     * Whether a channel that already exists must be created again to carry today's [name] and [description]. Android keeps a channel's
+     * importance, sound and vibration from its creation (the rider's own settings win), but takes a new name and description from a second
+     * `createNotificationChannel` with the same id; it was not called while the channel existed, so a text changed in an update (or a language chosen later)
+     * never reached the channel's page in the system's settings. Nothing is asked when both are already today's.
+     */
+    internal fun channelTextStale(existingName: CharSequence?, existingDescription: String?, name: String, description: String): Boolean =
+        existingName?.toString() != name || existingDescription != description
+
+    /** One channel, low importance (no sound, no pop-up). Its name and description follow the texts of today. */
     fun createChannel(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
-        if (manager.getNotificationChannel(CHANNEL_ID) != null) return
+        val name = context.getString(R.string.notif_channel_name)
+        val description = context.getString(R.string.notif_channel_desc)
+        val existing = manager.getNotificationChannel(CHANNEL_ID)
+        if (existing != null && !channelTextStale(existing.name, existing.description, name, description)) return
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, context.getString(R.string.notif_channel_name), NotificationManager.IMPORTANCE_LOW)
-                .apply { description = context.getString(R.string.notif_channel_desc) },
+            NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_LOW).apply { this.description = description },
         )
     }
 
     fun build(context: Context, headline: Headline, subText: String? = null, startedElapsed: Long? = null, card: Boolean = false): Notification {
-        // Who restarts a mute server is only worked out (settings read) for the headline that needs it.
-        val byRider = headline == Headline.ANDROID_AUTO_UNRESPONSIVE && AaServerStarter.muteServerByRider(context)
-        val (title, text) = contentFor(headline, byRider, card)
+        val (title, text) = contentFor(headline, card)
         val open = PendingIntent.getActivity(
             context, 0, Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE,
         )
@@ -104,6 +120,9 @@ object ProjectionNotification {
             .addAction(Notification.Action.Builder(null, context.getString(R.string.notif_action_mark), mark).build())
             .setSubText(subText)
             .apply {
+                // Android 12 and later may hold a foreground service's notification back for a moment after the service starts: this one is
+                // the rider's only sign that the projection is on, so it is asked to be shown at once.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
                 if (COLOR_BY_STATE) setColor(colorFor(headline))
                 if (CHRONOMETER && startedElapsed != null) {
                     setUsesChronometer(true)
@@ -128,6 +147,120 @@ object ProjectionNotification {
             .setAutoCancel(true)
             .build()
         context.getSystemService(NotificationManager::class.java).notify(ID_NO_DASH, notification)
+    }
+
+    /** The channel of the notices to be heard (the dash hung): the projection's own is low importance, with no sound. */
+    fun createAlertChannel(context: Context) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val name = context.getString(R.string.notif_alert_channel_name)
+        val description = context.getString(R.string.notif_alert_channel_desc)
+        val existing = manager.getNotificationChannel(ALERT_CHANNEL_ID)
+        // An existing channel keeps its sound and vibration (the rider's, if changed); only its name and description are renewed ([channelTextStale]).
+        if (existing != null && !channelTextStale(existing.name, existing.description, name, description)) return
+        manager.createNotificationChannel(
+            NotificationChannel(ALERT_CHANNEL_ID, name, NotificationManager.IMPORTANCE_HIGH).apply {
+                this.description = description
+                enableVibration(true)
+                vibrationPattern = ALERT_VIBRATION
+            },
+        )
+    }
+
+    /**
+     * The alert channel's name and description renewed when it already exists (it is not created here: a rider who never had an alert has no such
+     * channel in the system's settings, and one is not added just because a projection started).
+     */
+    fun refreshAlertChannel(context: Context) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (manager.getNotificationChannel(ALERT_CHANNEL_ID) != null) createAlertChannel(context)
+    }
+
+    /**
+     * Told once for an absence of the dash, apart from the ongoing notification: the dash's Wi-Fi is in the air and refuses every join, which
+     * only turning the bike's ignition off and on clears (01/11/2026: 3 min 54 s with the picture gone and the rest of the dash working).
+     * Sound and vibration, because the phone's screen is off. [clearDashStuck] takes it away when the dash is back.
+     */
+    fun showDashStuck(context: Context) {
+        createAlertChannel(context)
+        val open = PendingIntent.getActivity(
+            context, 0, Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE,
+        )
+        val text = context.getString(R.string.notif_text_dash_stuck)
+        val notification = Notification.Builder(context, ALERT_CHANNEL_ID)
+            .setContentTitle(context.getString(R.string.notif_title_dash_stuck))
+            .setContentText(text)
+            .setStyle(Notification.BigTextStyle().bigText(text))
+            .setSmallIcon(R.drawable.ic_stat_reau)
+            .setCategory(Notification.CATEGORY_ERROR)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setColor(ERROR)
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        context.getSystemService(NotificationManager::class.java).notify(ID_DASH_STUCK, notification)
+    }
+
+    /**
+     * Told once per run of refusals ([BindRefusals.TELL_AT] in a row), in the alert channel: Android keeps refusing the dash's network (a VPN, a
+     * "smart" switch to mobile data, a network set aside), and REau alone cannot clear that. [clearBindRefused] takes it away when a bind works.
+     */
+    fun showBindRefused(context: Context) {
+        createAlertChannel(context)
+        val open = PendingIntent.getActivity(
+            context, 0, Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE,
+        )
+        val text = context.getString(R.string.notif_text_bind_refused)
+        val notification = Notification.Builder(context, ALERT_CHANNEL_ID)
+            .setContentTitle(context.getString(R.string.notif_title_bind_refused))
+            .setContentText(text)
+            .setStyle(Notification.BigTextStyle().bigText(text))
+            .setSmallIcon(R.drawable.ic_stat_reau)
+            .setCategory(Notification.CATEGORY_STATUS)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setColor(WARNING)
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        context.getSystemService(NotificationManager::class.java).notify(ID_BIND_REFUSED, notification)
+    }
+
+    /** A socket was bound to the dash's network (or the projection is off): the notice of [showBindRefused] goes. */
+    fun clearBindRefused(context: Context) {
+        context.getSystemService(NotificationManager::class.java).cancel(ID_BIND_REFUSED)
+    }
+
+    /**
+     * Told once per heating of the phone ([BatteryHeatWatch]), in the alert channel so it is heard with the screen off in a pocket: the battery is at
+     * [tempC] degrees and the rider can do something about it (out of the sun, out of the closed pocket, charger off). [clearPhoneHot] takes it away.
+     */
+    fun showPhoneHot(context: Context, tempC: Int) {
+        createAlertChannel(context)
+        val open = PendingIntent.getActivity(
+            context, 0, Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE,
+        )
+        val text = context.getString(R.string.notif_text_phone_hot, tempC)
+        val notification = Notification.Builder(context, ALERT_CHANNEL_ID)
+            .setContentTitle(context.getString(R.string.notif_title_phone_hot))
+            .setContentText(text)
+            .setStyle(Notification.BigTextStyle().bigText(text))
+            .setSmallIcon(R.drawable.ic_stat_reau)
+            .setCategory(Notification.CATEGORY_STATUS)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setColor(WARNING)
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        context.getSystemService(NotificationManager::class.java).notify(ID_PHONE_HOT, notification)
+    }
+
+    /** The phone cooled down (or the projection is off): the notice of [showPhoneHot] goes. */
+    fun clearPhoneHot(context: Context) {
+        context.getSystemService(NotificationManager::class.java).cancel(ID_PHONE_HOT)
+    }
+
+    /** The dash is back (or the projection is off): the notice of [showDashStuck] goes. */
+    fun clearDashStuck(context: Context) {
+        context.getSystemService(NotificationManager::class.java).cancel(ID_DASH_STUCK)
     }
 
     /** Shows [headline] in place of the last one; nothing for a stopped projection, whose service is going. */

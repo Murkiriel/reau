@@ -42,11 +42,14 @@ val REauTypography = Typography(
     // buttons
     labelLarge = TextStyle(fontFamily = Hanken, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 18.sp),
     // SECTION LABEL (capitals)
-    labelMedium = TextStyle(fontFamily = JetBrainsMono, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 0.22.em),
+    labelMedium = TextStyle(fontFamily = JetBrainsMono, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.2.em),
     // the NA HORA chip
-    labelSmall = TextStyle(fontFamily = JetBrainsMono, fontWeight = FontWeight.Medium, fontSize = 9.5.sp, lineHeight = 12.sp, letterSpacing = 0.12.em),
+    labelSmall = TextStyle(fontFamily = JetBrainsMono, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.08.em),
 )
 
-/** REau's own: the log, the technical line, the counters' values. */
+/** REau's own: the log, the technical line, the counters' values. 12 sp is the floor of every text of the app. */
 val REauMono = TextStyle(fontFamily = JetBrainsMono, fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 18.sp)
+
+/** [REauMono] on a tighter line, for the technical lines under a title. */
+val REauMonoCompact = REauMono.copy(lineHeight = 16.sp)
 val REauCounterValue = TextStyle(fontFamily = JetBrainsMono, fontWeight = FontWeight.Medium, fontSize = 18.sp)

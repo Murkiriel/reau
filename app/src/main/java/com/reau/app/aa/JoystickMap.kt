@@ -34,7 +34,7 @@ sealed class AaCommand {
  * Which control: the dash tells its mode by the codes it sends. In its media mode the sides come as next and previous
  * track (0x09 right, 0x0A left), up and down as volume (0x06, 0x07) and the middle as play/pause (0x05); in its map
  * mode the sides come as zoom (0x13 right, 0x14 left: a capture on the bike and better-dash), the middle as
- * IN (0x18) and down as 0x15 (better-dash reads it so; confirmed on the bike on 28/10/2026). 0x0B comes once as
+ * IN (0x18) and down as 0x15 (better-dash reads it so; proven on the bike on 28/10/2026, in the ride log). 0x0B comes once as
  * the dash connects and is no button: ignored. Back (0x12) is not on the page: back, and twice within
  * [DOUBLE_BACK_MS] home, as before.
  *
@@ -204,7 +204,16 @@ class JoystickMap(
     companion object {
         /** The ride log's line for a button (with the state of the call, to read a press made in one). */
         fun logLine(name: String, code: Int, lines: List<String>, call: String): String =
-            "button $name 0x${"%02X".format(code)} -> ${lines.ifEmpty { listOf("nothing") }.joinToString("; ")} [call=$call]"
+            "button $name 0x${"%02X".format(code)} -> ${lines.ifEmpty { listOf("nothing") }.joinToString("; ")} [call=$call]${codeNote(code)}"
+
+        /**
+         * A note for the log on a code REau has no use for but knows a report of: 0x20, said to come from the dash's own menu when the
+         * rider removes a stop of the dash's own navigation. Never seen in REau's rides; written so that the first time it comes is noticed.
+         */
+        internal fun codeNote(code: Int): String =
+            if (code == MENU_REMOVE_STOP) " (0x20: reported as the dash's own menu removing a stop; never seen here until now)" else ""
+
+        private const val MENU_REMOVE_STOP = 0x20
 
         const val DOUBLE_BACK_MS = 700L
         /** A ride: a second tap on the right came 1.7 s after the reject and moved the focus. */
@@ -229,6 +238,15 @@ class JoystickMap(
 
         /** Down in the dash's map mode, as better-dash reads it. */
         private const val MAP_DOWN = 0x15
+
+        /**
+         * Whether REau has a meaning for [event]'s code: every code [DashButtonEvent.fromCode] names, and the ones the page reads from an
+         * unnamed one (the dash's notice, the call volume, the call screen's sides and middle, the map's down). Anything else is a code nobody
+         * has explained yet (0x20 among them), which the projection's `resumo` counts.
+         */
+        fun knowsCode(event: DashButtonEvent): Boolean =
+            event !is DashButtonEvent.Unknown || event.code == DASH_NOTICE || event.code == MAP_DOWN || event.code in CALL_VOLUME ||
+                event.code == CALL_SCREEN_LEFT || event.code == CALL_SCREEN_RIGHT || event.code == CALL_SCREEN_MIDDLE
 
         /** Which mode and control a code is; null for what the page does not know. */
         fun whereOf(event: DashButtonEvent): Pair<Mode, Control>? = when (event) {

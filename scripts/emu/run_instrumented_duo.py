@@ -35,7 +35,7 @@ OUT = ROOT / "emu_out"
 TIMED = {
     "DashCompositorTest", "VideoLoopTest", "VideoLoopThermalTest", "VideoRecordingTest", "ProjectionEndToEndTest",
     "DashSessionFakeDashTest", "DashSessionCardsTest", "CardsEndToEndTest", "ManeuverEndToEndTest",
-    "ScreenRereadEndToEndTest", "CallKeysEndToEndTest", "AaReceiverTest", "VideoDecoderTest", "AaVideoSinkTest",
+    "CallKeysEndToEndTest", "AaReceiverTest", "VideoDecoderTest", "AaVideoSinkTest",
     "SessionReplayTest", "AndroidAutoTest", "DashStatsOnDeviceTest", "DashTakenTest", "CardEndToEndTest",
 }
 

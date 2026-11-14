@@ -47,6 +47,21 @@ fun StatusKind.color(): Color {
     }
 }
 
+/**
+ * A status as TEXT: the dark theme's lighter tone (4.5:1 on its grounds, where the icon's own colour reads at 4:1 or less); in
+ * the light theme the text colour, with the icon carrying the colour. Off is the text colour in both.
+ */
+@Composable
+fun StatusKind.textColor(): Color {
+    val status = LocalREauStatus.current
+    return when (this) {
+        StatusKind.IDLE -> MaterialTheme.colorScheme.onSurface
+        StatusKind.CONNECTING -> status.warningText
+        StatusKind.OK -> status.successText
+        StatusKind.ERROR -> status.errorText
+    }
+}
+
 /** A status's icon: the colour never goes without it. */
 @DrawableRes
 fun StatusKind.icon(): Int = when (this) {
@@ -65,16 +80,19 @@ fun rememberAnimationsOn(): Boolean {
     }
 }
 
-/** A status's icon in its colour; connecting, it turns once every 1.4 s (unless animations are off). */
+/**
+ * A status's icon in its colour; connecting, it turns once every 1.4 s (unless animations are off). The angle is read inside the
+ * layer's block (the draw step), so the turning redraws the icon and recomposes nothing, not even this function.
+ */
 @Composable
 fun StatusIcon(kind: StatusKind, size: Dp, modifier: Modifier = Modifier) {
-    val angle = if (kind == StatusKind.CONNECTING && rememberAnimationsOn()) {
+    val turn = if (kind == StatusKind.CONNECTING && rememberAnimationsOn()) {
         rememberInfiniteTransition(label = "spin")
-            .animateFloat(0f, FULL_TURN, infiniteRepeatable(tween(SPIN_MS, easing = LinearEasing), RepeatMode.Restart), label = "spin").value
+            .animateFloat(0f, FULL_TURN, infiniteRepeatable(tween(SPIN_MS, easing = LinearEasing), RepeatMode.Restart), label = "spin")
     } else {
-        0f
+        null
     }
-    MsIcon(kind.icon(), size, kind.color(), modifier.graphicsLayer { rotationZ = angle })
+    MsIcon(kind.icon(), size, kind.color(), modifier.graphicsLayer { rotationZ = turn?.value ?: 0f })
 }
 
 /** Ouro suave at [darkAlpha] in the dark theme; solid in the light one, where every thin border is solid. */

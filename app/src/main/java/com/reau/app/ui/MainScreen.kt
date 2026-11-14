@@ -17,13 +17,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LongState
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -38,6 +38,7 @@ import com.reau.app.ui.components.BridgeSide
 import com.reau.app.ui.components.ComponentLogic
 import com.reau.app.ui.components.GhostButton
 import com.reau.app.ui.components.GroupLabel
+import com.reau.app.ui.components.PrimaryPowerButton
 import com.reau.app.ui.components.REauTopBar
 import com.reau.app.ui.theme.REauMono
 import com.reau.app.ui.theme.LocalREauNight
@@ -51,7 +52,9 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun AppTheme(content: @Composable () -> Unit) {
-    REauTheme(dark = LocalREauNight.current) {
+    val dark = LocalREauNight.current
+    SystemBarIcons(dark)
+    REauTheme(dark = dark) {
         Surface(modifier = Modifier.fillMaxSize(), content = content)
     }
 }
@@ -59,7 +62,7 @@ fun AppTheme(content: @Composable () -> Unit) {
 /**
  * The main screen: the warnings while something is wrong, the bridge card with both sides and Ligar/Desligar, the
  * card mode's link while stopped ([MainExtras.onCard]), the shortcuts, the installed Android Auto and REau's version.
- * Only the content under the fixed top bar scrolls; stopped and with no warning it all fits. [clock] is
+ * Only the content under the fixed top bar scrolls, and Ligar/Desligar stays pinned under it, in sight however many warnings there are. [clock] is
  * SystemClock.elapsedRealtime, for the time on Desligar.
  */
 @Suppress("LongParameterList") // the state, its four ways out, and the clock the tests set
@@ -77,21 +80,23 @@ fun MainScreen(
     val scope = rememberCoroutineScope()
     val say: (String) -> Unit = { text -> scope.launch { snackbar.showSnackbar(text) } }
     AppTheme {
+        val elapsed = rememberElapsed(p, state.startedAtMs, clock)
         Column(Modifier.fillMaxSize()) {
             REauTopBar()
             Box(Modifier.fillMaxWidth().weight(1f)) {
                 Column(
-                    Modifier.fillMaxSize().testTag("main_scroll").verticalScroll(rememberScrollState()).navigationBarsPadding()
+                    Modifier.fillMaxSize().testTag("main_scroll").verticalScroll(rememberScrollState())
                         .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 12.dp),
-                    // Stopped and with nothing wrong, all of it fits without scrolling.
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    for (warning in MainLook.warnings(p, state.battery, state.vpnHoldsREau, state.otherEditionInstalled, state.locationOff)) {
-                        Warning(warning, state, onOpenAndroidAutoSettings, onOpenSettings, extras)
+                    val warnings = MainLook.warnings(p, state.battery, state.vpnHoldsREau, state.otherEditionInstalled, state.locationOff) +
+                        MainLook.alertWarnings(state.alertLevel)
+                    for (warning in warnings) {
+                        Warning(warning, state, onOpenAndroidAutoSettings, extras)
                     }
                     BridgeCard(
-                        headlineText(p), subText(p, MainLook.muteByRider(state.server)), androidAutoSide(state), dashSide(p),
-                        on = p.phase != Phase.STOPPED, elapsed = rememberElapsed(p, state.startedAtMs, clock), onToggle = onToggle,
+                        headlineText(p), rememberSub(p), androidAutoSide(state), dashSide(p),
+                        on = p.phase != Phase.STOPPED, elapsed = elapsed, onToggle = onToggle, withButton = false,
                         // The network server's icon; the card mode sends a picture and has no server to show.
                         aaOverlay = {
                             if (!p.card) {
@@ -106,7 +111,6 @@ fun MainScreen(
                             Modifier.align(Alignment.CenterHorizontally),
                         )
                     }
-                    AfterProjectionLine(p, state.server)
                     GroupLabel(null, stringResource(R.string.shortcuts_label))
                     Shortcuts(state, onOpenAndroidAutoSettings, onOpenSettings, extras, say)
                     Column(Modifier.fillMaxWidth().padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -114,11 +118,17 @@ fun MainScreen(
                         FootLine(androidAuto ?: stringResource(R.string.aa_not_installed), "aa_version")
                         // REau's own version under Android Auto's.
                         FootLine(stringResource(R.string.reau_version, state.reauVersion), "reau_version")
+                        // The old app with the seal on its icon, if it is still installed: it is not needed any more.
+                        if (state.otherEditionInstalled) FootLine(stringResource(R.string.old_app_note), "old_app_note")
                     }
                 }
-                SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) {
+                SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter)) {
                     Snackbar(it, Modifier.testTag("snackbar"), shape = MaterialTheme.shapes.small)
                 }
+            }
+            // Ligar/Desligar stays under what scrolls: two or three warnings push the rest down, never the button out of sight.
+            Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 12.dp)) {
+                PrimaryPowerButton(p.phase != Phase.STOPPED, elapsed, onToggle, stopping = p.stopping)
             }
         }
     }
@@ -133,18 +143,21 @@ private fun FootLine(text: String, tag: String) {
     )
 }
 
-/** The time since the projection started, a second at a time, while it is not stopped. */
+/**
+ * The time since the projection started, a second at a time, while it is not stopped. Handed down as a function and not as a
+ * text: the second's tick is read only where the time is drawn (the button's own text), so it no longer recomposes the whole screen.
+ */
 @Composable
-private fun rememberElapsed(p: Projection, startedAtMs: Long?, clock: () -> Long): String? {
-    var now by remember { mutableLongStateOf(clock()) }
+private fun rememberElapsed(p: Projection, startedAtMs: Long?, clock: () -> Long): () -> String? {
+    val now = remember { mutableLongStateOf(clock()) }
     val running = p.phase != Phase.STOPPED && startedAtMs != null
     LaunchedEffect(running) {
         while (running) {
-            now = clock()
+            now.longValue = clock()
             delay(TICK_MS)
         }
     }
-    return if (running && startedAtMs != null) ComponentLogic.elapsed(now - startedAtMs) else null
+    return { ComponentLogic.elapsedSince(running, startedAtMs, now.longValue) }
 }
 
 /** The Android Auto side, or the card mode's picture in its place. */
@@ -180,24 +193,32 @@ internal fun cardText(name: String?): String = when {
 @Composable
 private fun headlineText(p: Projection): String = stringResource(ScreenText.headline(p.headline))
 
-/** The headline's line; a start that failed says its reason there. */
+/**
+ * The headline's line, as a function (see [rememberElapsed]); a start that failed says its reason there. While the dash is lost it
+ * counts the seconds since it went, and only the text that shows it reads the clock.
+ */
 @Composable
-private fun subText(p: Projection, muteByRider: Boolean): String {
-    if (p.headline == Headline.DASH_LOST) {
-        val now = rememberNowWhile(true)
-        val (res, secs) = DashLostText.text(p.dashGoneAtMs, now)
-        return if (secs == null) stringResource(res) else stringResource(res, secs)
+private fun rememberSub(p: Projection): () -> String {
+    // LocalResources is invalidated by a change of language or configuration, so the function is built again then.
+    val resources = LocalResources.current
+    val now = rememberNowWhile(p.headline == Headline.DASH_LOST)
+    return {
+        if (p.headline == Headline.DASH_LOST) {
+            val (res, secs) = DashLostText.text(p.dashGoneAtMs, now.longValue)
+            if (secs == null) resources.getString(res) else resources.getString(res, secs)
+        } else {
+            MainLook.sub(p)?.let { resources.getString(it) } ?: p.problem.orEmpty()
+        }
     }
-    return MainLook.sub(p, muteByRider)?.let { stringResource(it) } ?: p.problem.orEmpty()
 }
 
-/** The monotonic clock, read again each second while [active]. */
+/** The monotonic clock, read again each second while [active]; a state, so that only what reads it is recomposed. */
 @Composable
-private fun rememberNowWhile(active: Boolean): Long {
-    var now by remember { mutableLongStateOf(com.reau.app.util.MonotonicClock.nowMs()) }
+private fun rememberNowWhile(active: Boolean): LongState {
+    val now = remember(active) { mutableLongStateOf(com.reau.app.util.MonotonicClock.nowMs()) }
     LaunchedEffect(active) {
         while (active) {
-            now = com.reau.app.util.MonotonicClock.nowMs()
+            now.longValue = com.reau.app.util.MonotonicClock.nowMs()
             delay(TICK_MS)
         }
     }

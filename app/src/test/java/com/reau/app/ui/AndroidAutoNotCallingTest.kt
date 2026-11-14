@@ -1,7 +1,6 @@
 package com.reau.app.ui
 
 import com.reau.app.aa.AaLinkState
-import com.reau.app.aa.ServerPolicy
 import com.reau.app.service.Headline
 import com.reau.app.service.Phase
 import com.reau.app.service.Projection
@@ -32,11 +31,5 @@ class AndroidAutoNotCallingTest {
             ProjectionNotification.contentFor(Headline.ANDROID_AUTO_NOT_CALLING),
         )
         assertNotEquals(ProjectionNotification.colorFor(Headline.CONNECTING), ProjectionNotification.colorFor(Headline.ANDROID_AUTO_NOT_CALLING))
-    }
-
-    @Test
-    fun `the head unit server's policy does nothing about it`() {
-        val policy = ServerPolicy().apply { started() }
-        assertEquals(ServerPolicy.Act.NOTHING, policy.state(AaLinkState.NOT_CALLING))
     }
 }

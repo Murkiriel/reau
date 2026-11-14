@@ -122,21 +122,14 @@ class TermsTest {
     }
 
     @Test
-    fun `the full edition's terms say what the accessibility service sees, and the Lite edition's do not mention it`() {
-        // Version 3 (28/10/2026): "Answer calls" is on by default, so the service hears the call notifications of the voice apps.
-        val full = mapOf("pt" to portuguese, "en" to english, "es" to spanish)
-        val lite = mapOf(
-            "pt" to File("src/lite/assets/${Terms.ASSET_PT}").readText(),
-            "en" to File("src/lite/assets/${Terms.ASSET_EN}").readText(),
-            "es" to File("src/lite/assets/${Terms.ASSET_ES}").readText(),
-        )
-        for ((lang, text) in full) {
-            assertTrue("$lang: names the apps", listOf("WhatsApp", "Telegram", "Signal").all { it in text })
-            assertTrue("$lang: names the accessibility", Regex("(?i)accessibility|acessibilidade|accesibilidad").containsMatchIn(text))
-        }
-        for ((lang, text) in lite) {
-            assertFalse("$lang: Lite has no accessibility service", Regex("(?i)accessibility|acessibilidade|accesibilidad").containsMatchIn(text))
-            assertFalse("$lang: Lite does not name the voice apps", "Telegram" in text)
+    fun `the terms speak of no service the app does not have, and no longer speak of editions`() {
+        // Version 3 (28/10/2026) still stands. Since 0.3.0 (one app) there are no editions, and since the removal of the accessibility service
+        // (03/11/2026) the terms have no clause about one: the version and the date did not change, the clause only said less than the app does.
+        val all = mapOf("pt" to portuguese, "en" to english, "es" to spanish)
+        for ((lang, text) in all) {
+            assertFalse("$lang: no service left", Regex("(?i)accessib|acessibil|accesibil").containsMatchIn(text))
+            assertFalse("$lang: no voice apps named", listOf("WhatsApp", "Telegram", "Signal").any { it in text })
+            assertFalse("$lang: no edition left", Regex("(?i)edi[cç][ãa]o|edici[oó]n|edition|\\blite\\b|completa").containsMatchIn(text))
         }
     }
 }

@@ -4,8 +4,9 @@ import java.io.File
 
 /**
  * The recordings (`video/`, `sessions/`; optional, off by default in a release, on in a debug build) together stay under [capBytes], the oldest going
- * first. [DiagSpace] keeps the logs under their own ceiling (200 MB in a release, 1 GB in a debug build, as here); by age alone ([LogAge]) the recordings would, with "Nunca"
- * chosen, never go: about 35 MB for each Android Auto connection, hundreds of MB after a few.
+ * first: 200 MB in a release, 1024 MB in a debug build, the video sent to the dash and the session recordings (and the copies a mark keeps) counted together.
+ * [DiagSpace] keeps the logs under their own ceiling (200 MB in a release, 1024 MB in a debug build): the two budgets are independent. By age alone ([LogAge])
+ * the recordings would, with "Nunca" chosen, never go: about 35 MB for each Android Auto connection, hundreds of MB after a few.
  *
  * A video and its index (`x.h264`, `x.csv`) go together. A recording written to in the last [BUSY_MS] is in use and stays,
  * even if that leaves the folders over. Called when a recorder opens a file ([makeRoom]) and when the app starts.
@@ -13,8 +14,26 @@ import java.io.File
 object RecordingsSpace {
     const val CAP_BYTES = 200L * 1024 * 1024
 
-    /** A debug build (made to be read after a long test) keeps up to 1 GB of recordings, as of its logs. */
+    /** A debug build (made to be read after a long test) keeps up to 1024 MB of recordings, and 1024 MB of logs besides. */
     const val DEBUG_CAP_BYTES = 1024L * 1024 * 1024
+
+    /**
+     * The ring of one Android Auto session recording ([com.reau.app.aa.SessionRecorder]): 100 MB in a release. In a debug build, a long ride has to
+     * survive (the 100 MB ring overwrote 1 h 30 of the ride of 01/11/2026), so it is three quarters of the budget: 768 MB, about an hour and a half
+     * of Android Auto, and the video sent to the dash, which rolls in parts, takes the rest, the oldest parts going first.
+     */
+    const val RING_BYTES = 100L * 1024 * 1024
+    const val DEBUG_RING_BYTES = DEBUG_CAP_BYTES / 4 * 3
+
+    /** The free space the ring leaves on the phone: a recording never takes the last of it. */
+    const val RING_FREE_RESERVE_BYTES = 512L * 1024 * 1024
+
+    /**
+     * The ring of a session recording opened now, with [freeBytes] free on the phone: [RING_BYTES] in a release; in a debug build [DEBUG_RING_BYTES],
+     * or less when the phone would be left with less than [RING_FREE_RESERVE_BYTES] (never below [RING_BYTES]).
+     */
+    fun ringBytes(freeBytes: Long, debugBuild: Boolean = com.reau.app.BuildConfig.DEBUG): Long =
+        if (!debugBuild) RING_BYTES else (freeBytes - RING_FREE_RESERVE_BYTES).coerceIn(RING_BYTES, DEBUG_RING_BYTES)
 
     /** The ceiling in this build: [DEBUG_CAP_BYTES] in a debug build, [CAP_BYTES] (200 MB) in a release, where the recordings are the rider's to switch on. */
     fun capBytes(debugBuild: Boolean = com.reau.app.BuildConfig.DEBUG): Long = if (debugBuild) DEBUG_CAP_BYTES else CAP_BYTES

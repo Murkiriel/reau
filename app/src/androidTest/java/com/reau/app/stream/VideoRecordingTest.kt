@@ -80,14 +80,15 @@ class VideoRecordingTest {
     private fun unitsOf(file: File, sizes: List<Int>): List<ByteArray> {
         val data = file.readBytes()
         var at = 0
-        return sizes.map { size -> data.copyOfRange(at, at + 4 + size).also { at += 4 + size } }.also {
+        // bytes_in_file: the size of each unit in the file already has its start code in it
+        return sizes.map { size -> data.copyOfRange(at, at + size).also { at += size } }.also {
             assertEquals("the index must account for every byte of the file", data.size, at)
         }
     }
 
     @Test
     fun theRecordedFileIsReadBackAndDecodesToThePictureThatWasSent() {
-        val l = newLoop(VideoLoop.Settings(startFps = 16, ceilingFps = 16, recordFrames = 8, recordDir = dir))
+        val l = newLoop(VideoLoop.Settings(ceilingFps = 16, recordFrames = 8, recordDir = dir))
         assertTrue(l.start())
         // A still picture: a frame every 248 ms once the pace is in force, so 8 units take about 2 s.
         awaitThat("the recording of 8 units and 3 more frames after it") { log.any { "video recording complete: 8 frames" in it } && framesSent() > 10 }
@@ -95,7 +96,7 @@ class VideoRecordingTest {
 
         val file = recordings().singleOrNull() ?: throw AssertionError("expected one recording in $dir, got ${dir.list()?.toList()}; log: $log")
         val index = File(dir, file.nameWithoutExtension + ".csv").readLines()
-        assertEquals("frame,pts_ms,bytes,key", index.first())
+        assertEquals("frame,pts_ms,bytes_in_file,key", index.first())
         val rows = index.drop(1).map { it.split(",") }
         assertEquals("the limit was 8 units", 8, rows.size)
         assertEquals("the recording opens with a keyframe", "1", rows.first()[3])
@@ -123,7 +124,7 @@ class VideoRecordingTest {
 
     @Test
     fun aStreamStoppedBeforeTheLimitLeavesAReadableFile() {
-        val l = newLoop(VideoLoop.Settings(startFps = 16, ceilingFps = 16, recordFrames = 500, recordDir = dir))
+        val l = newLoop(VideoLoop.Settings(ceilingFps = 16, recordFrames = 500, recordDir = dir))
         assertTrue(l.start())
         awaitThat("4 frames sent") { framesSent() >= 4 }
         l.stop()
@@ -139,7 +140,7 @@ class VideoRecordingTest {
 
     @Test
     fun withTheOptionOffNothingIsWritten() {
-        val l = newLoop(VideoLoop.Settings(startFps = 16, ceilingFps = 16, recordFrames = 0, recordDir = dir))
+        val l = newLoop(VideoLoop.Settings(ceilingFps = 16, recordFrames = 0, recordDir = dir))
         assertTrue(l.start())
         awaitThat("the stream running") { framesSent() >= 2 }
         l.stop()
@@ -151,7 +152,7 @@ class VideoRecordingTest {
 
     @Test
     fun aRollingRecordingGoesOnInPartsAfterTheLimit() {
-        val l = newLoop(VideoLoop.Settings(startFps = 16, ceilingFps = 16, recordFrames = 4, recordDir = dir, recordRolling = true))
+        val l = newLoop(VideoLoop.Settings(ceilingFps = 16, recordFrames = 4, recordDir = dir, recordRolling = true))
         assertTrue(l.start())
         awaitThat("three parts of 4 units") { recordings().size >= 3 && framesSent() > 12 }
         l.stop()
@@ -163,7 +164,7 @@ class VideoRecordingTest {
 
     @Test
     fun everyStreamGetsItsOwnRecording() {
-        val l = newLoop(VideoLoop.Settings(startFps = 16, ceilingFps = 16, recordFrames = 2, recordDir = dir))
+        val l = newLoop(VideoLoop.Settings(ceilingFps = 16, recordFrames = 2, recordDir = dir))
         assertTrue(l.start())
         awaitThat("the first stream's 2 frames") { framesSent() >= 2 }
         l.stop()

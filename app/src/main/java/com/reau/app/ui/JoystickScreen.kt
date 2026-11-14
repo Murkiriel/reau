@@ -30,7 +30,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.reau.app.R
 import com.reau.app.aa.JoystickBindings
 import com.reau.app.aa.JoystickBindings.Action
@@ -176,7 +175,7 @@ private fun ControlCard(title: String, badge: String, caption: String, what: Str
             Text(title, style = MaterialTheme.typography.titleLarge, color = colors.onSurface, modifier = Modifier.weight(1f))
             Text(
                 badge.uppercase(),
-                style = REauMono.copy(fontSize = 10.sp, fontWeight = FontWeight.Medium), color = colors.onSurfaceVariant,
+                style = REauMono.copy(fontWeight = FontWeight.Medium), color = colors.onSurfaceVariant,
             )
         }
         HorizontalDivider(thickness = 1.dp, color = hairline(0.14f, 0.6f))

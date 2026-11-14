@@ -125,10 +125,14 @@ class FakeDashPeer(
     /** The first [FIRST_UNITS_KEPT] access units, put back together (Annex-B, start codes between NAL units). */
     val firstUnits = CopyOnWriteArrayList<ByteArray>()
 
+    /** Every RTP packet that came, checked against the rules of the stream and put back together ([RtpSink]): `video.writeTo(file)` gives a `.h264`. */
+    val video = RtpSink()
+
     private var unit = ByteArray(0)
     private var unitIsKey = false
 
     private fun onRtp(packet: ByteArray) {
+        video.onPacket(packet)
         if (packet.size < 14) return
         val payloadType = packet[12].toInt() and 0x1F
         if (payloadType == FU_A) {

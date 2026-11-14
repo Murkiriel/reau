@@ -4,20 +4,53 @@ import java.time.format.DateTimeFormatter
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kover)
     jacoco
 }
 
-// Semantic version 0.y.z: versionName is "0.2.0" on a release build and "0.2.0-dev+yy.MM.dd-HH.mm" on a debug build, whose
-// timestamp tells one debug build from another. versionCode is the minutes since the Unix epoch (it never goes down). Both
-// come from the same instant, so they describe one build, and the ride log can say exactly which APK wrote it.
-val appVersionName = "0.2.0"
+// Semantic version 0.y.z: versionName is "0.3.0" on a release build and "0.3.0-dev+yy.MM.dd-HH.mm" on a debug build, whose
+// timestamp tells one debug build from another.
+//
+// versionCode of a RELEASE is fixed in this file, so that two builds of one commit give the same APK (it used to be the minutes of the
+// clock). The scheme: 30_000_000 + major * 1_000_000 + minor * 10_000 + patch * 100, which leaves 99 numbers for a rebuild of the same
+// version, and 99 as the limit of minor and patch. The base 30_000_000 is above 29_887_215, the highest versionCode ever published (0.2.0,
+// when it was the minutes), because Android only installs over an app whose versionCode is lower; so 0.3.0 is 30_030_000, 0.3.1 is
+// 30_030_100, 0.4.0 is 30_040_000, 1.0.0 is 31_000_000. Changing the version means changing the two lines below together:
+// VersionCodeSchemeTest checks that they agree, that the number grows and that it stays above the published ones.
+// versionCode of a DEBUG build is still the minutes since the Unix epoch, so each debug build installs over the previous one.
+val appVersionName = "0.3.0"
+val releaseVersionCode = 30_030_000
 val buildTimestamp: String = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yy.MM.dd-HH.mm"))
-val buildVersionCode = (System.currentTimeMillis() / 60_000L).toInt()
+val debugVersionCode = (System.currentTimeMillis() / 60_000L).toInt()
 // The commit the APK was built from, for the ride log header; "?" outside a git checkout.
 val buildGitCommit: String = providers.exec {
     commandLine("git", "rev-parse", "--short", "HEAD")
     isIgnoreExitValue = true
 }.standardOutput.asText.map { it.trim().ifEmpty { "?" } }.getOrElse("?")
+
+// A warning of the Kotlin compiler fails the build (main code, JVM tests and instrumented tests alike), as one of lint does ("lint" below).
+// A deprecated call that cannot be avoided says why in a @Suppress next to it. Only the mutation test (scripts/dev/run_unit.py) turns this
+// off, with -PreauAllowWarnings: a mutation breaks a decision on purpose and may leave a variable unused, which is not what it is testing.
+kotlin {
+    compilerOptions {
+        allWarningsAsErrors.set(!providers.gradleProperty("reauAllowWarnings").isPresent)
+    }
+}
+
+// A reproducible release build: the Compose compiler decides how each composable skips (the $changed bits it tests, the $stable fields it reads)
+// from what it knows of the types it uses. An INCREMENTAL Kotlin compilation compiles again only the files that changed, and a type of another
+// file is known only from its .class, not from its source; the same code then comes out with other constants (a `$stable` read with `sget` where
+// the whole compilation writes the number, one $changed bit more or less), and the classes2.dex and classes3.dex of a release built over an old
+// build are not those of a clean build of the same commit. So the release (and the "benchmark" build, which is the release's code) declares the
+// sources once more as an input that is NOT incremental: when one changes, Gradle runs the task without incremental changes and Kotlin compiles
+// everything. The debug build stays incremental, since it is the one rebuilt all day. ReleaseReproducibleBuildTest holds this block.
+tasks.configureEach {
+    if (name.endsWith("ReleaseKotlin") || name.endsWith("BenchmarkKotlin")) {
+        inputs.files(fileTree("src") { include("main/**/*.kt", "main/**/*.java", "release/**/*.kt", "release/**/*.java") })
+            .withPropertyName("sourcesForAFullCompilation")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+    }
+}
 
 android {
     namespace = "com.reau.app"
@@ -33,32 +66,16 @@ android {
         // ConnectivityManager.requestNetwork(specifier), both added in API 29.
         minSdk = 29
         targetSdk = 36
-        versionCode = buildVersionCode
+        versionCode = releaseVersionCode
         versionName = appVersionName
         buildConfigField("String", "GIT_COMMIT", "\"$buildGitCommit\"")
 
         testInstrumentationRunner = "com.reau.app.KeepAppStateRunner"
     }
 
-    // Two editions of the app from the same sources, installable side by side (their ids differ):
-    //  - completa: id com.reau.app; any Android Auto; has the accessibility service that switches the Android Auto
-    //    head unit server on (Android Auto 17.4 or newer).
-    //  - lite: id com.reau.app.lite; no accessibility service (its source is in src/completa only, and the
-    //    manifest in src/lite takes it out); the rider switches the server on by hand, and Android Auto 17.3 or
-    //    older is asked to dial in instead.
-    // The code tells them apart by Edition (src/main), never by testing the flavor by name.
-    flavorDimensions += "edition"
-    productFlavors {
-        create("completa") {
-            dimension = "edition"
-            buildConfigField("boolean", "LITE", "false")
-        }
-        create("lite") {
-            dimension = "edition"
-            applicationIdSuffix = ".lite"
-            buildConfigField("boolean", "LITE", "true")
-        }
-    }
+    // One app, com.reau.app, no product flavors (until 0.2.0 there were two editions, "completa" and "lite"; their sources are not in this repository
+    // any more, only in the git history up to the commit of 20/10/2026). The app has no accessibility service (the one it had until 0.3.0 is
+    // not in this repository either, only in that history).
 
     // Release signing. The official Releases are signed with the project's own key, which is never in this repository: its
     // path and passwords come from four environment variables. Without them (or with a path that is not a file) packaging a release
@@ -99,6 +116,15 @@ android {
             }
             signingConfig = signingConfigs.getByName(if (releaseKeystore != null) "release" else "debug")
         }
+        // The build the macrobenchmark module measures (`:macrobenchmark`, see CONTRIBUTING): the release code (profileable by the shell, as the main manifest says),
+        // not debuggable, always signed with the debug key, so it needs no release key and the check above does not stop it. It is never a build for the rider.
+        // The release stubs of src/release/ stand in for the debug tools, as in the release.
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -133,6 +159,24 @@ android {
     sourceSets {
         getByName("test").kotlin.srcDir("src/sharedTest/java")
         getByName("androidTest").kotlin.srcDir("src/sharedTest/java")
+        getByName("benchmark").kotlin.srcDir("src/release/java")
+    }
+
+    // A device that Gradle creates, starts and stops by itself, for the instrumented tests (`./gradlew pixel6Api34DebugAndroidTest`; see CONTRIBUTING). It is only
+    // declared here: nothing downloads its system image until that task is run. ATD ("automated test device") is the light image for tests; REau does not
+    // use Google Play services. The macrobenchmark module has its own device (a rooted image).
+    @Suppress("UnstableApiUsage")
+    testOptions.managedDevices.localDevices.create("pixel6Api34") {
+        device = "Pixel 6"
+        apiLevel = 34
+        systemImageSource = "aosp-atd"
+    }
+}
+
+// The debug build takes its versionCode (and the BuildConfig.VERSION_CODE the ride log prints) from the clock; the release keeps the fixed one.
+androidComponents {
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.outputs.forEach { it.versionCode.set(debugVersionCode) }
     }
 }
 
@@ -147,6 +191,7 @@ dependencies {
     compileOnly(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.protobuf.java)
     implementation(libs.conscrypt.android)
     testImplementation(libs.junit)
@@ -164,19 +209,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
 
-// `lintDebug` and `testDebugUnitTest` cover both editions; each edition's own tasks (lintLiteDebug, ...) exist too.
-tasks.register("testDebugUnitTest") {
-    group = "verification"
-    description = "JVM unit tests of both editions' debug variants."
-    dependsOn("testCompletaDebugUnitTest", "testLiteDebugUnitTest")
-}
-tasks.register("lintDebug") {
-    group = "verification"
-    description = "Lint of both editions' debug variants; any warning fails."
-    dependsOn("lintCompletaDebug", "lintLiteDebug")
-}
-
-// Coverage of the JVM unit tests of the full edition: `./gradlew :app:jacocoTestReport` runs them and writes the HTML and XML
+// Coverage of the JVM unit tests: `./gradlew :app:jacocoTestReport` runs them and writes the HTML and XML
 // reports to app/build/reports/jacoco/. It is not part of `check`, `assemble` or CI, and it does not touch the APK.
 jacoco {
     toolVersion = "0.8.13"
@@ -184,15 +217,15 @@ jacoco {
 
 tasks.register<JacocoReport>("jacocoTestReport") {
     group = "verification"
-    description = "Coverage report (HTML and XML) of the full edition's JVM unit tests, in build/reports/jacoco/."
-    dependsOn("testCompletaDebugUnitTest")
-    val classes = fileTree(layout.buildDirectory.dir("intermediates/built_in_kotlinc/completaDebug/compileCompletaDebugKotlin/classes")) {
+    description = "Coverage report (HTML and XML) of the JVM unit tests, in build/reports/jacoco/."
+    dependsOn("testDebugUnitTest")
+    val classes = fileTree(layout.buildDirectory.dir("intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes")) {
         exclude("**/R.class", "**/R$*.class", "**/BuildConfig.class")
     }
     classDirectories.setFrom(classes)
-    sourceDirectories.setFrom(files("src/main/java", "src/completa/java"))
+    sourceDirectories.setFrom(files("src/main/java"))
     executionData.setFrom(
-        fileTree(layout.buildDirectory.dir("outputs/unit_test_code_coverage/completaDebugUnitTest")) { include("*.exec") },
+        fileTree(layout.buildDirectory.dir("outputs/unit_test_code_coverage/debugUnitTest")) { include("*.exec") },
     )
     reports {
         html.required.set(true)
@@ -202,15 +235,27 @@ tasks.register<JacocoReport>("jacocoTestReport") {
     }
 }
 
+// Coverage of the JVM unit tests with Kover, in the debug variant: `./gradlew :app:koverHtmlReportDebug` (or `koverXmlReportDebug`) runs them and writes the
+// report to build/reports/kover/. It is not part of `check`, `assemble` or CI, and it does not touch the APK. What is left out has no logic of the app's:
+// the generated R and BuildConfig classes, the classes the Compose compiler makes for the lambdas of @Composable functions and the Android Auto
+// messages that protoc generates (com.reau.app.aa.proto: about two thirds of the lines of the app, which no test is meant to cover one by one).
+kover {
+    reports {
+        filters {
+            excludes {
+                classes("*.R", "*.R\$*", "*.BuildConfig", "*ComposableSingletons*", "com.reau.app.aa.proto.*")
+            }
+        }
+    }
+}
 
 // detekt runs as the stand-alone CLI: the Gradle plugin does not follow Kotlin 2.2 / AGP 9.
 // It fails on any finding that is not in config/detekt/baseline.xml, which holds only the accepted debt (long protocol and decoder routines kept as they are on purpose).
 val detektCli by configurations.creating
 dependencies { detektCli(libs.detekt.cli) }
 
-// What is analysed: the shared code and what only one edition (completa, lite) or the debug build has. The accessibility service of
-// the full edition (src/completa) was left out when only src/main/java was named.
-val detektInputs = listOf("main", "completa", "lite", "debug").map { file("src/$it/java") }.filter { it.isDirectory }
+// What is analysed: the main code and what only the debug build has.
+val detektInputs = listOf("main", "debug").map { file("src/$it/java") }.filter { it.isDirectory }
 
 fun detektArgs(extra: List<String>) = listOf(
     "--input", detektInputs.joinToString(",") { it.path },

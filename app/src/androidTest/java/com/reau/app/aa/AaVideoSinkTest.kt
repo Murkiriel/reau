@@ -26,6 +26,7 @@ import org.junit.runner.RunWith
 import java.net.Socket
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 private const val READER_JOIN_MS = 2_000L
@@ -64,6 +65,9 @@ class AaVideoSinkTest {
     private lateinit var transport: AapTransport
     private lateinit var sink: AaVideoSink
 
+    /** How long the compositor the sink was given says it has been inside one frame. */
+    private val compositorBusyMs = AtomicLong()
+
     @Before
     fun startSession() {
         AaLog.sink = { log += it }
@@ -81,7 +85,7 @@ class AaVideoSinkTest {
         transport.onQuit = { }
         assertTrue("handshake failed: $log", transport.startHandshake(connection))
         assertTrue(peer.awaitHandshake())
-        sink = AaVideoSink { transport.triggerFocusCycleRecovery() }
+        sink = AaVideoSink(compositorBusyMs = { compositorBusyMs.get() }) { transport.triggerFocusCycleRecovery() }
         sink.setSurface(reader.surface)
         transport.startReading(AapMessageHandlerType(transport, config, sink::process))
         peer.send(Channel.ID_VID, Media.MsgType.MEDIA_MESSAGE_START_VALUE, Media.Start.newBuilder().setSessionId(SESSION).setConfigurationIndex(0).build().toByteArray())
@@ -271,6 +275,39 @@ class AaVideoSinkTest {
         sendInPieces(frames[0], pieces = 3)
         await("pictures after the restart (had $before)") { pictures.get() > before }
         assertShowsThePattern(checkNotNull(lastPicture.get()))
+    }
+
+    /**
+     * The compositor given to the sink is the one the decoder asks: while it is stuck inside a frame, a decoder that stops giving
+     * pictures is not restarted; the moment it is free the stall is called.
+     */
+    @Test
+    fun aDecoderThatStopsGivingPicturesIsLeftAloneWhileTheCompositorOfTheSinkIsStuck() {
+        needsADecoderThatAnswersAtOnce()
+        compositorBusyMs.set(5_000)
+        sendConfig()
+        sendInPieces(frames[0], pieces = 3)
+        assertAck("configuration")
+        assertAck("keyframe")
+        await("the first picture") { pictures.get() >= 1 }
+
+        val filler = byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 1, 0x0C, 0xFF.toByte(), 0xFF.toByte(), 0x80.toByte())
+        fun fillersUntil(deadline: Long, done: () -> Boolean) {
+            while (!done() && System.currentTimeMillis() < deadline) {
+                peer.send(Channel.ID_VID, type = 0, body = filler)
+                Thread.sleep(50)
+                while (true) {
+                    val received = peer.receive(1_000) ?: break
+                    if (received.type == Media.MsgType.MEDIA_MESSAGE_ACK_VALUE) break
+                }
+            }
+        }
+        fillersUntil(System.currentTimeMillis() + 5_000) { false } // the stall is called after 3 s
+        assertTrue("the decoder was restarted while the compositor was stuck, got $log", log.none { "Decoder stall detected" in it })
+
+        compositorBusyMs.set(0)
+        fillersUntil(System.currentTimeMillis() + 10_000) { log.any { "Decoder stall detected" in it } }
+        assertTrue("the excused stall must be called once the compositor is free, got $log", log.any { "Decoder stall detected" in it })
     }
 
     @Test

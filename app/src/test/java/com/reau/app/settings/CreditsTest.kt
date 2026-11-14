@@ -12,7 +12,7 @@ class CreditsTest {
     private val all = Credits.groups.flatMap { it.entries }
 
     /** The one line with no address to copy: HeadQLink's repository is not known here (the NOTICE says so). */
-    private val NO_ADDRESS = "HeadQLink"
+    private val NO_ADDRESS = "EstrelaAustral"
 
     @Test
     fun `the three groups, in order`() {
@@ -64,10 +64,22 @@ class CreditsTest {
     fun `each line has a holder, a role and an address to copy`() {
         for (e in all) {
             assertTrue(e.name, e.role != 0)
-            // HeadQLink's repository address is not known to this repository: its line has none (NOTICE says so); every other has one.
+            // EstrelaAustral is a private repository: its line has no address to copy (the NOTICE says so); every other has one.
             assertTrue(e.name, e.url.startsWith("https://") || (e.name == NO_ADDRESS && e.url.isEmpty()))
         }
         assertTrue("every line names a holder", all.none { it.holder.isBlank() })
+    }
+
+    /** Checked with `gh` on 30/10/2026: these projects moved, and the old address only redirects. The new one is the one given. */
+    @Test
+    fun `the addresses given are the projects' current ones, not the ones that redirect`() {
+        val urls = all.associate { it.name to it.url }
+        assertEquals("https://github.com/aa-proxy/aa-proxy-rs", urls["aa-proxy-rs"])
+        assertEquals("https://github.com/OpenMotoDash/better-dash", urls["better-dash"])
+        assertEquals("https://github.com/webstream-labs/jmuxer", urls["JMuxer"])
+        assertEquals("https://github.com/ryazrm/headqlink_devel", urls["HeadQLink"])
+        val notice = java.io.File("../NOTICE").readText()
+        assertTrue("the NOTICE says EstrelaAustral's repository is private", "a private repository" in notice.substringAfter("EstrelaAustral (Apache License 2.0)"))
     }
 
     @Test
@@ -109,6 +121,22 @@ class CreditsTest {
         val notice = java.io.File("../NOTICE").readText()
         val block = notice.substringAfter("open-headunit (GNU Affero").substringBefore("headunit-revived (GNU Affero")
         assertTrue(all.single { it.name == "open-headunit" }.holder, "Copyright andreknieriem" in block)
+    }
+
+    @Test
+    fun `the NOTICE credits the glyph scan with its licence and its required notice, and the glyph table says who measured it`() {
+        val notice = java.io.File("../NOTICE").readText()
+        val block = notice.substringAfter("): dash maneuver glyph bytes").substringBefore("recon-dash (GNU Affero")
+            .replace(Regex("\\s+"), " ")
+        assertTrue("the entry is there", block.length in 200..2_000)
+        assertTrue("the holder, as that licence's Required Notice asks", Regex("""Copyright \d{4} \S+""").containsMatchIn(block) && "Required Notice" in block)
+        assertTrue("the licence is named in the entry's title", Regex("""\n\S+ \([A-Za-z ]+License [0-9.]+\): dash maneuver glyph bytes\n""").containsMatchIn(notice))
+        assertTrue("the file", "dash/nav/DashManeuverGlyphs.kt" in block)
+        assertTrue("facts only", "no code, text or images of that project are in the repository or in the APK" in block)
+        val table = java.io.File("src/main/java/com/reau/app/dash/nav/DashManeuverGlyphs.kt").readText()
+        assertTrue("who measured", "Its author, not REau," in table)
+        assertTrue("what REau's own dash confirmed", "NOT yet confirmed on REau's own dash" in table)
+        assertTrue("the old claim is gone", "each visible glyph was checked by eye" !in table)
     }
 
     @Test

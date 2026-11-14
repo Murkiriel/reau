@@ -358,9 +358,5 @@ class PreviousSessionClosingTest {
         var previous: AaLinkState? = null
         val ended = says.indices.filter { i -> PreviousSessionClosing.windowEnded(previous, says[i]).also { previous = says[i] } }
         assertEquals("the window runs out once, at the round of 124 s", listOf(6), ended)
-        // And the policy turns that round into the restart, once.
-        val policy = ServerPolicy().apply { started() }
-        val acts = says.map { policy.state(it) }
-        assertEquals(listOf(6), acts.indices.filter { acts[it] == ServerPolicy.Act.RESTART })
     }
 }

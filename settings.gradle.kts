@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "REau"
 include(":app")
+include(":macrobenchmark")

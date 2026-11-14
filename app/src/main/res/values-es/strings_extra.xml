@@ -41,11 +41,11 @@
     <string name="credit_role_moto_hub">canal de navegación de Android Auto</string>
     <string name="credit_role_headqlink">la pausa de 1,5 s al reiniciar el servidor (un valor, sin código)</string>
     <string name="credit_role_aa_proxy_rs">datos del protocolo: mensajes de estado del teléfono y de multimedia (sin código)</string>
-    <string name="credit_role_northstar">primera implementación del protocolo del tablero (a través de EstrelaAustral)</string>
+    <string name="credit_role_northstar">una implementación del protocolo del tablero (a través de EstrelaAustral)</string>
     <string name="credit_role_estrelaaustral">punto de partida: el lado del tablero, el clima, las pruebas y la organización</string>
     <string name="credit_role_better_dash">referencia del protocolo K1G; algunas partes portadas de él</string>
-    <string name="credit_role_recon_dash">pausar los envíos cuando se cae la red, telemetría</string>
-    <string name="credit_role_open_dash">secuencia de salida al tablero (de una versión anterior a la limpieza del proyecto del 21 de septiembre de 2026)</string>
+    <string name="credit_role_recon_dash">la idea de pausar los envíos cuando se cae la red y el formato del registro de telemetría (ningún archivo copiado)</string>
+    <string name="credit_role_open_dash">búsqueda de la red del tablero que el sistema ya unió y secuencia de salida al tablero (de una versión anterior a la limpieza del proyecto del 21 de septiembre de 2026)</string>
     <string name="credit_role_fraunces">títulos</string>
     <string name="credit_role_androidx">pantallas y base de la app</string>
     <string name="credit_role_conscrypt">cifrado de la conversación con Android Auto (con BoringSSL)</string>

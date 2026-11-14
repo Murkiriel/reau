@@ -1,0 +1,102 @@
+# Golden trace of the stream governor (plan 27, GovernadorOuroTest). Recorded from the code, never edited by hand.
+# Case 15-encoder-failed: the rebuild carries the bitrate applied now (still, reduced), not the full one.
+# A line is a poll that had an action (the time in ms, then one action per line); `reads:` are the values the video loop reads, when one changed.
+
+== 400 kbps ==
+      0  start
+         pace=500/500
+         bitrate=200000
+         sync=stream start
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+# the map moves, no route
+    250  pace=250/500
+    500  bitrate=400000
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=400000 encoderKeyframeSec=2)
+   1000  sync=pace
+   1250  stats=5.0fps/360kbps
+   2000  sync=pace
+# the screen is still
+   2250  stats=3.0fps/120kbps
+   3000  sync=pace
+   3250  stats=2.0fps/160kbps
+   3500  bitrate=200000
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+   4250  stats=2.0fps/160kbps
+   5000  sync=idle
+   5000  encoder failed, rebuildAction(): rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+# a route, 500 m from the maneuver, 70 km/h, the map moves
+   5250  log: nav profile: none -> REDUCED (data), pace 2 fps, encoder 4 fps
+         pace=500/1000
+         stats=3.0fps/200kbps
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=400000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+   5500  log: video fps target=2 sent=2.6 (13frames/5.0s) composed=2.6 kbps=168 set=200k frame=8076B source=7 drawn=7 repeated=6 compose=2.0ms encode=8.0ms late=0 tickwait=- full=false thermal=OK speed~70km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=4(max 15000B/11pkt) sync=5[stream start:1,pace:3,idle:1] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=7(1.4/s)
+   6000  sync=pace
+   6250  stats=2.0fps/160kbps
+   7000  sync=pace
+   7000  encoder failed, rebuildAction(): rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+# the screen is still, in the reduced profile
+   7250  stats=1.0fps/40kbps
+   8000  sync=pace
+   8250  stats=1.0fps/120kbps
+   9250  stats=1.0fps/120kbps
+  10000  sync=idle
+  10000  encoder failed, rebuildAction(): rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+# the map moves
+  10250  stats=2.0fps/160kbps
+  10500  log: video fps target=2 sent=1.4 (7frames/5.0s) composed=1.4 kbps=120 set=200k frame=10714B source=4 drawn=4 repeated=3 compose=2.0ms encode=8.0ms late=0 tickwait=- full=false thermal=OK speed~70km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=4(max 15000B/11pkt) sync=4[pace:3,idle:1] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=4(0.8/s)
+  11000  sync=pace
+  11250  stats=2.0fps/160kbps
+  12000  sync=pace
+  12000  end, 48 polls
+
+== 200 kbps ==
+      0  start
+         pace=500/500
+         bitrate=100000
+         sync=stream start
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=100000 encoderKeyframeSec=2)
+# the map moves, no route
+    250  pace=250/500
+    500  bitrate=200000
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+   1000  sync=pace
+   1250  stats=5.0fps/360kbps
+   2000  sync=pace
+# the screen is still
+   2250  stats=3.0fps/120kbps
+   3000  sync=pace
+   3250  stats=2.0fps/160kbps
+   3500  bitrate=100000
+         reads: fps=4 profileFps=4 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=100000 encoderKeyframeSec=2)
+   4250  stats=2.0fps/160kbps
+   5000  sync=idle
+   5000  encoder failed, rebuildAction(): rebuild(fps=4 keyframeSec=1 bitrateBps=100000 encoderKeyframeSec=2)
+# a route, 500 m from the maneuver, 70 km/h, the map moves
+   5250  log: nav profile: none -> REDUCED (data), pace 2 fps, encoder 4 fps
+         pace=500/1000
+         bitrate=200000
+         stats=3.0fps/200kbps
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+   5500  log: video fps target=2 sent=2.6 (13frames/5.0s) composed=2.6 kbps=168 set=200k frame=8076B source=7 drawn=7 repeated=6 compose=2.0ms encode=8.0ms late=0 tickwait=- full=false thermal=OK speed~70km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=4(max 15000B/11pkt) sync=5[stream start:1,pace:3,idle:1] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=7(1.4/s)
+   6000  sync=pace
+   6250  stats=2.0fps/160kbps
+   7000  sync=pace
+   7000  encoder failed, rebuildAction(): rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+# the screen is still, in the reduced profile
+   7250  stats=1.0fps/40kbps
+   8000  sync=pace
+   8250  bitrate=100000
+         stats=1.0fps/120kbps
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=100000 encoderKeyframeSec=2)
+   9250  stats=1.0fps/120kbps
+  10000  sync=idle
+  10000  encoder failed, rebuildAction(): rebuild(fps=4 keyframeSec=1 bitrateBps=100000 encoderKeyframeSec=2)
+# the map moves
+  10250  bitrate=200000
+         stats=2.0fps/160kbps
+         reads: fps=2 profileFps=2 encoderFps=4 gopFps=6 encoderKeyframeSec=2 keyframeSec=1 activeBitrateBps=200000 rebuildAction=rebuild(fps=4 keyframeSec=1 bitrateBps=200000 encoderKeyframeSec=2)
+  10500  log: video fps target=2 sent=1.4 (7frames/5.0s) composed=1.4 kbps=120 set=200k frame=10714B source=4 drawn=4 repeated=3 compose=2.0ms encode=8.0ms late=0 tickwait=- full=false thermal=OK speed~70km/h(max 70) wifi=-58dBm/72Mbps(worst) kf=1s idr=4(max 15000B/11pkt) sync=4[pace:3,idle:1] auto=4fps [*] compose_max=- compose_p95=- encode_max=- encode_p95=- look=0 latch=0 wake=4(0.8/s)
+  11000  sync=pace
+  11250  stats=2.0fps/160kbps
+  12000  sync=pace
+  12000  end, 48 polls

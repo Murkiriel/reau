@@ -15,6 +15,8 @@ import android.os.SystemClock
 import android.view.Surface
 import com.reau.app.data.RideDiagnostics
 import com.reau.app.stream.DashLogic
+import com.reau.app.util.StageClock
+import com.reau.app.util.StageStats
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -53,6 +55,14 @@ class DashCompositor(private val log: (String) -> Unit) {
         val composeNs: Long,
         /** How long each new picture drawn since the last take waited for the tick, in ms ([TickWait]). */
         val tickWaitsMs: List<Double> = emptyList(),
+        /** Each frame's compose time (the same time [composeNs] sums), for its worst and 95th percentile. */
+        val compose: StageStats = StageStats.EMPTY,
+        /** The picture looks ([PictureLook]: the shrunk read-back and the classifier), apart from the compose. */
+        val look: StageStats = StageStats.EMPTY,
+        /** The latch of each new picture (`updateTexImage`), apart from the compose. */
+        val latch: StageStats = StageStats.EMPTY,
+        /** The pictures from Android Auto that woke the compositor (`onFrameAvailable`), drawn or not. */
+        val wakeups: Int = 0,
     )
 
     private val thread = HandlerThread("dash-compositor").apply { start() }
@@ -68,6 +78,13 @@ class DashCompositor(private val log: (String) -> Unit) {
     /** Told what Android Auto's picture looks like ([PictureLook]), about every [com.reau.app.stream.InputBurst.lookEveryMs], on the compositor's thread; null: no look is taken. */
     @Volatile var onLook: ((PictureLook.Kind) -> Unit)? = null
     private var lastLookAtMs = 0L
+
+    // The net's own answer of the last look, and the debug build's log of it (LookAudit): the class and p are not otherwise kept.
+    private val lookResult = ScreenNet.Result()
+    private val lookAudit = LookAudit()
+
+    /** Whether the net's class and confidence go to the ride log (the debug build only; a test may set it). */
+    @Volatile var auditLooks: Boolean = com.reau.app.BuildConfig.DEBUG
 
     /** Where the Android Auto decoder renders. Valid after [start]. */
     @Volatile var inputSurface: Surface? = null
@@ -96,6 +113,9 @@ class DashCompositor(private val log: (String) -> Unit) {
     private var lastStampMs = -1L
     private var onFrameSubmitted: (Long) -> Unit = {}
     private var postFailing = false
+
+    // When the frame being drawn began, read by [busyMs] from any thread (written by the compositor's).
+    private val frameBusy = FrameBusy(SystemClock::uptimeMillis)
     private var overlay = StatsOverlay()
     private var overlayText = StatsOverlay.latest
     private var buttonOverlay = ButtonOverlay()
@@ -113,6 +133,10 @@ class DashCompositor(private val log: (String) -> Unit) {
     private val waitClock = TickWaitClock() // the compositor's own thread only
     private val tickWaits = TickWaitLog()
     private val composeNs = AtomicLong()
+    private val wakeups = AtomicInteger()
+    private val composeClock = StageClock()
+    private val lookClock = StageClock()
+    private val latchClock = StageClock()
 
     /**
      * Brings up OpenGL and the input surface for a [sourceW]×[sourceH] source (the frame size asked of Android
@@ -131,7 +155,11 @@ class DashCompositor(private val log: (String) -> Unit) {
                 viewport = CompositorMath.viewport(mapping.dest)
                 // A picture arrived from the decoder: latch it at once (it must never wait for the dash's pace).
                 inputSurface = gl.createInput(sourceW, sourceH, handler) {
-                    if (gl.latch()) {
+                    wakeups.incrementAndGet()
+                    val latchedAtNs = System.nanoTime()
+                    val latched = gl.latch()
+                    latchClock.add(System.nanoTime() - latchedAtNs)
+                    if (latched) {
                         hasImage = true
                         newImage = true
                         waitClock.arrived(System.nanoTime())
@@ -392,7 +420,10 @@ class DashCompositor(private val log: (String) -> Unit) {
 
     /** Totals since the previous call, then starts counting again. */
     fun takeStats(): Stats =
-        Stats(sourceFrames.getAndSet(0), drawn.getAndSet(0), repeated.getAndSet(0), composeNs.getAndSet(0), tickWaits.take())
+        Stats(
+            sourceFrames.getAndSet(0), drawn.getAndSet(0), repeated.getAndSet(0), composeNs.getAndSet(0), tickWaits.take(),
+            composeClock.take(), lookClock.take(), latchClock.take(), wakeups.getAndSet(0),
+        )
 
     fun release() {
         onGlThread(wait = true) {
@@ -536,12 +567,29 @@ class DashCompositor(private val log: (String) -> Unit) {
         val now = SystemClock.uptimeMillis()
         if (!CompositorRules.lookDue(now, lastLookAtMs, com.reau.app.stream.InputBurst.lookEveryMs(com.reau.app.stream.InputBurst.lookQuick(now)))) return
         lastLookAtMs = now
-        val pixels = runCatching { gl.look() }.getOrNull() ?: return
-        listener(PictureLook.of(pixels, PictureLook.SAMPLE_W, PictureLook.SAMPLE_H))
+        // What a look costs, counted apart from the compose: the read-back of the shrunk picture and the classifier, not the listener.
+        val startNs = System.nanoTime()
+        val pixels = runCatching { gl.look() }.getOrNull()
+        val kind = pixels?.let { PictureLook.of(it, PictureLook.SAMPLE_W, PictureLook.SAMPLE_H, lookResult) }
+        lookClock.add(System.nanoTime() - startNs)
+        // Debug build only: the net's class and p when the picture changes or the net is not sure, to audit what the offline replica cannot reproduce.
+        if (kind != null && auditLooks) lookAudit.line(kind, lookResult.confidence, now)?.let(log)
+        listener(kind ?: return)
     }
+
+    /**
+     * How long the compositor has been inside the frame it is drawing now, in ms; 0 when it is between frames. A thread stuck in
+     * `eglSwapBuffers` (the encoder gives back no buffer) shows here, and the decoder that draws into this compositor, which then
+     * gives nothing out, is not itself at fault ([com.reau.app.aa.DecoderStallWatch.restartDue]). Readable from any thread.
+     */
+    fun busyMs(): Long = frameBusy.busyMs()
 
     /** Draws the latched picture (or black) on the output and posts it with the next time of the video clock. */
     private fun emitFrame(repeat: Boolean) {
+        frameBusy.track { drawAndPost(repeat) }
+    }
+
+    private fun drawAndPost(repeat: Boolean) {
         val startNs = System.nanoTime()
         gl.draw(window.takeIf { hasImage }, viewport)
         gl.fillBlack(cover)
@@ -568,7 +616,9 @@ class DashCompositor(private val log: (String) -> Unit) {
             com.reau.app.stream.InputLatency.pictureDrawn()
         }
         (if (repeat) repeated else drawn).incrementAndGet()
-        composeNs.addAndGet(System.nanoTime() - startNs)
+        val composedNs = System.nanoTime() - startNs
+        composeNs.addAndGet(composedNs)
+        composeClock.add(composedNs)
     }
 
     /**
@@ -613,6 +663,9 @@ class DashCompositor(private val log: (String) -> Unit) {
 
 /** What the compositor decides about its clock and its frames, kept away from OpenGL and the handler so a plain JVM test can run it. */
 internal object CompositorRules {
+    /** How long a frame begun at [startedAtMs] has been running at [nowMs]: 0 when none is (0 is "between frames") or the clock went back. */
+    fun busyMs(startedAtMs: Long, nowMs: Long): Long = if (startedAtMs == 0L) 0L else (nowMs - startedAtMs).coerceAtLeast(0L)
+
     /** A pace as the clock can use it: a tick of at least a millisecond, and a repeat never sooner than the tick. */
     fun normalized(pace: DashCompositor.Pace): DashCompositor.Pace =
         pace.copy(activeMs = pace.activeMs.coerceAtLeast(1), idleMs = pace.idleMs.coerceAtLeast(pace.activeMs))

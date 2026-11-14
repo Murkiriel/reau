@@ -18,7 +18,7 @@ class AboutDataRuleTest {
         Regex("""Part\("[a-z]+",\s*R\.drawable\.\w+,\s*R\.string\.\w+,\s*R\.string\.(\w+)\)""").findAll(screen).map { it.groupValues[1] }.toList() +
             Regex("""Summary\(R\.drawable\.\w+,\s*R\.string\.(\w+)\)""").findAll(screen).map { it.groupValues[1] }.toList()
 
-    private val texts: List<Triple<String, String, String>> = listOf("main", "completa", "lite").flatMap { set ->
+    private val texts: List<Triple<String, String, String>> = listOf("main").flatMap { set ->
         listOf("values", "values-pt", "values-es").flatMap { folder ->
             File(src, "$set/res/$folder").listFiles { f -> f.name.startsWith("strings") && f.extension == "xml" }.orEmpty().flatMap { file ->
                 Regex("""<string name="(about_\w+)"[^>]*>(.*?)</string>""", RegexOption.DOT_MATCHES_ALL).findAll(file.readText())
@@ -59,7 +59,6 @@ class AboutDataRuleTest {
             assertTrue("$folder: the brands", "Royal Enfield" in text && "Google" in text && "Tripper" in text)
             assertTrue("$folder: the independence", Regex("independent|independente|independiente").containsMatchIn(text))
             assertTrue("$folder: the tap to copy", Regex("copy|copiar").containsMatchIn(text))
-            for (set in listOf("completa", "lite")) assertEquals("$set must not override it ($folder)", null, string(set, folder, "credits_independent"))
         }
     }
 

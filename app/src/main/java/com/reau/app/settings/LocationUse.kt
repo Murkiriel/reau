@@ -11,6 +11,10 @@ object LocationUse {
     /** The Wi-Fi list, to learn the dash's whole name: by the location permission, whatever the switch. */
     fun mayScan(locationGranted: Boolean): Boolean = locationGranted
 
-    /** The last known position is read for the sun and the weather only with the switch on and either location permission given. */
+    /**
+     * The last known position is read for the sun and the weather only with the switch on and either location permission given.
+     * The same rule decides whether the place kept earlier may still be used ([com.reau.app.service.SunPlace.saved]): a permission
+     * revoked in Android stops the kept place from reaching the weather request, though nothing kept is erased.
+     */
     fun mayReadPlace(useLocation: Boolean, fineGranted: Boolean, coarseGranted: Boolean): Boolean = useLocation && (fineGranted || coarseGranted)
 }

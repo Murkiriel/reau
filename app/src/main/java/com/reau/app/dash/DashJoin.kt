@@ -23,7 +23,7 @@ object DashJoin {
      * of it (a Wi-Fi manager made without one), and then nothing is assumed: false.
      */
     fun needsApproval(joinedSsid: String?, wantedSsid: String, wantedIsPrefix: Boolean): Boolean =
-        joinedSsid != null && (joinedSsid.isBlank() || !DashWifiManager.matchesPendingSsid(joinedSsid, wantedSsid, wantedIsPrefix))
+        joinedSsid != null && (joinedSsid.isBlank() || !DashSsid.matchesPendingSsid(joinedSsid, wantedSsid, wantedIsPrefix))
 
     /**
      * How long a request waits: a reconnection of this session [everConnected] keeps [reconnectMs], the first approval of
@@ -55,7 +55,7 @@ object DashJoin {
      */
     internal fun seenRecently(seen: List<ScanSeen>?, wantedSsid: String, wantedIsPrefix: Boolean, nowUs: Long): Boolean =
         seen.orEmpty().any {
-            DashWifiManager.matchesPendingSsid(it.ssid, wantedSsid, wantedIsPrefix) &&
+            DashSsid.matchesPendingSsid(it.ssid, wantedSsid, wantedIsPrefix) &&
                 (it.timestampUs <= 0 || it.timestampUs > nowUs || nowUs - it.timestampUs <= SIGHTING_FRESH_MS * MICROS_PER_MILLI)
         }
 
@@ -104,6 +104,69 @@ object DashJoin {
      */
     fun holdWhileJoining(joiningNow: Boolean, heldMs: Long): Boolean = joiningNow && heldMs < HOLD_WHILE_JOINING_MS
 
+    /**
+     * What [refileAfterLossHeld] decided: nothing to do, a refiling held back because the dash's Wi-Fi is being joined ([HELD_FIRST]: the
+     * first time of this join, when the log says so), or a refiling.
+     */
+    enum class LossRefile { NO, HELD_FIRST, HELD, REFILE }
+
+    /**
+     * [refileAfterLoss] with the hold of [holdWhileJoining]: ride log of 31/10/2026, 10:06:56. The dash came back after 93 s, the loss
+     * watch saw it in the scan and put the request out again 4.8 s after it went out, and 47 ms later reused the "already connected" Wi-Fi
+     * of the very request it had just let go: the system took that network down, the reuse sat on a dead `Network` and every try after
+     * it failed with EPERM for 4.5 minutes. [watchForTheDash] had the hold since 26/10; the watch over a loss did not. [joiningNow] is read
+     * only when a refiling is due (it asks Android for its networks), and [hold] keeps since when the Wi-Fi has been joined.
+     */
+    @Suppress("LongParameterList") // the seven facts of [refileAfterLoss] and the two of the hold
+    internal fun refileAfterLossHeld(
+        firstApproval: Boolean,
+        lostAtUs: Long,
+        sightingStampUs: Long?,
+        nowUs: Long,
+        requestAgeMs: Long,
+        inPause: Boolean,
+        sinceLastRefileMs: Long?,
+        hold: HoldWhileJoining,
+        nowMs: Long,
+        joiningNow: () -> Boolean,
+    ): LossRefile {
+        if (!refileAfterLoss(firstApproval, lostAtUs, sightingStampUs, nowUs, requestAgeMs, inPause, sinceLastRefileMs)) return LossRefile.NO
+        val verdict = hold.holds(joiningNow(), nowMs)
+        return when {
+            !verdict.holds -> LossRefile.REFILE
+            verdict.began -> LossRefile.HELD_FIRST
+            else -> LossRefile.HELD
+        }
+    }
+
+    /** The least between the failure of a request and the sighting that cuts the pause after it: the pace of the machine's first wait (2 s). */
+    const val PAUSE_CUT_MIN_GAP_MS = 2_000L
+
+    /** The least between two pauses cut by a sighting: a dash that flickers in the scan cannot turn the pauses into a request every few seconds. */
+    const val PAUSE_CUT_EVERY_MS = 10_000L
+
+    /**
+     * Whether the dash showing up in the scan **in the pause between two requests** cuts the pause short, so the next request goes out at
+     * once (ride log of 01/11/2026: the app was on before the bike, the dash was in the scan at 18:45:57, the pause of 30 s that began at
+     * 18:45:38.7 ended at 18:46:08.7, and the request joined in 1.5 s: 11 s lost for nothing). The watch over a request ([refileOnSighting])
+     * only looks while one is out, and the one over a first approval only while it waits for the dash; the pause of a network already approved
+     * ([firstApproval] false) was not watched. The rules keep it from being a loop of requests: the dash must have been **out of the scan when the
+     * request failed** ([seenWhenFailed] false: a dash that is there and refusing is the 10 s pace of the controller's, and the stuck-dash notice),
+     * must be in it now ([seenNow]), [sinceFailureMs] must reach [minGapMs] ([PAUSE_CUT_MIN_GAP_MS]; a test makes it short), and [sinceLastCutMs] ([PAUSE_CUT_EVERY_MS]; null: none yet)
+     * keeps one cut from following another too soon. One cut per failure: the watch ends with it.
+     */
+    @Suppress("LongParameterList") // one decision with its facts
+    fun cutsPauseOnSighting(
+        firstApproval: Boolean,
+        seenWhenFailed: Boolean,
+        seenNow: Boolean,
+        sinceFailureMs: Long,
+        sinceLastCutMs: Long?,
+        minGapMs: Long = PAUSE_CUT_MIN_GAP_MS,
+    ): Boolean =
+        !firstApproval && !seenWhenFailed && seenNow && sinceFailureMs >= minGapMs &&
+            (sinceLastCutMs == null || sinceLastCutMs >= PAUSE_CUT_EVERY_MS)
+
     /** The least a request put out after a loss is left alone, and the least between two refilings of one loss. */
     const val REFILE_MIN_GAP_MS = 4_000L
 
@@ -138,4 +201,26 @@ object DashJoin {
     /** Whether [name] is worth keeping as "joined": a full network name, not the bare prefix a prefix request was made with. */
     fun worthKeeping(name: String, pendingSsid: String, pendingIsPrefix: Boolean): Boolean =
         name.isNotBlank() && !(pendingIsPrefix && name == pendingSsid)
+}
+
+/**
+ * Since when the dash's Wi-Fi has been seen joined while a request is unanswered, for [DashJoin.holdWhileJoining]: one per watch.
+ * Not joined any more, the count is forgotten, so a watch that lasts minutes (a loss) holds the next join for its own
+ * [DashJoin.HOLD_WHILE_JOINING_MS] too. Time is given, not read, so a test sets the clock.
+ */
+internal class HoldWhileJoining {
+    /** [holds]: leave the request alone; [began]: the first time of this join, the moment to say so in the log. */
+    data class Verdict(val holds: Boolean, val began: Boolean)
+
+    private var since: Long? = null
+
+    fun holds(joiningNow: Boolean, nowMs: Long): Verdict {
+        if (!joiningNow) {
+            since = null
+            return Verdict(holds = false, began = false)
+        }
+        val began = since == null
+        val from = since ?: nowMs.also { since = it }
+        return Verdict(DashJoin.holdWhileJoining(true, nowMs - from), began)
+    }
 }

@@ -103,4 +103,35 @@ class RecordingsSpaceTest {
         assertEquals(200L * 1024 * 1024, RecordingsSpace.capBytes(debugBuild = false))
         assertEquals(1024L * 1024 * 1024, RecordingsSpace.capBytes(debugBuild = true))
     }
+
+    private val mb = 1024L * 1024
+
+    @Test
+    fun `the recordings budget is 200 MB in a release and 1024 MB in a debug build, the logs' own besides`() {
+        assertEquals(200 * mb, RecordingsSpace.capBytes(debugBuild = false))
+        assertEquals(1024 * mb, RecordingsSpace.capBytes(debugBuild = true))
+        assertEquals(200 * mb, DiagSpace.capBytes(debugBuild = false))
+        assertEquals(1024 * mb, DiagSpace.capBytes(debugBuild = true))
+    }
+
+    @Test
+    fun `a release keeps the ring of 100 MB whatever the free space`() {
+        assertEquals(100 * mb, RecordingsSpace.ringBytes(freeBytes = 50_000 * mb, debugBuild = false))
+        assertEquals(100 * mb, RecordingsSpace.ringBytes(freeBytes = 0, debugBuild = false))
+    }
+
+    @Test
+    fun `a debug build's ring is three quarters of the budget, 768 MB, with room on the phone`() {
+        assertEquals(768 * mb, RecordingsSpace.DEBUG_RING_BYTES)
+        assertEquals(768 * mb, RecordingsSpace.ringBytes(freeBytes = 50_000 * mb, debugBuild = true))
+        assertTrue("the ring and the rest of the budget fit in it", RecordingsSpace.DEBUG_RING_BYTES < RecordingsSpace.DEBUG_CAP_BYTES)
+    }
+
+    @Test
+    fun `a debug build's ring shrinks to leave 512 MB free, and never below the release's 100 MB`() {
+        assertEquals(768 * mb, RecordingsSpace.ringBytes(freeBytes = (512 + 768) * mb, debugBuild = true))
+        assertEquals(500 * mb, RecordingsSpace.ringBytes(freeBytes = (512 + 500) * mb, debugBuild = true))
+        assertEquals(100 * mb, RecordingsSpace.ringBytes(freeBytes = 300 * mb, debugBuild = true))
+        assertEquals(100 * mb, RecordingsSpace.ringBytes(freeBytes = 0, debugBuild = true))
+    }
 }

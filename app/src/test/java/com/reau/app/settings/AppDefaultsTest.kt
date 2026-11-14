@@ -20,19 +20,19 @@ class AppDefaultsTest {
         // The fits of the owner's phone, taken as the defaults on 25/10/2026 and again on 28/10/2026 (the apps' crop 64% at -34, 54) (no zoom, no black bands)
         assertEquals(FitParams(Fit.WHOLE_VISIBLE, 64, -34, 54, 20, 0), s.appsFit)
         assertEquals(FitParams(Fit.WHOLE_VISIBLE, 90, 32, 20, 20, 0), s.menuFit)
-        assertEquals(FitParams(Fit.CROP, 74, 0, 62, 0, 0), s.navFit)
+        assertEquals(FitParams(Fit.CROP, 74, 90, 62, 0, 0), s.navFit)
         // The conservative envelope for the video (profile 1, FixedProfilesTest).
         assertEquals(4, s.fpsCeiling)
         assertEquals(MapTheme.AUTO, s.mapTheme)
         assertEquals(com.reau.app.dash.NavProfileMode.PESSIMISTA, s.navProfileMode)
         assertEquals(joystick, s.joystick)
-        val on = listOf(s.maneuverData, s.autoJoinWifi, s.dashMusic, s.dashCaller, s.aaServerAuto,
+        val on = listOf(s.maneuverData, s.autoJoinWifi, s.dashMusic, s.dashCaller,
             s.dashMask, s.phoneTouch, s.rideLog, s.maneuverFpsProfile, s.speedFpsProfile, s.aaNewProtocol,
             s.useLocation, s.dashPhoneStatus, s.dashAlbumArt, s.answerCalls, s.gemini)
         assertEquals(
-            "manobra, Wi-Fi, música, quem liga, servidor, máscara, toque, registro, perfil por manobra, perfil por velocidade, protocolo 1.7, " +
+            "manobra, Wi-Fi, música, quem liga, máscara, toque, registro, perfil por manobra, perfil por velocidade, protocolo 1.7, " +
                 "localização, estado do celular, capa do álbum, atender ligação, Gemini (as quatro últimas só funcionam com a permissão liberada)",
-            List(16) { true },
+            List(15) { true },
             on,
         )
         val off = listOf(s.maneuverRing)

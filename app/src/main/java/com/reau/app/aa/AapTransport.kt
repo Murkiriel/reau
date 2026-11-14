@@ -3,8 +3,10 @@
 // nor builds AapVideo, startReading() is given the message handler, quit() no longer releases the video path (the
 // onQuit callback's owner does), triggerFocusCycleRecovery() is internal so the video path can call it. The
 // microphone hook is cut. From open-headunit (AGPL-3.0, commit 489df5de, aap/AapTransport.kt): the last version
-// request waits out the whole handshake budget. Video focus changes and sensor requests are counted in
-// [stats].
+// request waits out the whole handshake budget. From the same project (commit 68c2bbb5): over a socket there is
+// one version request, not up to three (the loop is kept, [versionRequests] is AaConfig.VERSION_REQUESTS; open-headunit
+// keeps three only for USB, which REau does not have). Video focus changes and sensor requests are counted in
+// [stats]. The focus cycle that asks for a keyframe goes through [KeyframeCycleGate] and gives focus back on the send thread.
 // Adapted from headunit-revived (AGPLv3): aap/AapTransport.kt
 // Trimmed for video-only headless projection: no audio decoder / audio manager / mic recorder /
 // notification / Settings. Keeps the send+poll HandlerThreads, the AAP version+SSL handshake,
@@ -15,7 +17,6 @@ package com.reau.app.aa
 import android.content.Context
 import android.os.Handler
 import android.os.HandlerThread
-import android.os.Looper
 import android.os.Process
 import android.os.SystemClock
 import android.util.SparseIntArray
@@ -26,9 +27,12 @@ import java.util.concurrent.TimeUnit
 class AapTransport(
     private val context: Context,
     private val externalSsl: AapSslContext? = null,
+    private val protocolMajor: Int = 1,
     private val protocolMinor: Int = Messages.MINOR_DEFAULT,
     /** How many times the version request may be sent; the last one waits out the whole budget. */
     private val versionRequests: Int = AaConfig.VERSION_REQUESTS,
+    /** How long the video focus stays away in a keyframe cycle, asked at each cycle ([FocusGap]): 100 ms unless the experimental switch is on. */
+    private val focusGapMs: () -> Long = { FocusGap.DEFAULT_MS },
 ) {
     val ssl: AapSsl = externalSsl ?: AapSslContext(SingleKeyKeyManager(context))
 
@@ -79,13 +83,63 @@ class AapTransport(
     val isAlive: Boolean
         get() = pollThread?.isAlive ?: false
 
-    /** Asks Android Auto for a keyframe by taking video focus away and giving it back. */
+    private val keyframeGate = KeyframeCycleGate()
+    private val focusTiming = FocusCycleTiming()
+
+    /**
+     * Whether the cycle must wait because the compositor the picture goes to is stuck (a keyframe is no use to a consumer that
+     * cannot show it). Set by the session; read with every request and tick.
+     */
+    @Volatile internal var keyframeBlocked: () -> Boolean = { false }
+
+    /**
+     * Asks Android Auto for a keyframe by taking video focus away and giving it back, when [keyframeGate] allows it. A request
+     * that has to wait is kept and goes out from [keyframeTick].
+     */
     internal fun triggerFocusCycleRecovery() {
-        AaLog.w("AapTransport: Requesting recovery keyframe via focus cycle.")
+        val now = SystemClock.elapsedRealtime()
+        when (val verdict = keyframeGate.request(now, keyframeBlocked())) {
+            KeyframeCycleGate.Verdict.GO -> cycleVideoFocus()
+            KeyframeCycleGate.Verdict.WAIT_SPACING ->
+                AaLog.i("AapTransport: keyframe cycle waits for the second to pass, ${keyframeGate.waitLeftMs(now)} ms left")
+            else -> {
+                AaLog.w("AapTransport: keyframe cycle held back: ${holdName(verdict)}, ${keyframeGate.waitLeftMs(now) / 1000} s left")
+                com.reau.app.data.ProjectionSummary.current.watchdog("keyframe-gate")
+            }
+        }
+    }
+
+    /** Once a second: lets out a keyframe request that had to wait. */
+    internal fun keyframeTick() {
+        // Debug builds only: a press of "Focus cycle" asks for the keyframe now, through the same gate as a stalled picture would.
+        if (com.reau.app.devtools.FaultInjection.takeFocusCycle()) {
+            AaLog.w("AapTransport: a keyframe asked for by the debug build's focus cycle trigger")
+            triggerFocusCycleRecovery()
+        }
+        focusTiming.overdue(SystemClock.elapsedRealtime())?.let { AaLog.w("AapTransport: $it") }
+        if (keyframeGate.takePending(SystemClock.elapsedRealtime(), keyframeBlocked())) {
+            AaLog.i("AapTransport: the keyframe request that waited goes out")
+            cycleVideoFocus()
+        }
+    }
+
+    private fun holdName(verdict: KeyframeCycleGate.Verdict) =
+        if (verdict == KeyframeCycleGate.Verdict.WAIT_BLOCKED) "the compositor is stuck" else "storm guard"
+
+    private fun cycleVideoFocus() {
+        val gapMs = focusGapMs()
+        AaLog.w("AapTransport: Requesting recovery keyframe via focus cycle.${FocusGap.words(gapMs)}")
+        focusTiming.cycled(SystemClock.elapsedRealtime(), gapMs)
         send(VideoFocusEvent(gain = false, unsolicited = false))
-        Handler(Looper.getMainLooper()).postDelayed({
+        // The gain goes out on the send thread, not the main one: a main thread held up (a slow frame, the cold start) would leave Android Auto without focus.
+        sendHandler?.postDelayed({
             if (isAlive) send(VideoFocusEvent(gain = true, unsolicited = true))
-        }, 100)
+        }, gapMs)
+    }
+
+    /** A keyframe of Android Auto arrived: the first one after a focus cycle says how long it took ([FocusCycleTiming]). */
+    internal fun keyframeArrived() {
+        focusTiming.keyframe(SystemClock.elapsedRealtime())?.let { AaLog.i("AapTransport: $it") }
     }
 
     internal fun startSensor(type: Int) {
@@ -178,6 +232,7 @@ class AapTransport(
         AaLog.i("Start Aap transport handshake for $connection")
         this.connection = connection
         wasUserExit = false
+        answeredVersion = null
 
         ending = false
         sendThread = HandlerThread("AapTransport:Handler::Send", Process.THREAD_PRIORITY_AUDIO)
@@ -188,7 +243,12 @@ class AapTransport(
         pollThread!!.start()
         pollHandler = Handler(pollThread!!.looper, pollHandlerCallback)
 
-        if (!handshake(connection)) {
+        val handshook = handshake(connection)
+        // Protocol 6.0, asked on the experimental switch: whether it worked is kept, and the ride log says what was asked and answered (ProtocolAsk).
+        ProtocolAsk.settle(ProtocolAsk.Version(protocolMajor, protocolMinor), handshook, answeredVersion) { line, failed ->
+            if (failed) AaLog.w(line) else AaLog.i(line)
+        }
+        if (!handshook) {
             quit()
             AaLog.e("Handshake failed")
             return false
@@ -227,6 +287,9 @@ class AapTransport(
         }
     }
 
+    /** What Android Auto answered to the version request of this handshake ("1.7, status 0"); null before an answer. */
+    @Volatile private var answeredVersion: String? = null
+
     /** Bytes 4 and 5 of a frame header hold the message type; 2 is VERSION_RESPONSE. */
     private fun isVersionResponseType(buffer: ByteArray): Boolean = buffer[4] == 0.toByte() && buffer[5] == 2.toByte()
 
@@ -247,8 +310,8 @@ class AapTransport(
                 if (drained > 0) AaLog.i("Handshake: Drained $drained bytes of stale data before version request")
             }
 
-            AaLog.i("Handshake: Starting version request 1.$protocolMinor. TS: ${SystemClock.elapsedRealtime()}")
-            val version = Messages.versionRequestFor(protocolMinor)
+            AaLog.i("Handshake: Starting version request $protocolMajor.$protocolMinor. TS: ${SystemClock.elapsedRealtime()}")
+            val version = Messages.versionRequestFor(protocolMajor, protocolMinor)
             var ret: Int
             var attempt = 0
             var received = false
@@ -277,6 +340,8 @@ class AapTransport(
                     if (ret <= 0) break
                     if (ret >= 6 && buffer[0] == 0.toByte() && isVersionResponseType(buffer)) {
                         AaLog.i("Handshake: Version response received: ${Messages.versionAnswer(buffer, ret)} (ret=$ret, attempt=$attempt).")
+                        answeredVersion = Messages.versionAnswer(buffer, ret)
+                        Messages.versionRefusal(buffer, ret)?.let { AaLog.w(Messages.versionRefusalLine(it, protocolMajor, protocolMinor)) }
                         received = true
                         break
                     }
@@ -340,6 +405,7 @@ class AapTransport(
         /** How long the end of a session waits for Android Auto's answer to the bye. */
         internal const val BYE_WAIT_MS = 1_000L
         private const val BYE_PAUSE_ON_READ_THREAD_MS = 150L
+
         /** Sensors.SensorType.NIGHT value (see proto). */
         private const val SENSOR_NIGHT = 10
     }

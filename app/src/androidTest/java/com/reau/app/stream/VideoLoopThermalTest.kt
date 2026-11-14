@@ -14,7 +14,8 @@ import kotlin.concurrent.thread
 
 /**
  * The video loop on a hot phone: the frame ceiling follows [ThermalCeiling] for the phone's
- * thermal status, at the start of a stream and while it runs. Real compositor and encoder, a collector for the dash.
+ * thermal status at the start of a stream, and the stream runs at it. Real compositor and encoder, a collector for the dash.
+ * (The test of a rate that came down while streaming left with the fps ladder, 14/11/2026.)
  */
 @RunWith(AndroidJUnit4::class)
 class VideoLoopThermalTest {
@@ -71,35 +72,20 @@ class VideoLoopThermalTest {
 
     @Test
     fun aCoolPhoneStartsAtTheRidersCeiling() {
-        startLoop(VideoLoop.Settings(startFps = 16, ceilingFps = 16))
+        startLoop(VideoLoop.Settings(ceilingFps = 16))
         awaitLog("start at 16", EVENT_MS) { "video loop start: 16 fps (ceiling 16)" in it }
     }
 
     @Test
     fun aSeverelyHotPhoneStartsUnderTheHotCeiling() {
         status = 3 // SEVERE
-        startLoop(VideoLoop.Settings(startFps = 16, ceilingFps = 16))
+        startLoop(VideoLoop.Settings(ceilingFps = 16))
         awaitLog("start at 10", EVENT_MS) { "video loop start: 10 fps (ceiling 10)" in it }
         awaitLog("the reason in the log", EVENT_MS) { "thermal severe: ceiling 10 of 16" in it }
     }
 
-    @Test
-    fun aPhoneThatHeatsUpWhileStreamingComesDownToTheHotCeiling() {
-        EncoderCapacity.assumeKeepsUp(16)
-        startLoop(VideoLoop.Settings(startFps = 16, ceilingFps = 16))
-        Thread.sleep(2_000)
-        status = 2 // MODERATE: 12 of 16
-        awaitLog("the change seen", EVENT_MS) { "thermal moderate: ceiling 12 of 16" in it }
-        awaitLog("windows judged hot", WINDOW_MS) { it.startsWith("video fps target=16") && "thermal=HOT" in it }
-        awaitLog("down to 12", REBUILD_MS) { "encoder rebuilt: 12 fps" in it }
-    }
-
     private companion object {
-        // Deadlines for things that must happen, not durations: how soon depends on how busy the machine is.
-        // A poll is every 250 ms and a measurement window 5 s; a window only counts when the picture really moved
-        // and the compositor delivered, so a few of them may be left out before the rate comes down.
+        // A deadline for things that must happen, not a duration: how soon depends on how busy the machine is.
         const val EVENT_MS = 10_000L
-        const val WINDOW_MS = 30_000L
-        const val REBUILD_MS = 90_000L
     }
 }

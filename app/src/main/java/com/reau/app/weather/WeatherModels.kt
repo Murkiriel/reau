@@ -117,7 +117,8 @@ object WeatherParser {
         )
     }
 
-    private fun JSONObject.doubleOrNull(name: String): Double? = if (has(name) && !isNull(name)) optDouble(name) else null
+    // optDouble gives NaN for a value that is not a number: that is no value.
+    private fun JSONObject.doubleOrNull(name: String): Double? = if (has(name) && !isNull(name)) optDouble(name).takeIf { it.isFinite() } else null
     private fun JSONObject.intOrNull(name: String): Int? = if (has(name) && !isNull(name)) optInt(name) else null
 
     private fun parseCurrent(o: JSONObject): CurrentWeather? {

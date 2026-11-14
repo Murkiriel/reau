@@ -7,14 +7,17 @@ import kotlin.math.roundToLong
  * eye to see the text go by (as if it were being read), not a jump.
  */
 object TermsScroll {
-    /** The reading pace in dp per second: about 5,000 px/s on a 1080 px wide phone (density 2.75), the same on any density. */
-    const val DP_PER_SECOND = 1_800f
+    /**
+     * The pace in dp per second, the same on any density: about a screen and a half a second, a text the eye can follow as it goes
+     * by. (It was 1,800, three times quicker, but a 1 s ceiling made it a jump that nobody could see.)
+     */
+    const val DP_PER_SECOND = 600f
 
     /** Never quicker than this, however short the distance: the rider must see the text roll. */
     const val MIN_MS = 1_000
 
-    /** Never slower than this, however long the text: the rider is not kept waiting. */
-    const val MAX_MS = 1_000
+    /** Never slower than this, however long the text: the rider is not kept waiting (a touch on the text stops the roll at any time). */
+    const val MAX_MS = 10_000
 
     private const val MS_PER_SECOND = 1_000L
 

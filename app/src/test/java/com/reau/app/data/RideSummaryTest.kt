@@ -29,7 +29,7 @@ class RideSummaryTest {
         s.streaming(on = false, nowMs = t)
         assertEquals(
             "resumo duration=22s streaming=17s drops dash=1 aa=1 retries dash=0 watchdogs=1 (dash-rx=1) frames=125 fps avg=7.4 " +
-                "min=3.0 gap max=2.2s thermal max=moderate battery 82→75% (-7) marks=2",
+                "min=3.0 gap max=2.2s thermal max=moderate battery 82→75% (-7) marks=2 buttons unknown=0 maneuvers unknown=0 no image=0s",
             s.line(nowMs = 22_000, marks = 2),
         )
     }
@@ -52,7 +52,7 @@ class RideSummaryTest {
         s.start(nowMs = 0, batteryPct = null)
         assertEquals(
             "resumo duration=1m05s streaming=0s drops dash=0 aa=0 retries dash=0 watchdogs=0 frames=0 fps avg=- min=- gap max=- " +
-                "thermal max=? battery ? marks=0",
+                "thermal max=? battery ? marks=0 buttons unknown=0 maneuvers unknown=0 no image=0s",
             s.line(nowMs = 65_000, marks = 0),
         )
     }
@@ -127,5 +127,61 @@ class RideSummaryTest {
         early.streaming(on = true, nowMs = 5_000)
         early.frames(1, 5_100)
         assertEquals(false, "dark=" in early.line(nowMs = 6_000, marks = 0))
+    }
+
+    // ── what the line ends with since 11/11/2026: unknown buttons, unknown maneuvers, the time without the picture ──
+
+    private fun fresh() = RideSummary().also { it.start(nowMs = 0, batteryPct = null) }
+
+    @Test
+    fun `the button codes nobody explained are counted by code, in hex, and the line says how many in all`() {
+        val s = fresh()
+        s.unknownButton(0x31)
+        s.unknownButton(0x20)
+        s.unknownButton(0x31)
+        assertTrue(s.line(nowMs = 1_000, marks = 0), s.line(nowMs = 1_000, marks = 0).contains(" buttons unknown=3 (0x20=1 0x31=2) "))
+    }
+
+    @Test
+    fun `a maneuver number with no glyph counts once for the stretch it stays, and again when it comes back`() {
+        val s = fresh()
+        repeat(30) { s.maneuver(place = 0, type = 45, known = false) } // 30 seconds of the same number
+        s.maneuver(place = 0, type = 7, known = true)
+        s.maneuver(place = 0, type = 45, known = false)
+        s.maneuver(place = 0, type = 0, known = false)
+        val line = s.line(nowMs = 1_000, marks = 0)
+        assertTrue(line, " maneuvers unknown=3 (0=1 45=2) " in line)
+    }
+
+    @Test
+    fun `the maneuver now and the one after are followed apart, so one number in both places counts in each`() {
+        val s = fresh()
+        s.maneuver(place = 0, type = 45, known = false)
+        s.maneuver(place = 1, type = 45, known = false)
+        assertTrue(s.line(nowMs = 1_000, marks = 0), " maneuvers unknown=2 (45=2) " in s.line(nowMs = 1_000, marks = 0))
+    }
+
+    @Test
+    fun `no maneuver yet, and a known one, are not unknown`() {
+        val s = fresh()
+        s.maneuver(place = 0, type = -1, known = false)
+        s.maneuver(place = 0, type = 8, known = true)
+        assertTrue(s.line(nowMs = 1_000, marks = 0), " maneuvers unknown=0 no image=" in s.line(nowMs = 1_000, marks = 0))
+    }
+
+    @Test
+    fun `the time without the picture is the one given, in seconds and minutes`() {
+        val s = fresh()
+        assertTrue(s.line(nowMs = 1_000, marks = 0, noImageMs = 98_300), s.line(nowMs = 1_000, marks = 0, noImageMs = 98_300).endsWith(" no image=1m38s"))
+        assertTrue(s.line(nowMs = 1_000, marks = 0, noImageMs = 20_400).endsWith(" no image=20s"))
+    }
+
+    /** The old fields are where they were and read as before: what the new ones add is after them, and the reader finds them by name. */
+    @Test
+    fun `the fields that were there keep their place and the new ones come after the marks`() {
+        val line = fresh().also { it.unknownButton(0x20) }.line(nowMs = 65_000, marks = 2, noImageMs = 5_000)
+        val old = "resumo duration=1m05s streaming=0s drops dash=0 aa=0 retries dash=0 watchdogs=0 frames=0 fps avg=- min=- gap max=- " +
+            "thermal max=? battery ? marks=2"
+        assertEquals("$old buttons unknown=1 (0x20=1) maneuvers unknown=0 no image=5s", line)
     }
 }

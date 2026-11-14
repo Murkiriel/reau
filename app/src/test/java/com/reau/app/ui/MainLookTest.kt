@@ -2,12 +2,9 @@ package com.reau.app.ui
 
 import com.reau.app.R
 import com.reau.app.aa.AaLinkState
-import com.reau.app.aa.ServerResult
-import com.reau.app.service.AaServerStarter
 import com.reau.app.service.DashLink
 import com.reau.app.service.Phase
 import com.reau.app.service.Projection
-import com.reau.app.ui.MainLook.ServerAction
 import com.reau.app.ui.MainLook.Warning
 import com.reau.app.ui.components.StatusKind
 import org.junit.Assert.assertEquals
@@ -100,73 +97,6 @@ class MainLookTest {
         assertEquals(listOf(Warning.BATTERY_SAVER), MainLook.warnings(Projection(), BatteryUi(saverOn = true, exempt = true)))
     }
 
-    /** The full edition's rules, whichever edition runs the test (the Lite's are in LiteTextsTest). */
-    private fun serverAction(server: ServerUi) = MainLook.serverAction(server, hasAccessibility = true)
-
-    @Test
-    fun `the server warning's golden action`() {
-        val on = AaServerStarter.Accessibility.CONNECTED
-        assertNull("with the switch off, only the way to the settings", serverAction(ServerUi(auto = false, ServerResult.LOCKED, on)))
-        assertEquals(ServerAction.RETRY, serverAction(ServerUi(auto = true, ServerResult.LOCKED, on)))
-        assertNull("no second try while working", serverAction(ServerUi(auto = true, ServerResult.WORKING, on)))
-        assertNull("nor while switching off", serverAction(ServerUi(auto = true, ServerResult.STOPPING, on)))
-        assertEquals(
-            ServerAction.OPEN_ACCESSIBILITY,
-            serverAction(ServerUi(auto = true, ServerResult.SERVICE_OFF, AaServerStarter.Accessibility.OFF)),
-        )
-        assertEquals(
-            ServerAction.OPEN_ACCESSIBILITY,
-            serverAction(ServerUi(auto = true, ServerResult.SERVICE_OFF, AaServerStarter.Accessibility.ENABLED)),
-        )
-    }
-
-    @Test
-    fun `with Android Auto's developer mode off, the golden action opens Android Auto's settings`() {
-        // On Android 16 some phones show no Android Auto icon: its settings live inside Android's.
-        val on = AaServerStarter.Accessibility.CONNECTED
-        assertEquals(ServerAction.OPEN_AA_SETTINGS, serverAction(ServerUi(auto = true, ServerResult.DEVELOPER_MODE_OFF, on)))
-        assertEquals(
-            "without the service, the accessibility first",
-            ServerAction.OPEN_ACCESSIBILITY,
-            serverAction(ServerUi(auto = true, ServerResult.DEVELOPER_MODE_OFF, AaServerStarter.Accessibility.OFF)),
-        )
-    }
-
-    @Test
-    fun `the server warning asks for Accessibility once, with the fuller text, and not at all once the service is connected`() {
-        val off = MainLook.serverLines(ServerUi(auto = true, ServerResult.SERVICE_OFF, AaServerStarter.Accessibility.OFF), hasAccessibility = true)
-        assertNull("the shorter 'enable REau in Accessibility' is left out", off.status)
-        assertEquals(R.string.aa_server_accessibility_off, off.accessibility)
-        val enabled = MainLook.serverLines(
-            ServerUi(auto = true, ServerResult.SERVICE_OFF, AaServerStarter.Accessibility.ENABLED), hasAccessibility = true,
-        )
-        assertNull(enabled.status)
-        assertEquals(R.string.aa_server_accessibility_enabled, enabled.accessibility)
-        // Service connected after the refusal: the stale 'service off' status is not shown while the retry begins.
-        val connected = MainLook.serverLines(
-            ServerUi(auto = true, ServerResult.SERVICE_OFF, AaServerStarter.Accessibility.CONNECTED), hasAccessibility = true,
-        )
-        assertEquals(MainLook.ServerLines(null, null), connected)
-    }
-
-    @Test
-    fun `the server warning keeps the status of any other try`() {
-        val locked = MainLook.serverLines(ServerUi(auto = true, ServerResult.LOCKED, AaServerStarter.Accessibility.CONNECTED), hasAccessibility = true)
-        assertEquals(MainLook.ServerLines(R.string.aa_server_locked, null), locked)
-        val working = MainLook.serverLines(ServerUi(auto = true, ServerResult.WORKING, AaServerStarter.Accessibility.CONNECTED), hasAccessibility = true)
-        assertEquals(R.string.aa_server_working, working.status)
-        assertEquals(
-            "with the switch off, no extra line",
-            MainLook.ServerLines(null, null),
-            MainLook.serverLines(ServerUi(auto = false, ServerResult.LOCKED, AaServerStarter.Accessibility.OFF), hasAccessibility = true),
-        )
-        assertEquals(
-            "the Lite edition never says it",
-            MainLook.ServerLines(null, null),
-            MainLook.serverLines(ServerUi(auto = true, ServerResult.SERVICE_OFF, AaServerStarter.Accessibility.OFF), hasAccessibility = false),
-        )
-    }
-
     @Test
     fun `the Android Auto screen opens with the projection on, outside the card mode`() {
         // Also without the dash, to fit the picture at home.
@@ -199,30 +129,13 @@ class MainLookTest {
 
     /**
      * Seen 18/10 with both editions installed and on: the second one's Android Auto "did not respond" and nothing said why.
-     * The other edition is named only when it is installed AND Android Auto accepts and does not answer, again and again.
+     * The old lite app is named only when it is installed AND Android Auto accepts and does not answer, again and again.
      */
     @Test
-    fun `a mute server is restarted by hand unless the full edition has the switch on and the service connected`() {
-        val connected = AaServerStarter.Accessibility.CONNECTED
-        assertEquals(false, MainLook.muteByRider(ServerUi(auto = true, accessibility = connected), hasAccessibility = true))
-        for (state in AaServerStarter.Accessibility.entries.filter { it != connected }) {
-            assertEquals(state.name, true, MainLook.muteByRider(ServerUi(auto = true, accessibility = state), hasAccessibility = true))
-        }
-        assertEquals("switch off", true, MainLook.muteByRider(ServerUi(auto = false, accessibility = connected), hasAccessibility = true))
-        for (state in AaServerStarter.Accessibility.entries) for (auto in listOf(false, true)) {
-            assertEquals("Lite $state $auto", true, MainLook.muteByRider(ServerUi(auto = auto, accessibility = state), hasAccessibility = false))
-        }
-    }
-
-    @Test
-    fun `the line under a mute server's headline says the menu by hand and keeps the force stop where REau restarts it itself`() {
-        val mute = running(aa = AaLinkState.UNRESPONSIVE)
-        assertEquals(R.string.sub_unresponsive, MainLook.sub(mute))
-        assertEquals(R.string.sub_unresponsive, MainLook.sub(mute, muteByRider = false))
-        assertEquals(R.string.sub_unresponsive_by_hand, MainLook.sub(mute, muteByRider = true))
-        // No other state changes with it.
-        assertEquals(R.string.sub_closing_previous, MainLook.sub(running(aa = AaLinkState.CLOSING_PREVIOUS), muteByRider = true))
-        assertEquals(R.string.sub_server_off, MainLook.sub(running(aa = AaLinkState.SERVER_OFF), muteByRider = true))
+    fun `the line under a mute server's headline says the menu by hand, and no other state changes with it`() {
+        assertEquals(R.string.sub_unresponsive, MainLook.sub(running(aa = AaLinkState.UNRESPONSIVE)))
+        assertEquals(R.string.sub_closing_previous, MainLook.sub(running(aa = AaLinkState.CLOSING_PREVIOUS)))
+        assertEquals(R.string.sub_server_off, MainLook.sub(running(aa = AaLinkState.SERVER_OFF)))
     }
 
     @Test

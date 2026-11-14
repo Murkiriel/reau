@@ -200,6 +200,29 @@ class FakeAndroidAutoPeerTest {
     }
 
     @Test
+    fun `the script makes it answer the version late, and a second request meanwhile breaks the conversation as it does on a slow Android Auto`() {
+        val (fake, unit) = connect(FakeAndroidAutoPeer.Script(versionAnswerDelayMs = 400))
+        val asked = System.nanoTime()
+        unit.frame(0, 3, byteArrayOf(0, 1, 0, 1, 0, 2))
+        assertArrayEquals(byteArrayOf(0, 2, 0, 1, 0, 7, 0, 0), unit.read().third)
+        assertTrue("answered after ${(System.nanoTime() - asked) / 1_000_000} ms", System.nanoTime() - asked >= 400_000_000L)
+
+        unit.tlsHandshake()
+        unit.frame(0, 3, byteArrayOf(0, 4, 8, 0))
+        assertTrue("the fake never finished: ${fake.events}", fake.awaitHandshake())
+        assertNull(fake.failure)
+        tearDown()
+
+        val (broken, resending) = connect(FakeAndroidAutoPeer.Script(versionAnswerDelayMs = 400))
+        resending.frame(0, 3, byteArrayOf(0, 1, 0, 1, 0, 2))
+        resending.frame(0, 3, byteArrayOf(0, 1, 0, 1, 0, 2)) // the resend, before the late answer
+        resending.read()
+        val read = runCatching { resending.tlsHandshake() }
+        assertTrue("the fake must have given up on the duplicate: ${broken.events}", read.isFailure || broken.failure != null)
+        assertTrue("got ${broken.failure}", broken.failure?.message?.contains("expected TLS data") == true)
+    }
+
+    @Test
     fun `the script makes it hang up where told`() {
         for (stage in listOf(FakeAndroidAutoPeer.Stage.ACCEPTED, FakeAndroidAutoPeer.Stage.VERSION_ANSWERED)) {
             val (fake, unit) = connect(FakeAndroidAutoPeer.Script(hangUpAt = stage))

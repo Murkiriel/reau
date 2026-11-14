@@ -1,7 +1,5 @@
 package com.reau.app.ui
 
-import com.reau.app.aa.ServerResult
-import com.reau.app.service.AaServerStarter
 import com.reau.app.service.Projection
 import com.reau.app.settings.AppLanguage
 import com.reau.app.settings.REauSettings
@@ -11,7 +9,7 @@ data class MainUiState(
     val projection: Projection = Projection(),
     val androidAutoVersion: String? = null,
     val cardName: String? = null,
-    /** The switch of Android Auto's server, how its last try went, and REau's accessibility service. */
+    /** What the main screen shows of the servers (the network server's icon). */
     val server: ServerUi = ServerUi(),
     /** Battery saver and REau's battery-optimization exemption. */
     val battery: BatteryUi = BatteryUi(),
@@ -25,7 +23,9 @@ data class MainUiState(
     val vpnHoldsREau: Boolean = false,
     /** Android's Location switch is off although REau has the permission. */
     val locationOff: Boolean = false,
-    /** The other edition of REau is installed too ([com.reau.app.OtherEdition]): it may be holding Android Auto's server. */
+    /** Whether the alert channel (stuck dash, refused network, hot phone) would be heard, or is muted or blocked in Android. */
+    val alertLevel: com.reau.app.service.AlertChannelState.Level = com.reau.app.service.AlertChannelState.Level.LOUD,
+    /** The old "lite" app is installed too ([com.reau.app.OtherEdition]): it may be holding Android Auto's server, and it can be uninstalled. */
     val otherEditionInstalled: Boolean = false,
     /** REau's own version, under Android Auto's at the foot. */
     val reauVersion: String = com.reau.app.BuildConfig.VERSION_NAME,
@@ -50,11 +50,8 @@ enum class BatteryNotice { NOT_EXEMPT, SAVER_ON }
 /** The state with the network server's flag set (the icon of the main screen and the server screen read it). */
 fun MainUiState.withNetwork(on: Boolean): MainUiState = copy(server = server.copy(networkOn = on))
 
-/** What the main screen shows of the automatic switch of Android Auto's server. */
+/** What the main screen shows of the servers. */
 data class ServerUi(
-    val auto: Boolean = false,
-    val result: ServerResult = ServerResult.NONE,
-    val accessibility: AaServerStarter.Accessibility = AaServerStarter.Accessibility.OFF,
     /** The network server (the browser's, "Ver no navegador") is up: the icon beside Android Auto's side blinks. */
     val networkOn: Boolean = false,
 )
@@ -63,12 +60,11 @@ data class ServerUi(
 data class MainExtras(
     val onCard: () -> Unit = {},
     val onShowAndroidAuto: () -> Unit = {},
-    /** "Tentar de novo" (switch the server on again), and Android's accessibility settings. */
-    val onRetryServer: () -> Unit = {},
-    val onOpenAccessibility: () -> Unit = {},
     /** Android's dialog to leave REau out of battery optimization, and battery saver's settings. */
     val onAskBatteryExemption: () -> Unit = {},
     val onOpenBatterySaver: () -> Unit = {},
+    /** Android's settings page of the alert channel (or of the app's notifications), when the alerts are muted or blocked. */
+    val onOpenAlertSettings: () -> Unit = {},
     /** The permissions page and "O REau e os seus dados", from the main screen. */
     val onOpenPermissions: () -> Unit = {},
     val onOpenAboutData: () -> Unit = {},
@@ -96,8 +92,6 @@ class SettingsActions(
     val onPickCardImage: () -> Unit = {},
     /** Share the logs (with the recordings when true). */
     val onShareLogs: (withRecordings: Boolean) -> Unit = {},
-    /** Android's accessibility settings, to switch REau's service on. */
-    val onOpenAccessibility: () -> Unit = {},
     /** The language of the app's texts, chosen on the settings (the screens are redrawn in it). */
     val onLanguage: (AppLanguage) -> Unit = {},
     /** "Ver o registro": the logs, inside the app. */
@@ -115,7 +109,6 @@ class SettingsActions(
 data class PermissionsActions(
     val onBack: () -> Unit = {},
     val onOpenAppSettings: () -> Unit = {},
-    val onOpenAccessibility: () -> Unit = {},
     /** Ask for one row's permission ([com.reau.app.settings.AppPermissions.ask]). */
     val onAsk: (com.reau.app.settings.AppPermissions.Ask) -> Unit = {},
     /** "Pedir as que faltam": the runtime permissions still missing, in one dialog. */

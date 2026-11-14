@@ -50,9 +50,9 @@ class MainScreenStateTest {
         compose.onNodeWithTag(tag).performScrollTo().assertIsDisplayed().assertTextContains(label).assertTextContains(value)
     }
 
-    /** The main button: Ligar, or Desligar with the time since the start beside it. */
+    /** The main button: Ligar, or Desligar with the time since the start beside it. It is pinned under what scrolls: no scrolling to it. */
     private fun button(expected: String) {
-        compose.onNodeWithTag("toggle").performScrollTo().assertIsDisplayed().assertTextContains(expected)
+        compose.onNodeWithTag("toggle").assertIsDisplayed().assertTextContains(expected)
     }
 
     // ── what it says ───────────────────────────────────────────────────────────────────────────────────────
@@ -193,7 +193,7 @@ class MainScreenStateTest {
     @Test
     fun theSwitchAndTheSettingsButtonCallBack() {
         show(Projection())
-        compose.onNodeWithTag("toggle").performScrollTo().performClick()
+        compose.onNodeWithTag("toggle").performClick()
         compose.onNodeWithTag("open_settings").performScrollTo().performClick()
         assertEquals(1, toggles)
         assertEquals(1, settingsOpened)

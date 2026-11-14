@@ -13,13 +13,28 @@ object PhoneNow {
     @Volatile private var screenOn: Boolean? = null
     @Volatile private var dozing: Boolean? = null
     @Volatile private var screenEventMs = -1L
+    @Volatile private var batteryTempC: Float? = null
+    @Volatile private var batteryTempAtMs = Long.MIN_VALUE
 
-    /** The device state just read (a null part leaves what was known). */
-    fun update(charging: Boolean?, screenOn: Boolean?, dozing: Boolean?) {
+    /** The device state just read (a null part leaves what was known). [batteryTempC] is the battery temperature of the same read ([batteryTempNow]). */
+    fun update(
+        charging: Boolean?, screenOn: Boolean?, dozing: Boolean?, batteryTempC: Float? = null, nowMs: Long = MonotonicClock.nowMs(),
+    ) {
         charging?.let { this.charging = it }
         screenOn?.let { this.screenOn = it }
         dozing?.let { this.dozing = it }
+        batteryTempC?.let {
+            this.batteryTempC = it
+            batteryTempAtMs = nowMs
+        }
     }
+
+    /**
+     * The battery temperature of the last device read, in degrees Celsius; null when none was read or the last is older than [maxAgeMs] (the device
+     * is read every 5 s while a projection lives, so an older one belongs to a projection that has ended).
+     */
+    fun batteryTempNow(nowMs: Long = MonotonicClock.nowMs(), maxAgeMs: Long = TEMP_FRESH_MS): Float? =
+        batteryTempC?.takeIf { nowMs - batteryTempAtMs <= maxAgeMs }
 
     /** A broadcast of the phone: the screen, the charger or doze changed (the others say nothing about these). */
     fun heard(action: String, dozing: Boolean?, nowMs: Long = MonotonicClock.nowMs()) {
@@ -60,7 +75,12 @@ object PhoneNow {
         screenOn = null
         dozing = null
         screenEventMs = -1L
+        batteryTempC = null
+        batteryTempAtMs = Long.MIN_VALUE
     }
+
+    /** Six device looks (30 s): a temperature older than this is no longer what the battery says. */
+    const val TEMP_FRESH_MS = 30_000L
 
     private const val MS_PER_S = 1_000.0
 }

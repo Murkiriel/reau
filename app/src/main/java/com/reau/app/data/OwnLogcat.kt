@@ -37,7 +37,8 @@ object OwnLogcat {
             dir = runCatching { AppFolders.diag(context).apply { mkdirs() } }.getOrNull() ?: return
             // The log switched off on the screen: the reader starts, but nothing is written until it is on again.
             paused = !RideDiagnostics.enabled
-            if (!paused) newFile()
+            // The folder's listing and trimming wait for the tidy thread: this runs in the Application's onCreate.
+            if (!paused) newFile(tidyNow = false)
             pump = LogcatPump(open = ::openReader, sink = ::write, log = { RideDiagnostics.log("logcat", it) }).also { it.start() }
         }
         startFlushing()
@@ -127,7 +128,7 @@ object OwnLogcat {
         }
     }
 
-    private fun newFile() {
+    private fun newFile(tidyNow: Boolean = true) {
         val d = dir ?: return
         out?.close()
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
@@ -137,9 +138,23 @@ object OwnLogcat {
         file = f
         bytes = 0L
         out = runCatching { PrintWriter(f.outputStream().bufferedWriter(), false) }.getOrNull()
+        if (tidyNow) tidy(d, setOfNotNull(f.name, RideDiagnostics.currentFileName())) else tidyLater(d, f.name)
+    }
+
+    private val tidyExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "logcat-tidy").apply { isDaemon = true } }
+
+    /** The file just opened was created before this was queued, and its name (and the one being written then) is kept out of the tidying. */
+    private fun tidyLater(d: File, opened: String) {
+        tidyExecutor.execute {
+            val writing = synchronized(lock) { file?.name }
+            tidy(d, setOfNotNull(opened, writing, RideDiagnostics.currentFileName()))
+        }
+    }
+
+    private fun tidy(d: File, keep: Set<String>) {
         d.listFiles { x -> x.name.startsWith("logcat-") && x.name.endsWith(".txt") }
-            ?.sortedBy { it.lastModified() }?.dropLast(KEEP_FILES)?.forEach { runCatching { it.delete() } }
-        DiagSpace.trim(d, DiagSpace.capBytes(), setOfNotNull(f.name, RideDiagnostics.currentFileName()))
+            ?.sortedBy { it.lastModified() }?.dropLast(KEEP_FILES)?.filter { it.name !in keep }?.forEach { runCatching { it.delete() } }
+        DiagSpace.trim(d, DiagSpace.capBytes(), keep)
             ?.let { RideDiagnostics.log("diag", "space: $it") }
     }
 }

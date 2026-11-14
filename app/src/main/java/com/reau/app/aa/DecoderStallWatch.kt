@@ -38,6 +38,15 @@ internal class DecoderStallWatch(private val stallMs: Long = STALL_MS, private v
 
     fun isStalled(nowMs: Long): Boolean = waitingMs(nowMs) > stallMs && inputGapMs(nowMs) < pauseMs
 
+    /**
+     * Whether the decoder is to be restarted: it is stalled and the fault may be its own. A decoder draws into the compositor, which
+     * draws into the encoder; with the compositor stuck inside one frame for [DOWNSTREAM_BUSY_MS] ([downstreamBusyMs]) the decoder
+     * has nowhere to put pictures, and a restart would only make Android Auto send a keyframe again for nothing. That excuse lasts
+     * until the wait reaches [HARD_STALL_MS]: the watch is never off for good.
+     */
+    fun restartDue(nowMs: Long, downstreamBusyMs: Long): Boolean =
+        isStalled(nowMs) && (downstreamBusyMs < DOWNSTREAM_BUSY_MS || waitingMs(nowMs) >= HARD_STALL_MS)
+
     /** How long the oldest unanswered input has waited; 0 when none is waiting. */
     fun waitingMs(nowMs: Long): Long = waitingSinceMs.let { if (it == 0L) 0L else nowMs - it }
 
@@ -47,5 +56,11 @@ internal class DecoderStallWatch(private val stallMs: Long = STALL_MS, private v
     companion object {
         const val STALL_MS = 3_000L
         const val PAUSE_MS = 1_000L
+
+        /** A frame of the compositor takes milliseconds; one that has run this long is stuck. */
+        const val DOWNSTREAM_BUSY_MS = 1_000L
+
+        /** A wait this long is a stall whatever the compositor is doing. */
+        const val HARD_STALL_MS = 15_000L
     }
 }

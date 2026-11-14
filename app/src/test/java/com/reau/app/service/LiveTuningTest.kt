@@ -65,7 +65,7 @@ class LiveTuningTest {
         assertEquals(setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(dashWeather = !before.dashWeather)))
         assertEquals("the ring too", setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(maneuverRing = !before.maneuverRing)))
         assertEquals("and the info ring", setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(infoRing = !before.infoRing)))
-        assertEquals("what it says", setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(infoRingData = 3)))
+        assertEquals("what it says", setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(infoRingData = before.infoRingData xor 4)))
         assertEquals("the carousel", setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(infoRingCarousel = !before.infoRingCarousel)))
         assertEquals("its time", setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(infoRingSeconds = 12)))
         assertEquals("its place", setOf(Step.DASH_EXTRAS), LiveTuning.steps(before, before.copy(infoRingInPlace = !before.infoRingInPlace)))
@@ -92,5 +92,26 @@ class LiveTuningTest {
             LiveTuning.steps(before, before.copy(moveX = 5, fpsCeiling = before.fpsCeiling + 1, mapTheme = MapTheme.DAY)),
         )
         assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(detailedLog = true, answerCalls = !before.answerCalls)))
+    }
+
+    @Test
+    fun `the video experiments restart the stream and the connection ones do nothing live`() {
+        assertEquals(setOf(Step.NEW_STREAM), LiveTuning.steps(before, before.copy(experimentRtpPacing = true)))
+        assertEquals(setOf(Step.NEW_STREAM), LiveTuning.steps(before, before.copy(experimentAdaptiveBitrate = true)))
+        assertEquals(setOf(Step.NEW_STREAM), LiveTuning.steps(before, before.copy(experimentEncoderWatch = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentDebugDscp = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentWifiBind = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentWifiBand = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentStartGuard = true)))
+        assertEquals("a session of Android Auto is not restarted for it", emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentFocusGap = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentNightMemory = true)))
+        // The seven of the third round are read from the live settings where they act (or at the next start); none of them restarts anything.
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentWeatherAge = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentHeatCeiling = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentGpsSpeed = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentRecalcInactive = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentColorMatrix = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentProtocolSix = true)))
+        assertEquals(emptySet<Step>(), LiveTuning.steps(before, before.copy(experimentTolerantRx = true)))
     }
 }

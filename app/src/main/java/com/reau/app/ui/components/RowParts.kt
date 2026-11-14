@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
@@ -44,14 +45,18 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.reau.app.R
 import com.reau.app.ui.theme.LocalREauDark
 import com.reau.app.ui.theme.REauMono
+import com.reau.app.ui.theme.REauSpace
 
 /** The switch, 52×32: Ouro track with a Grafite knob on; Ouro suave ring and small knob off. */
 @Composable
@@ -68,7 +73,33 @@ fun REauSwitch(checked: Boolean, modifier: Modifier = Modifier) {
     )
 }
 
-/** One segment: chosen, Ouro border on primaryContainer with Ouro text (Grafite in the light theme); never wraps. */
+/**
+ * The segments of one choice, side by side in equal cells while the widest label fits its share and on more lines (kept even)
+ * when it does not: at 360 dp or with a large font the four languages go 2 + 2 instead of being cut. See [ComponentLogic.segmentColumns].
+ */
+@Composable
+internal fun SegmentRow(modifier: Modifier = Modifier, gap: Dp = 6.dp, content: @Composable () -> Unit) {
+    Layout(content, modifier.fillMaxWidth()) { segments, constraints ->
+        val gapPx = gap.roundToPx()
+        val widest = segments.maxOfOrNull { it.maxIntrinsicWidth(constraints.maxHeight) } ?: 0
+        val columns = ComponentLogic.segmentColumns(segments.size, widest, constraints.maxWidth, gapPx)
+        val cell = ((constraints.maxWidth - gapPx * (columns - 1)) / columns).coerceAtLeast(0)
+        val lines = segments.chunked(columns)
+        // Each line's height is the tallest segment's, so a line's cells are even.
+        val heights = lines.map { line -> line.maxOf { it.minIntrinsicHeight(cell) } }
+        val placed = lines.mapIndexed { i, line -> line.map { it.measure(Constraints.fixed(cell, heights[i])) } }
+        val height = heights.sum() + gapPx * (lines.size - 1).coerceAtLeast(0)
+        layout(constraints.maxWidth, height) {
+            var y = 0
+            placed.forEachIndexed { i, line ->
+                line.forEachIndexed { j, p -> p.placeRelative(j * (cell + gapPx), y) }
+                y += heights[i] + gapPx
+            }
+        }
+    }
+}
+
+/** One segment: chosen, Ouro border on primaryContainer with Ouro text (Grafite in the light theme); 48 dp tall, at most two lines. */
 @Composable
 internal fun Segment(label: String, chosen: Boolean, tag: String, modifier: Modifier, onClick: () -> Unit) {
     val dark = LocalREauDark.current
@@ -76,13 +107,13 @@ internal fun Segment(label: String, chosen: Boolean, tag: String, modifier: Modi
     val shape = RoundedCornerShape(10.dp)
     val border = if (chosen) colors.primary else hairline(0.3f)
     Box(
-        modifier.heightIn(min = 40.dp).clip(shape).background(if (chosen) colors.primaryContainer else Color.Transparent)
+        modifier.heightIn(min = REauSpace.touch).clip(shape).background(if (chosen) colors.primaryContainer else Color.Transparent)
             .border(if (chosen && !dark) 1.5.dp else 1.dp, border, shape)
             .selectable(selected = chosen, role = Role.RadioButton, onClick = onClick).padding(horizontal = 8.dp, vertical = 8.dp).testTag(tag),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            label, maxLines = 1, softWrap = false,
+            label, maxLines = 2, textAlign = TextAlign.Center,
             color = if (chosen && dark) colors.primary else colors.onSurface,
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontSize = 13.5.sp, fontWeight = if (chosen && !dark) FontWeight.SemiBold else FontWeight.Medium,
@@ -113,7 +144,7 @@ internal fun Field(value: String, onChange: (String) -> Unit, tag: String, passw
             modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = if (password) 48.dp else 14.dp).testTag(tag),
         )
         if (password) {
-            IconButton(onClick = { shown = !shown }, modifier = Modifier.align(Alignment.CenterEnd).size(44.dp).testTag("${tag}_eye")) {
+            IconButton(onClick = { shown = !shown }, modifier = Modifier.align(Alignment.CenterEnd).size(REauSpace.touch).testTag("${tag}_eye")) {
                 MsIcon(
                     if (shown) R.drawable.ic_ms_visibility_off else R.drawable.ic_ms_visibility, 20.dp, colors.onSurfaceVariant,
                     description = stringResource(if (shown) R.string.cd_hide_password else R.string.cd_show_password),
@@ -134,7 +165,7 @@ internal fun RowButton(action: RowAction) {
     }
     val ink = if (action.danger && dark) colors.error else colors.onSurface
     OutlinedButton(
-        action.onClick, Modifier.heightIn(min = 40.dp).testTag(action.tag), shape = RoundedCornerShape(10.dp),
+        action.onClick, Modifier.heightIn(min = REauSpace.touch).testTag(action.tag), shape = RoundedCornerShape(10.dp),
         border = BorderStroke(1.dp, border), contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = ink),
     ) {

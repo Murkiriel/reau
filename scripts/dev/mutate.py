@@ -8,6 +8,7 @@ Returns how many mutations the tests caught. The curated list the weekly workflo
 import os
 import signal
 import subprocess
+import tempfile
 import sys
 from pathlib import Path
 
@@ -15,7 +16,13 @@ ROOT = Path(__file__).resolve().parents[2]
 # The file as it was, kept here while a mutation is applied: a run killed in the middle (not by SIGTERM, which unwinds) leaves a mutated
 # source file, and the next run puts it back first ([recover]). Under build/, which is not versioned.
 PENDING = ROOT / "build" / "mutacoes_pendentes"
-ENV = {**os.environ, "PYTHONIOENCODING": "utf-8"}  # Gradle needs a JDK 21: JAVA_HOME set, or java on the PATH
+# The most one mutation's test run may take: a Gradle that hangs would otherwise take the whole job with it.
+TIMEOUT_S = 900
+# Gradle needs a JDK 21: JAVA_HOME set, or java on the PATH. Python checks a .pyc against the source's size and its time in whole seconds, so a
+# mutation of the same size made in the same second as a .pyc of the other version is loaded as that version (11/11/2026: a mutated .pyc
+# outlived a restore, and an original .pyc hid three mutations). So no Python process of a run writes bytecode, and each run reads bytecode
+# only from a cache folder of its own that starts empty ([run], PYTHONPYCACHEPREFIX): the sources are always compiled as they are on the disk.
+ENV = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONDONTWRITEBYTECODE": "1"}
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
@@ -27,6 +34,17 @@ def _write_durably(path, data):
         f.write(data)
         f.flush()
         os.fsync(f.fileno())
+
+
+def _forget_bytecode(path):
+    """Drops the cached bytecode of [path] (`__pycache__/<name>.*.pyc` beside it), when it is a Python source. Python trusts a .pyc whose
+    recorded size and whole-second time match the source, and a mutation of the same size often lands in the same second: a .pyc left from
+    the other version would be run instead. The environment cannot prevent it, since a test that starts a script with `python3 -I` ignores
+    every PYTHON* variable and writes its .pyc into the tree (11/11/2026). It is only a cache: Python makes it again from the source."""
+    if path.suffix != ".py":
+        return
+    for cached in (path.parent / "__pycache__").glob(f"{path.stem}.*.pyc"):
+        cached.unlink(missing_ok=True)
 
 
 def recover(root=None, pending=None):
@@ -41,6 +59,7 @@ def recover(root=None, pending=None):
         # A trace cut short (the run died while writing it) restores nothing: the source file had not been touched yet.
         if rel and original.is_file() and original.stat().st_size > 0:
             _write_durably(root / rel, original.read_bytes())
+            _forget_bytecode(root / rel)
             restored += 1
         meta.unlink()
         original.unlink(missing_ok=True)
@@ -70,13 +89,23 @@ def run(mutations, command, tail=3):
         _write_durably(PENDING / f"{key}.orig", raw)
         _write_durably(PENDING / f"{key}.path", rel.encode("utf-8"))
         _write_durably(path, text.replace(old, new).encode("utf-8"))
+        _forget_bytecode(path)
+        timed_out = False
         try:
-            done = subprocess.run(command, cwd=ROOT, env=ENV, capture_output=True, text=True, encoding="utf-8",
-                                  errors="replace")
+            with tempfile.TemporaryDirectory(prefix="mutacao-pyc-") as cache:
+                done = subprocess.run(command, cwd=ROOT, env={**ENV, "PYTHONPYCACHEPREFIX": cache}, capture_output=True, text=True,
+                                      encoding="utf-8", errors="replace", timeout=TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            timed_out = True
         finally:
             _write_durably(path, raw)
+            _forget_bytecode(path)
             (PENDING / f"{key}.path").unlink(missing_ok=True)
             (PENDING / f"{key}.orig").unlink(missing_ok=True)
+        if timed_out:
+            # A run that hangs proves nothing about the tests: not counted as caught, and said, so the list gets a look.
+            print(f"{name}: NÃO TERMINOU em {TIMEOUT_S} s (não conta como pega)", flush=True)
+            continue
         out = (done.stdout + done.stderr).strip().splitlines()
         if "NÃO COMPILOU" in "\n".join(out):
             print(f"{name}: NÃO COMPILOU (mutação inválida)\n   " + "\n   ".join(out[-tail:]), flush=True)

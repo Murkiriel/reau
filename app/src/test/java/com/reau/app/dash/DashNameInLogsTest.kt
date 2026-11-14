@@ -9,7 +9,7 @@ import org.junit.Test
 
 /**
  * The dash's Wi-Fi name ties a log to one bike, so every line that reaches the log carries it only masked
- * ([DashWifiManager.maskSsid]), as the Wi-Fi lines already did. The name used here is made up.
+ * ([DashSsid.maskSsid]), as the Wi-Fi lines already did. The name used here is made up.
  */
 class DashNameInLogsTest {
     private val name = "RE_AB12_345678"
@@ -31,13 +31,13 @@ class DashNameInLogsTest {
     @Test
     fun `each Wi-Fi refusal keeps its own words and carries the name masked`() {
         val words = mapOf(
-            DashWifiManager.Refusal.NOT_FOUND to R.string.dash_err_ssid_not_found,
-            DashWifiManager.Refusal.GONE_AFTER_JOIN to R.string.dash_err_ssid_not_found,
-            DashWifiManager.Refusal.SEEN_NOT_JOINED to R.string.dash_err_auth_failed,
-            DashWifiManager.Refusal.UNKNOWN to R.string.dash_err_not_found_or_password,
-            DashWifiManager.Refusal.DASH_STUCK to R.string.dash_err_dash_stuck,
+            JoinRules.Refusal.NOT_FOUND to R.string.dash_err_ssid_not_found,
+            JoinRules.Refusal.GONE_AFTER_JOIN to R.string.dash_err_ssid_not_found,
+            JoinRules.Refusal.SEEN_NOT_JOINED to R.string.dash_err_auth_failed,
+            JoinRules.Refusal.UNKNOWN to R.string.dash_err_not_found_or_password,
+            JoinRules.Refusal.DASH_STUCK to R.string.dash_err_dash_stuck,
         )
-        assertEquals(DashWifiManager.Refusal.entries.toSet(), words.keys)
+        assertEquals(JoinRules.Refusal.entries.toSet(), words.keys)
         for ((refusal, text) in words) assertEquals(refusal.name, text to masked, refusal.message(name))
     }
 

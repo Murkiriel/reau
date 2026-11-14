@@ -11,7 +11,7 @@ import java.io.File
 object DiagSpace {
     const val CAP_BYTES = 200L * 1024 * 1024
 
-    /** A debug build, made to be read after a long test, keeps up to 1 GB of logs. */
+    /** A debug build, made to be read after a long test, keeps up to 1024 MB of logs, besides the 1024 MB of recordings ([RecordingsSpace]). */
     const val DEBUG_CAP_BYTES = 1024L * 1024 * 1024
 
     /** The folder's ceiling in this build: [DEBUG_CAP_BYTES] in a debug build, [CAP_BYTES] in a release one. */

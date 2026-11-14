@@ -34,6 +34,17 @@ class DashSocketDscpTest {
     }
 
     @Test
+    fun `the experimental switch makes a debug build mark too, with the same values, and changes nothing in a release`() {
+        val marks = DashSocket.TOS_CONTROL to DashSocket.TOS_VIDEO
+        assertEquals(marks, DashSocket.priorityMarks(debugBuild = true, markInDebug = true))
+        assertEquals(null, DashSocket.priorityMarks(debugBuild = true, markInDebug = false))
+        assertEquals(marks, DashSocket.priorityMarks(debugBuild = false, markInDebug = true))
+        assertEquals(marks, DashSocket.priorityMarks(debugBuild = false, markInDebug = false))
+        assertEquals(192, marks.first)
+        assertEquals(136, marks.second)
+    }
+
+    @Test
     fun `control goes as CS6 and video as AF41, in the TOS byte`() {
         // DSCP is the TOS byte's top six bits: CS6 48 -> 0xC0, AF41 34 -> 0x88.
         assertEquals(0xC0, DashSocket.TOS_CONTROL)
@@ -65,5 +76,33 @@ class DashSocketDscpTest {
     fun `a closed socket is reported, not thrown`() {
         val socket = DatagramSocket().apply { close() }
         assertEquals(false, DashSocket.mark(socket, DashSocket.TOS_CONTROL))
+    }
+
+    /** The ride log's line of the marking of the sockets, as a [DashSocket] with [markInDebug] writes it when it opens (the tests run the debug build). */
+    private fun markingLine(markInDebug: Boolean): String {
+        val logFile = java.nio.file.Files.createTempFile("dash-socket-marks", ".log").toFile()
+        com.reau.app.data.RideDiagnostics.testOnlySetFile(logFile)
+        try {
+            DashSocket(markInDebug = markInDebug).close()
+            val deadline = System.currentTimeMillis() + 10_000
+            while (System.currentTimeMillis() < deadline && "sockets marked" !in logFile.readText()) Thread.sleep(20)
+            return logFile.readLines().single { "sockets marked for Wi-Fi priority" in it }
+        } finally {
+            com.reau.app.data.RideDiagnostics.testOnlyReset()
+            logFile.delete()
+        }
+    }
+
+    @Test
+    fun `a socket opened with the experimental switch on marks itself in a debug build and says so in the log`() {
+        assertTrue(com.reau.app.BuildConfig.DEBUG)
+        val line = markingLine(markInDebug = true)
+        assertTrue(line, "control CS6=true video AF41=true (debug build, by the experimental switch)" in line)
+    }
+
+    @Test
+    fun `a socket opened with the switch off sends unmarked in a debug build and says so in the log`() {
+        val line = markingLine(markInDebug = false)
+        assertTrue(line, "none (debug build: no priority marking)" in line)
     }
 }

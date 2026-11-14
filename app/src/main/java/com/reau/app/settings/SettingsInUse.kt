@@ -1,5 +1,7 @@
 package com.reau.app.settings
 
+import com.reau.app.dash.DashConfig
+
 /**
  * The ride log said what the rider changed (`setting …: a -> b`) but not what was in use, so a log
  * could not say whether the info ring or the detailed log were on (it had to be
@@ -18,10 +20,14 @@ object SettingsInUse {
         "maneuverData", "maneuverFpsProfile", "speedFpsProfile", "navProfileMode",
         "autoJoinWifi", "detailedLog", "rideLog", "useLocation", "logKeepDays", "noDashStopMinutes",
         "answerCalls", "phoneTouch", "dashMusic", "dashCaller", "gemini",
-        "aaNewProtocol", "aaServerAuto", "clearAaFocus", "dashMask",
+        "aaNewProtocol", "clearAaFocus", "dashMask",
         "statsOverlay", "buttonOverlay", "dashPhoneStatus", "dashAlbumArt", "dashWeather", "infoRing", "infoRingData", "infoRingCarousel", "infoRingSeconds",
         "infoRingInPlace",
         "maneuverRing", "webView", "webTouch", "webAudio",
+        "experimentRtpPacing", "experimentDebugDscp", "experimentAdaptiveBitrate", "experimentWifiBind", "experimentWifiBand", "experimentStartGuard",
+        "experimentEncoderWatch", "experimentFocusGap", "experimentNightMemory",
+        "experimentWeatherAge", "experimentHeatCeiling", "experimentGpsSpeed", "experimentRecalcInactive", "experimentColorMatrix",
+        "experimentProtocolSix", "experimentTolerantRx",
     )
 
     /** Left out on purpose: the fine placement of the picture and the numbers on it (said when they change), and the joystick's text. */
@@ -38,8 +44,33 @@ object SettingsInUse {
         return "settings in use: $said"
     }
 
+    /**
+     * One line for the connection experiments that are on, or null when none is: the ride log of a ride made with one says it in plain words
+     * (the settings line above carries them too, as `experimentX=true`).
+     */
+    fun experimentsLine(settings: REauSettings): String? {
+        val on = listOfNotNull(
+            "video pacing (RTP packets spaced out)".takeIf { settings.experimentRtpPacing },
+            "priority marks on a debug build".takeIf { settings.experimentDebugDscp },
+            "lower adaptive bitrate (${DashConfig.EXPERIMENT_TARGET_BPS / 1000} kbps target)".takeIf { settings.experimentAdaptiveBitrate },
+            "bind retries on the same network".takeIf { settings.experimentWifiBind },
+            "the dash's Wi-Fi asked on 2.4 GHz only".takeIf { settings.experimentWifiBand },
+            "mute encoder watch (rebuilt after 3 s without output)".takeIf { settings.experimentEncoderWatch },
+            "400 ms focus gap when a keyframe is asked of Android Auto".takeIf { settings.experimentFocusGap },
+            "day and night remembered between looks (dawn at sunrise, not before it)".takeIf { settings.experimentNightMemory },
+            "weather hidden from the dash after 30 min without a fetch (not 3 h)".takeIf { settings.experimentWeatherAge },
+            "frame ceiling lowered by the battery temperature (from 44 C)".takeIf { settings.experimentHeatCeiling },
+            "GPS speed for the speed profile when the GPS is already listened to".takeIf { settings.experimentGpsSpeed },
+            "a short inactive of the route shown as a recalculation (8 s)".takeIf { settings.experimentRecalcInactive },
+            "encoder asked for BT.601 limited-range colours".takeIf { settings.experimentColorMatrix },
+            "protocol 6.0 asked of Android Auto first (1.7 if it does not take it)".takeIf { settings.experimentProtocolSix },
+            "tolerant dash silence watch (12 s noted, 60 s ends the session) and control packets 12 ms apart".takeIf { settings.experimentTolerantRx },
+        )
+        return if (on.isEmpty()) null else "connection experiments ON: ${on.joinToString("; ")}"
+    }
+
     /** The picture sent while no map is there: which one is not said (it is a file of the rider's), only whether it is the built-in one. */
-    private fun card(value: String) = when (value) {
+    internal fun card(value: String) = when (value) {
         "null" -> "none"
         REauSettings.DEFAULT_CARD -> "default"
         else -> "picked"
